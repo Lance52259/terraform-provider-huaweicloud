@@ -12,7 +12,8 @@ import (
 
 func dataSourceComputeAvailabilityZonesV2() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceComputeAvailabilityZonesV2Read,
+		Read:               dataSourceComputeAvailabilityZonesV2Read,
+		DeprecationMessage: "use huaweicloud_availability_zones data source instead",
 		Schema: map[string]*schema.Schema{
 			"names": {
 				Type:     schema.TypeList,

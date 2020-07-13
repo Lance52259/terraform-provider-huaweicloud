@@ -3,12 +3,14 @@ layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_compute_availability_zones_v2"
 sidebar_current: "docs-huaweicloud-datasource-compute-availability-zones-v2"
 description: |-
-  Get a list of availability zones from HuaweiCloud
+  Get a list of availability zones from HuaweiCloud.
 ---
 
 # huaweicloud\_compute\_availability\_zones\_v2
 
 Use this data source to get a list of availability zones from HuaweiCloud
+
+-> **NOTE:** It has been deprecated, use `huaweicloud_availability_zones` instead.
 
 ## Example Usage
 
