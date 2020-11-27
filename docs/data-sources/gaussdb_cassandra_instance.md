@@ -35,7 +35,7 @@ data "huaweicloud_gaussdb_cassandra_instance" "this" {
 
 * `flavor` - Indicates the instance specifications.
 
-* `security_group_id` - Indicates the security group ID. Required if the selected subnet doesn't enable network ACL.
+* `security_group_id` - Indicates the security group ID.
 
 * `enterprise_project_id` - Indicates the enterprise project id.
 
