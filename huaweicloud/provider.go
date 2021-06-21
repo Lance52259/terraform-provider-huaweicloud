@@ -366,6 +366,7 @@ func Provider() terraform.ResourceProvider {
 		ResourcesMap: map[string]*schema.Resource{
 			"huaweicloud_api_gateway_api":                 ResourceAPIGatewayAPI(),
 			"huaweicloud_api_gateway_group":               ResourceAPIGatewayGroup(),
+			"huaweicloud_apig_group":                      ResourceApigGroupV2(),
 			"huaweicloud_apig_instance":                   ResourceApigInstanceV2(),
 			"huaweicloud_apig_application":                ResourceApigApplicationV2(),
 			"huaweicloud_apig_environment":                ResourceApigEnvironmentV2(),
