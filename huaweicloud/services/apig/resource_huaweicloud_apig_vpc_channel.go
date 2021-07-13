@@ -1,7 +1,6 @@
 package apig
 
 import (
-	"log"
 	"regexp"
 	"strings"
 
@@ -72,7 +71,6 @@ func ResourceApigVpcChannelV2() *schema.Resource {
 			"port": {
 				Type:         schema.TypeInt,
 				Required:     true,
-				ForceNew:     true,
 				ValidateFunc: validation.IntBetween(1, 65535),
 			},
 			"member_type": {
@@ -132,7 +130,7 @@ func ResourceApigVpcChannelV2() *schema.Resource {
 				Optional: true,
 			},
 			"members": {
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				Required: true,
 				MaxItems: 10,
 				Elem: &schema.Resource{
@@ -188,10 +186,17 @@ func buildApigVpcChannelHealthConfig(d *schema.ResourceData) (channels.VpcHealth
 }
 
 func buildApigVpcChannelMembers(d *schema.ResourceData, config *config.Config) ([]channels.MemberInfo, error) {
-	members := d.Get("members").([]interface{})
+	members := d.Get("members").(*schema.Set)
 	mType := d.Get("member_type").(string)
-	result := make([]channels.MemberInfo, len(members))
-	for i, v := range members {
+	result := make([]channels.MemberInfo, members.Len())
+	// Since the API requires that the name must be supported when the member type is 'ecs'.
+	// It is necessary to query the ecs instance information from server to obtain the instance name.
+	// We will cancel this unreasonable parameter configuration in the future.
+	ecsClient, err := config.ComputeV1Client(config.GetRegion(d))
+	if err != nil {
+		return result, fmtp.Errorf("Error creating HuaweiCloud ECS v1 client: %s", err)
+	}
+	for i, v := range members.List() {
 		member := v.(map[string]interface{})
 		info := channels.MemberInfo{
 			Weight: member["weight"].(int),
@@ -200,18 +205,10 @@ func buildApigVpcChannelMembers(d *schema.ResourceData, config *config.Config) (
 		case "ECS":
 			{
 				id, ok := member["id"]
-				log.Printf("[Lance] The member ID is : %s", id)
 				if !ok || id == "" {
 					return result, fmtp.Errorf("The instance ID is missing, please check your input of members")
 				}
 				info.EcsId = id.(string)
-				// Since the API requires that the name must be supported when the member type is 'ecs'.
-				// It is necessary to query the ecs instance information from server to obtain the instance name.
-				// We will cancel this unreasonable parameter configuration in the future.
-				ecsClient, err := config.ComputeV1Client(config.GetRegion(d))
-				if err != nil {
-					return result, fmtp.Errorf("Error creating HuaweiCloud ECS v1 client: %s", err)
-				}
 				server, err := cloudservers.Get(ecsClient, id.(string)).Extract()
 				if err != nil {
 					return result, fmtp.Errorf("Error getting ECS instance from server by id: %s", err)
@@ -221,7 +218,6 @@ func buildApigVpcChannelMembers(d *schema.ResourceData, config *config.Config) (
 		case "EIP":
 			{
 				addr, ok := member["ip_address"]
-				log.Printf("[Lance] The member ip address is : %s", addr)
 				if !ok || addr == "" {
 					return result, fmtp.Errorf("The ip address of EIP is missing, please check your input of members")
 				}
