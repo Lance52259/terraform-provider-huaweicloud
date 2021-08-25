@@ -11,7 +11,6 @@ Use this data source to get available HuaweiCloud gaussdb cassandra dedicated re
 ```hcl
 data "huaweicloud_gaussdb_cassandra_dedicated_resource" "this" {
   resource_name = "test"
-  engine_name = "cassandra"
 }
 ```
 
@@ -20,8 +19,6 @@ data "huaweicloud_gaussdb_cassandra_dedicated_resource" "this" {
 * `region` - (Optional, String) The region in which to obtain the dedicated resource. If omitted, the provider-level region will be used.
 
 * `resource_name` - (Optional, String) Specifies the dedicated resource name.
-
-* `engine_name` - (Optional, String) Specifies the dedicated resource engine name.
 
 
 ## Attributes Reference

@@ -41,6 +41,5 @@ func testAccCheckGeminiDBDehResourceDataSourceID(n string) resource.TestCheckFun
 
 const testAccGeminiDBDehResourceDataSource_basic = `
 data "huaweicloud_gaussdb_cassandra_dedicated_resource" "test" {
-  engine_name = "cassandra"
 }
 `

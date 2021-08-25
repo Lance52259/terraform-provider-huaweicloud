@@ -24,10 +24,6 @@ func dataSourceGeminiDBDehResource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"engine_name": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"availability_zone": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -75,13 +71,12 @@ func dataSourceGeminiDBDehResourceRead(d *schema.ResourceData, meta interface{})
 	}
 
 	resource_name := d.Get("resource_name").(string)
-	engine_name := d.Get("engine_name").(string)
 	refinedResources := []instances.DehResource{}
 	for _, refResource := range allResources.Resources {
-		if resource_name != "" && refResource.ResourceName != resource_name {
+		if refResource.EngineName != "cassandra" {
 			continue
 		}
-		if engine_name != "" && refResource.EngineName != engine_name {
+		if resource_name != "" && refResource.ResourceName != resource_name {
 			continue
 		}
 		refinedResources = append(refinedResources, refResource)
@@ -103,7 +98,6 @@ func dataSourceGeminiDBDehResourceRead(d *schema.ResourceData, meta interface{})
 	d.SetId(resource.Id)
 
 	d.Set("resource_name", resource.ResourceName)
-	d.Set("engine_name", resource.EngineName)
 	d.Set("availability_zone", resource.AvailabilityZone)
 	d.Set("architecture", resource.Architecture)
 	d.Set("vcpus", resource.Capacity.Vcpus)
