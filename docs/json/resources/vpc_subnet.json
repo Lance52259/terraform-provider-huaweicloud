@@ -42,6 +42,10 @@
                 "type": "string",
                 "computed": true
               },
+              "ipv4_subnet_id": {
+                "type": "string",
+                "computed": true
+              },
               "ipv6_cidr": {
                 "type": "string",
                 "computed": true
@@ -74,10 +78,6 @@
               "secondary_dns": {
                 "type": "string",
                 "optional": true,
-                "computed": true
-              },
-              "subnet_id": {
-                "type": "string",
                 "computed": true
               },
               "tags": {
