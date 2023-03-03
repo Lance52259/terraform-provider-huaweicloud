@@ -42,6 +42,13 @@
                 "computed": true,
                 "forcenew": true
               },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true
+              },
               "vpc_id": {
                 "type": "string",
                 "optional": true,
