@@ -34,6 +34,10 @@
                 "type": "string",
                 "optional": true
               },
+              "public_ip": {
+                "type": "string",
+                "computed": true
+              },
               "region": {
                 "type": "string",
                 "computed": true
