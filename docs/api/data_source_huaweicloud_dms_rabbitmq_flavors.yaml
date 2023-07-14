@@ -6,4 +6,9 @@ schemes:
   - https
 host: huaweicloud.com
 tags:
+  - name: RabbitMQ
 paths:
+  /v2/{engine}/products:
+    get:
+      tag: RabbitMQ
+      operationId: List
