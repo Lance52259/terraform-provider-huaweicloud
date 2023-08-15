@@ -11,4 +11,4 @@ paths:
   /v3/roles:
     get:
       tag: IAM
-      operationId: List
+      operationId: ListWithPages
