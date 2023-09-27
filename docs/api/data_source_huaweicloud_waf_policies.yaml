@@ -11,4 +11,4 @@ paths:
   /v1/{project_id}/waf/policy:
     get:
       tag: WAF
-      operationId: ListPolicy
+      operationId: List
