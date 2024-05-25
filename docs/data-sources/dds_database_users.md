@@ -39,7 +39,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID in UUID format.
 
-* `users` - Indicates the backup list.
+* `users` - Indicates the user list.
   The [users](#users_struct) structure is documented below.
 
 <a name="users_struct"></a>
