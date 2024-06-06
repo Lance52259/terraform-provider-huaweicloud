@@ -49,11 +49,11 @@ data "huaweicloud_dms_rabbitmq_extend_flavors" "all" {
 data "huaweicloud_dms_rabbitmq_extend_flavors" "test" {
   depends_on = [huaweicloud_dms_rabbitmq_instance.test]
 
-  instance_id        = huaweicloud_dms_rabbitmq_instance.test.id
-  type               = local.test_refer.type
-  arch_type          = local.test_refer.arch_types[0]
-  charging_mode      = local.test_refer.charging_modes[0]
-  storage_spec_code  = local.test_refer.ios[0].storage_spec_code
+  instance_id       = huaweicloud_dms_rabbitmq_instance.test.id
+  type              = local.test_refer.type
+  arch_type         = local.test_refer.arch_types[0]
+  charging_mode     = local.test_refer.charging_modes[0]
+  storage_spec_code = local.test_refer.ios[0].storage_spec_code
 }
 
 locals {
