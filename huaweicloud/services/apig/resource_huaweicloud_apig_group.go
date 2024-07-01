@@ -138,21 +138,36 @@ func ResourceApigGroupV2() *schema.Resource {
 				Default:     true,
 				Description: "Specifies whether to use the debugging domain name to access the APIs within the group.",
 			},
-			"registration_time": {
+			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: "The registration time.",
-			},
-			"update_time": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Deprecated:  "Use 'updated_at' instead",
-				Description: `schema: Deprecated; The latest update time of the group.`,
+				Description: `The creation time of the group, in RFC3339 format.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `The latest update time of the group.`,
+				Description: `The latest update time of the group, in RFC3339 format.`,
+			},
+			// Deprecated
+			"registration_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: utils.SchemaDesc(
+					`The registration time.`,
+					utils.SchemaDescInput{
+						Deprecated: true,
+					},
+				),
+			},
+			"update_time": {
+				Type:     schema.TypeString,
+				Computed: true,
+				Description: utils.SchemaDesc(
+					`The latest update time of the group.`,
+					utils.SchemaDescInput{
+						Deprecated: true,
+					},
+				),
 			},
 		},
 	}
@@ -330,7 +345,7 @@ func resourceGroupRead(_ context.Context, d *schema.ResourceData, meta interface
 		d.Set("description", resp.Description),
 		d.Set("url_domains", flattenUrlDomain(resp.UrlDomians)),
 		d.Set("domain_access_enabled", resp.SlDomainAccessEnabled),
-		d.Set("registration_time", resp.RegistraionTime),
+		d.Set("created_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.RegistraionTime)/1000, false)),
 		d.Set("updated_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.UpdateTime)/1000, false)),
 	)
 	var variables []environments.Variable

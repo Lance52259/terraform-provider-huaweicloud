@@ -116,7 +116,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The group ID.
 
-* `registration_time` - The registration time, in RFC-3339 format.
+* `created_at` - The creation time of the group, in RFC3339 format.
 
 * `updated_at` - The latest update time of the group, in RFC3339 format.
 
