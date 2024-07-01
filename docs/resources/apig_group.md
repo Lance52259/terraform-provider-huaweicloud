@@ -118,7 +118,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `registration_time` - The registration time, in RFC-3339 format.
 
-* `updated_at` - The time when the API group was last modified, in RFC-3339 format.
+* `updated_at` - The latest update time of the group, in RFC3339 format.
 
 * `environment` - The array of one or more environments of the associated group.  
   The [object](#group_environment_attr) structure is documented below.

@@ -331,7 +331,7 @@ func resourceGroupRead(_ context.Context, d *schema.ResourceData, meta interface
 		d.Set("url_domains", flattenUrlDomain(resp.UrlDomians)),
 		d.Set("domain_access_enabled", resp.SlDomainAccessEnabled),
 		d.Set("registration_time", resp.RegistraionTime),
-		d.Set("update_time", resp.UpdateTime),
+		d.Set("updated_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.UpdateTime)/1000, false)),
 	)
 	var variables []environments.Variable
 	if variables, err = queryEnvironmentVariables(client, instanceId, groupId); err != nil {
