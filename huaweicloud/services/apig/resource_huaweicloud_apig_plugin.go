@@ -130,8 +130,8 @@ func resourcePluginRead(_ context.Context, d *schema.ResourceData, meta interfac
 		d.Set("type", resp.Type),
 		d.Set("content", resp.Content),
 		d.Set("description", resp.Description),
-		d.Set("created_at", resp.CreatedAt),
-		d.Set("updated_at", resp.UpdatedAt),
+		d.Set("created_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.CreatedAt)/1000, false)),
+		d.Set("updated_at", utils.FormatTimeStampRFC3339(utils.ConvertTimeStrToNanoTimestamp(resp.UpdatedAt)/1000, false)),
 	)
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error saving plugin fields: %s", err)
