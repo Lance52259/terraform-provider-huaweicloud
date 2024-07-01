@@ -2,6 +2,7 @@ package apig
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -23,21 +24,28 @@ func getPluginFunc(cfg *config.Config, state *terraform.ResourceState) (interfac
 	return plugins.Get(client, state.Primary.Attributes["instance_id"], state.Primary.ID)
 }
 
-// The basic test is used to test CORS plugin.
 func TestAccPlugin_basic(t *testing.T) {
 	var (
 		plugin plugins.Plugin
 
-		rName      = "huaweicloud_apig_plugin.test"
 		name       = acceptance.RandomAccResourceName()
 		updateName = acceptance.RandomAccResourceName()
 		baseConfig = testAccPlugin_basicConfig(name)
 
-		rc = acceptance.InitResourceCheck(
-			rName,
-			&plugin,
-			getPluginFunc,
-		)
+		rNameForCors = "huaweicloud_apig_plugin.cors"
+		rcForCors    = acceptance.InitResourceCheck(rNameForCors, &plugin, getPluginFunc)
+
+		rNameForHttpResponse = "huaweicloud_apig_plugin.http_response"
+		rcForHttpResponse    = acceptance.InitResourceCheck(rNameForHttpResponse, &plugin, getPluginFunc)
+
+		rNameForRateLimit = "huaweicloud_apig_plugin.rate_limit"
+		rcForRateLimit    = acceptance.InitResourceCheck(rNameForRateLimit, &plugin, getPluginFunc)
+
+		rNameForKafkaLog = "huaweicloud_apig_plugin.kafka_log"
+		rcForKafkaLog    = acceptance.InitResourceCheck(rNameForKafkaLog, &plugin, getPluginFunc)
+
+		rNameForBreaker = "huaweicloud_apig_plugin.breaker"
+		rcForBreaker    = acceptance.InitResourceCheck(rNameForBreaker, &plugin, getPluginFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -45,35 +53,115 @@ func TestAccPlugin_basic(t *testing.T) {
 			acceptance.TestAccPreCheck(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
+		CheckDestroy:      rcForCors.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccPlugin_basic_step1(baseConfig, name),
+				// Check whether illegal type ​​can be intercepted normally (create phase).
+				Config:      testAccPlugin_basic_step1(baseConfig, name),
+				ExpectError: regexp.MustCompile("error creating the plugin"),
+			},
+			{
+				Config: testAccPlugin_basic_step2(baseConfig, name),
 				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
+					// type CORS
+					rcForCors.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(rNameForCors, "instance_id",
 						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "description", "Created by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "cors"),
+					resource.TestCheckResourceAttr(rNameForCors, "name", fmt.Sprintf("%s_cors", name)),
+					resource.TestCheckResourceAttr(rNameForCors, "description", "Created by acc test"),
+					resource.TestCheckResourceAttr(rNameForCors, "type", "cors"),
+					resource.TestMatchResourceAttr(rNameForCors, "created_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
 				),
 			},
 			{
-				Config: testAccPlugin_basic_step2(baseConfig, updateName),
+				// Check whether illegal content value ​​can be intercepted normally (update phase).
+				Config:      testAccPlugin_basic_step3(baseConfig, name),
+				ExpectError: regexp.MustCompile("error updating the plugin"),
+			},
+			{
+				Config: testAccPlugin_basic_step4(baseConfig, name),
 				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
+					// type CORS
+					rcForCors.CheckResourceExists(),
+					resource.TestMatchResourceAttr(rNameForCors, "updated_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
+					// type HTTP response
+					rcForHttpResponse.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(rNameForHttpResponse, "instance_id",
 						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "description", "Updated by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "cors"),
+					resource.TestCheckResourceAttr(rNameForHttpResponse, "name", fmt.Sprintf("%s_http_response", name)),
+					resource.TestCheckResourceAttr(rNameForHttpResponse, "type", "set_resp_headers"),
+					// type rate limit
+					rcForRateLimit.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(rNameForRateLimit, "instance_id",
+						"huaweicloud_apig_instance.test", "id"),
+					resource.TestCheckResourceAttr(rNameForRateLimit, "name", fmt.Sprintf("%s_rate_limit", name)),
+					resource.TestCheckResourceAttr(rNameForRateLimit, "type", "rate_limit"),
+					// type Kafka log
+					rcForKafkaLog.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(rNameForKafkaLog, "instance_id",
+						"huaweicloud_apig_instance.test", "id"),
+					resource.TestCheckResourceAttr(rNameForKafkaLog, "name", fmt.Sprintf("%s_kafka_log", name)),
+					resource.TestCheckResourceAttr(rNameForKafkaLog, "type", "kafka_log"),
+					// type Kafka log
+					rcForBreaker.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(rNameForBreaker, "instance_id",
+						"huaweicloud_apig_instance.test", "id"),
+					resource.TestCheckResourceAttr(rNameForBreaker, "name", fmt.Sprintf("%s_breaker", name)),
+					resource.TestCheckResourceAttr(rNameForBreaker, "type", "breaker"),
 				),
 			},
 			{
-				ResourceName:      rName,
+				Config: testAccPlugin_basic_step5(baseConfig, updateName),
+				Check: resource.ComposeTestCheckFunc(
+					// type CORS
+					rcForCors.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNameForCors, "name", fmt.Sprintf("%s_cors", updateName)),
+					resource.TestCheckResourceAttr(rNameForCors, "description", "Updated by acc test"),
+					// type HTTP response
+					rcForHttpResponse.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNameForHttpResponse, "name", fmt.Sprintf("%s_http_response", updateName)),
+					// type rate limit
+					rcForRateLimit.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNameForRateLimit, "name", fmt.Sprintf("%s_rate_limit", updateName)),
+					// type Kafka log
+					rcForKafkaLog.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNameForKafkaLog, "name", fmt.Sprintf("%s_kafka_log", updateName)),
+					// type Kafka log
+					rcForBreaker.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rNameForBreaker, "name", fmt.Sprintf("%s_breaker", updateName)),
+				),
+			},
+			{
+				ResourceName:      rNameForCors,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testAccPluginImportStateFunc(rName),
+				ImportStateIdFunc: testAccPluginImportStateFunc(rNameForCors),
+			},
+			{
+				ResourceName:      rNameForHttpResponse,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testAccPluginImportStateFunc(rNameForHttpResponse),
+			},
+			{
+				ResourceName:      rNameForRateLimit,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testAccPluginImportStateFunc(rNameForRateLimit),
+			},
+			{
+				ResourceName:      rNameForKafkaLog,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testAccPluginImportStateFunc(rNameForKafkaLog),
+			},
+			{
+				ResourceName:      rNameForBreaker,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testAccPluginImportStateFunc(rNameForBreaker),
 			},
 		},
 	})
@@ -99,6 +187,51 @@ func testAccPlugin_basicConfig(name string) string {
 
 data "huaweicloud_availability_zones" "test" {}
 
+data "huaweicloud_identity_users" "test" {}
+
+data "huaweicloud_dms_kafka_flavors" "test" {
+  type = "cluster"
+}
+
+locals {
+  query_results     = data.huaweicloud_dms_kafka_flavors.test
+  flavor            = data.huaweicloud_dms_kafka_flavors.test.flavors[0]
+  connect_addresses = split(",", huaweicloud_dms_kafka_instance.test.connect_address)
+  connect_port      = huaweicloud_dms_kafka_instance.test.port
+}
+
+resource "huaweicloud_dms_kafka_instance" "test" {
+  name              = "%[2]s"
+  vpc_id            = huaweicloud_vpc.test.id
+  network_id        = huaweicloud_vpc_subnet.test.id
+  security_group_id = huaweicloud_networking_secgroup.test.id
+
+  flavor_id          = local.flavor.id
+  storage_spec_code  = local.flavor.ios[0].storage_spec_code
+  availability_zones = local.flavor.ios[0].availability_zones
+  engine_version     = element(local.query_results.versions, length(local.query_results.versions)-1)
+  storage_space      = local.flavor.properties[0].min_broker * local.flavor.properties[0].min_storage_per_node
+  broker_num         = 3
+  enable_auto_topic  = true
+
+  access_user      = "user"
+  password         = "Kafkatest@123"
+  manager_user     = "kafka-user"
+  manager_password = "Kafkatest@123"
+
+  lifecycle {
+    ignore_changes = [
+      availability_zones, manager_password, password,
+    ]
+  }
+}
+
+resource "huaweicloud_dms_kafka_topic" "test" {
+  instance_id = huaweicloud_dms_kafka_instance.test.id
+  name        = "%[2]s"
+  partitions  = 1
+}
+
 resource "huaweicloud_apig_instance" "test" {
   name                  = "%[2]s"
   edition               = "BASIC"
@@ -111,6 +244,11 @@ resource "huaweicloud_apig_instance" "test" {
     data.huaweicloud_availability_zones.test.names[0],
   ]
 }
+
+resource "huaweicloud_apig_application" "test" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s"
+}
 `, common.TestBaseNetwork(name), name)
 }
 
@@ -118,11 +256,11 @@ func testAccPlugin_basic_step1(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "cors" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
+  name        = "%[2]s_cors"
   description = "Created by acc test"
-  type        = "cors"
+  type        = "INVALID_TYPE"
   content     = jsonencode(
     {
       allow_origin      = "*"
@@ -141,88 +279,63 @@ func testAccPlugin_basic_step2(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "cors" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Updated by acc test" # Description cannot be updated to a empty value.
+  name        = "%[2]s_cors"
+  description = "Created by acc test"
   type        = "cors"
   content     = jsonencode(
     {
-      allow_origin      = "*.terraform.test.com"
-      allow_methods     = "POST,PATCH"
-      allow_headers     = "Content-Type,Accept,Accept-Ranges"
-      expose_headers    = "X-Request-Id,X-Apig-Auth-Type"
-      max_age           = 800
-      allow_credentials = false
+      allow_origin      = "*"
+      allow_methods     = "GET,PUT,DELETE,HEAD,PATCH"
+      allow_headers     = "Content-Type,Accept,Cache-Control"
+      expose_headers    = "X-Request-Id,X-Apig-Latency"
+      max_age           = 12700
+      allow_credentials = true
     }
   )
 }
 `, baseConfig, name)
 }
 
-func TestAccPlugin_httpResponse(t *testing.T) {
-	var (
-		plugin plugins.Plugin
-
-		rName      = "huaweicloud_apig_plugin.test"
-		name       = acceptance.RandomAccResourceName()
-		updateName = acceptance.RandomAccResourceName()
-		baseConfig = testAccPlugin_basicConfig(name)
-
-		rc = acceptance.InitResourceCheck(
-			rName,
-			&plugin,
-			getPluginFunc,
-		)
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccPlugin_httpResponse_step1(baseConfig, name),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "description", "Created by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "set_resp_headers"),
-				),
-			},
-			{
-				Config: testAccPlugin_httpResponse_step2(baseConfig, updateName),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "description", "Updated by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "set_resp_headers"),
-				),
-			},
-			{
-				ResourceName:      rName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccPluginImportStateFunc(rName),
-			},
-		},
-	})
-}
-
-func testAccPlugin_httpResponse_step1(baseConfig, name string) string {
+func testAccPlugin_basic_step3(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "cors" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
+  name        = "%[2]s_cors"
   description = "Created by acc test"
+  type        = "cors"
+  content     = "INVALID_CONTENT"
+}
+`, baseConfig, name)
+}
+
+func testAccPlugin_basic_step4(baseConfig, name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_apig_plugin" "cors" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_cors"
+  description = "Created by acc test"
+  type        = "cors"
+  content     = jsonencode(
+    {
+      allow_origin      = "*"
+      allow_methods     = "GET,PUT,DELETE,HEAD,PATCH"
+      allow_headers     = "Content-Type,Accept,Cache-Control"
+      expose_headers    = "X-Request-Id,X-Apig-Latency"
+      max_age           = 12700
+      allow_credentials = true
+    }
+  )
+}
+
+resource "huaweicloud_apig_plugin" "http_response" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_http_response"
   type        = "set_resp_headers"
   content     = jsonencode(
     {
@@ -265,113 +378,10 @@ resource "huaweicloud_apig_plugin" "test" {
     }
   )
 }
-`, baseConfig, name)
-}
 
-func testAccPlugin_httpResponse_step2(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "rate_limit" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Updated by acc test" # Description cannot be updated to a empty value.
-  type        = "set_resp_headers"
-  content     = jsonencode(
-    {
-      response_headers = [{
-        name       = "X-Custom-Pwd"
-        value      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-        value_type = "custom_value"
-        action     = "delete"
-      },
-      {
-        name       = "X-Custom-Log-PATH"
-        value      = "/tmp/debug.log"
-        value_type = "custom_value"
-        action     = "add"
-      },
-      {
-        name       = "Sys-Param-updated"
-        value      = "$context.cacheStatus"
-        value_type = "system_parameter"
-        action     = "append"
-      }]
-    }
-  )
-}
-`, baseConfig, name)
-}
-
-func TestAccPlugin_rateLimit(t *testing.T) {
-	var (
-		plugin plugins.Plugin
-
-		rName      = "huaweicloud_apig_plugin.test"
-		name       = acceptance.RandomAccResourceName()
-		updateName = acceptance.RandomAccResourceName()
-		baseConfig = testAccPlugin_basicConfig(name)
-
-		rc = acceptance.InitResourceCheck(
-			rName,
-			&plugin,
-			getPluginFunc,
-		)
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckUserId(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccPlugin_rateLimit_step1(baseConfig, name),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "description", "Created by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "rate_limit"),
-				),
-			},
-			{
-				Config: testAccPlugin_rateLimit_step2(baseConfig, updateName),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "description", "Updated by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "rate_limit"),
-				),
-			},
-			{
-				ResourceName:      rName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccPluginImportStateFunc(rName),
-			},
-		},
-	})
-}
-
-func testAccPlugin_rateLimit_step1(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_application" "test" {
-  instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-}
-
-resource "huaweicloud_apig_plugin" "test" {
-  instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Created by acc test"
+  name        = "%[2]s_rate_limit"
   type        = "rate_limit"
   content     = jsonencode(
     {
@@ -397,7 +407,7 @@ resource "huaweicloud_apig_plugin" "test" {
           "type": "user",
           "policies": [
             {
-              "key": "%[3]s",
+              "key": "${data.huaweicloud_identity_users.test.users[0].id}",
               "limit": 10
             }
           ]
@@ -453,221 +463,14 @@ resource "huaweicloud_apig_plugin" "test" {
     }
   )
 }
-`, baseConfig, name, acceptance.HW_USER_ID)
-}
 
-func testAccPlugin_rateLimit_step2(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_application" "test" {
+resource "huaweicloud_apig_plugin" "kafka_log" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-}
-
-resource "huaweicloud_apig_plugin" "test" {
-  instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Updated by acc test" # Description cannot be updated to a empty value.
-  type        = "rate_limit"
-  content     = jsonencode(
-    {
-      "scope": "basic",
-      "default_time_unit": "minute",
-      "default_interval": 2,
-      "api_limit": 35,
-      "app_limit": 15,
-      "user_limit": 25,
-      "ip_limit": 30,
-      "algorithm": "haht",
-      "specials": [
-        {
-          "type": "app",
-          "policies": [
-            {
-              "key": "${huaweicloud_apig_application.test.id}",
-              "limit": 15
-            }
-          ]
-        },
-        {
-          "type": "user",
-          "policies": [
-            {
-              "key": "%[3]s",
-              "limit": 15
-            }
-          ]
-        }
-      ],
-      "parameters": [
-        {
-          "type": "path",
-          "name": "reqPath",
-          "value": "reqPath"
-        },
-        {
-          "type": "method",
-          "name": "method",
-          "value": "method"
-        },
-        {
-          "type": "system",
-          "name": "serverName",
-          "value": "serverName"
-        }
-      ],
-      "rules": [
-        {
-          "rule_name": "rule-0001",
-          "match_regex": "[\"AND\",[\"method\",\"~=\",\"POST\"],[\"method\",\"~=\",\"PATCH\"]]",
-          "time_unit": "minute",
-          "interval": 1,
-          "limit": 25
-        },
-        {
-          "rule_name": "rule-0002",
-          "match_regex": "[\"reqPath\",\"~~\",\"/terraform/test/*/\"]",
-          "time_unit": "minute",
-          "interval": 2,
-          "limit": 15
-        },
-        {
-          "rule_name": "rule-0003",
-          "match_regex": "[\"serverName\",\"==\",\"terraform\"]",
-          "time_unit": "minute",
-          "interval": 1,
-          "limit": 20
-        },
-        {
-          "rule_name": "rule-0004",
-          "match_regex": "[\"method\",\"in\",\"PATCH\"]",
-          "time_unit": "minute",
-          "interval": 1,
-          "limit": 15
-        }
-      ]
-    }
-  )
-}
-`, baseConfig, name, acceptance.HW_USER_ID)
-}
-
-func TestAccPlugin_kafkaLog(t *testing.T) {
-	var (
-		plugin plugins.Plugin
-
-		rName      = "huaweicloud_apig_plugin.test"
-		name       = acceptance.RandomAccResourceName()
-		updateName = acceptance.RandomAccResourceName()
-		baseConfig = testAccPlugin_kafkaLog_base(name)
-
-		rc = acceptance.InitResourceCheck(
-			rName,
-			&plugin,
-			getPluginFunc,
-		)
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccPlugin_kafkaLog_step1(baseConfig, name),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "description", "Created by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "kafka_log"),
-				),
-			},
-			{
-				Config: testAccPlugin_kafkaLog_step2(baseConfig, updateName),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "description", "Updated by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "kafka_log"),
-				),
-			},
-			{
-				ResourceName:      rName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccPluginImportStateFunc(rName),
-			},
-		},
-	})
-}
-
-func testAccPlugin_kafkaLog_base(name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-data "huaweicloud_dms_kafka_flavors" "test" {
-  type = "cluster"
-}
-
-locals {
-  query_results     = data.huaweicloud_dms_kafka_flavors.test
-  flavor            = data.huaweicloud_dms_kafka_flavors.test.flavors[0]
-  connect_addresses = split(",", huaweicloud_dms_kafka_instance.test.connect_address)
-}
-
-resource "huaweicloud_dms_kafka_instance" "test" {
-  name              = "%[2]s"
-  vpc_id            = huaweicloud_vpc.test.id
-  network_id        = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-
-  flavor_id          = local.flavor.id
-  storage_spec_code  = local.flavor.ios[0].storage_spec_code
-  availability_zones = local.flavor.ios[0].availability_zones
-  engine_version     = element(local.query_results.versions, length(local.query_results.versions)-1)
-  storage_space      = local.flavor.properties[0].min_broker * local.flavor.properties[0].min_storage_per_node
-  broker_num         = 3
-  enable_auto_topic  = true
-
-  access_user      = "user"
-  password         = "Kafkatest@123"
-  manager_user     = "kafka-user"
-  manager_password = "Kafkatest@123"
-
-  lifecycle {
-    ignore_changes = [
-      availability_zones, manager_password, password,
-    ]
-  }
-}
-
-resource "huaweicloud_dms_kafka_topic" "test" {
-  instance_id = huaweicloud_dms_kafka_instance.test.id
-  name        = "%[2]s"
-  partitions  = 1
-}
-`, testAccPlugin_basicConfig(name), name)
-}
-
-func testAccPlugin_kafkaLog_step1(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_plugin" "test" {
-  instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Created by acc test"
+  name        = "%[2]s_kafka_log"
   type        = "kafka_log"
   content     = jsonencode(
     {
-      "broker_list": [for v in local.connect_addresses: format("%%s:%%d", v, huaweicloud_dms_kafka_instance.test.port)],
+      "broker_list": [for v in local.connect_addresses: format("%%s:%%d", v, local.connect_port)],
       "topic": "${huaweicloud_dms_kafka_topic.test.name}",
       "key": "",
       "max_retry_count": 0,
@@ -750,21 +553,174 @@ resource "huaweicloud_apig_plugin" "test" {
     }
   )
 }
+
+resource "huaweicloud_apig_plugin" "breaker" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_breaker"
+  type        = "breaker"
+  content     = jsonencode(
+    {
+      "breaker_condition": {
+        "breaker_type": "timeout",
+        "breaker_mode": "percentage",
+        "unhealthy_condition": "",
+        "unhealthy_threshold": 30,
+        "min_call_threshold": 20,
+        "unhealthy_percentage": 51,
+        "time_window": 15,
+        "open_breaker_time": 15
+      },
+      "downgrade_default": null,
+      "downgrade_parameters": null,
+      "downgrade_rules": null,
+      "scope": "share"
+    }
+  )
+}
 `, baseConfig, name)
 }
 
-func testAccPlugin_kafkaLog_step2(baseConfig, name string) string {
+func testAccPlugin_basic_step5(baseConfig, name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "cors" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
+  name        = "%[2]s_cors"
   description = "Updated by acc test" # Description cannot be updated to a empty value.
+  type        = "cors"
+  content     = jsonencode(
+    {
+      allow_origin      = "*.terraform.test.com"
+      allow_methods     = "POST,PATCH"
+      allow_headers     = "Content-Type,Accept,Accept-Ranges"
+      expose_headers    = "X-Request-Id,X-Apig-Auth-Type"
+      max_age           = 800
+      allow_credentials = false
+    }
+  )
+}
+
+resource "huaweicloud_apig_plugin" "http_response" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_http_response"
+  type        = "set_resp_headers"
+  content     = jsonencode(
+    {
+      response_headers = [{
+        name       = "X-Custom-Pwd"
+        value      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        value_type = "custom_value"
+        action     = "delete"
+      },
+      {
+        name       = "X-Custom-Log-PATH"
+        value      = "/tmp/debug.log"
+        value_type = "custom_value"
+        action     = "add"
+      },
+      {
+        name       = "Sys-Param-updated"
+        value      = "$context.cacheStatus"
+        value_type = "system_parameter"
+        action     = "append"
+      }]
+    }
+  )
+}
+
+resource "huaweicloud_apig_plugin" "rate_limit" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_rate_limit"
+  type        = "rate_limit"
+  content     = jsonencode(
+    {
+      "scope": "basic",
+      "default_time_unit": "minute",
+      "default_interval": 2,
+      "api_limit": 35,
+      "app_limit": 15,
+      "user_limit": 25,
+      "ip_limit": 30,
+      "algorithm": "haht",
+      "specials": [
+        {
+          "type": "app",
+          "policies": [
+            {
+              "key": "${huaweicloud_apig_application.test.id}",
+              "limit": 15
+            }
+          ]
+        },
+        {
+          "type": "user",
+          "policies": [
+            {
+              "key": "${data.huaweicloud_identity_users.test.users[0].id}",
+              "limit": 15
+            }
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "type": "path",
+          "name": "reqPath",
+          "value": "reqPath"
+        },
+        {
+          "type": "method",
+          "name": "method",
+          "value": "method"
+        },
+        {
+          "type": "system",
+          "name": "serverName",
+          "value": "serverName"
+        }
+      ],
+      "rules": [
+        {
+          "rule_name": "rule-0001",
+          "match_regex": "[\"AND\",[\"method\",\"~=\",\"POST\"],[\"method\",\"~=\",\"PATCH\"]]",
+          "time_unit": "minute",
+          "interval": 1,
+          "limit": 25
+        },
+        {
+          "rule_name": "rule-0002",
+          "match_regex": "[\"reqPath\",\"~~\",\"/terraform/test/*/\"]",
+          "time_unit": "minute",
+          "interval": 2,
+          "limit": 15
+        },
+        {
+          "rule_name": "rule-0003",
+          "match_regex": "[\"serverName\",\"==\",\"terraform\"]",
+          "time_unit": "minute",
+          "interval": 1,
+          "limit": 20
+        },
+        {
+          "rule_name": "rule-0004",
+          "match_regex": "[\"method\",\"in\",\"PATCH\"]",
+          "time_unit": "minute",
+          "interval": 1,
+          "limit": 15
+        }
+      ]
+    }
+  )
+}
+
+resource "huaweicloud_apig_plugin" "kafka_log" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "%[2]s_kafka_log"
   type        = "kafka_log"
   content     = jsonencode(
     {
-      "broker_list": [for v in local.connect_addresses: format("%%s:%%d", v, huaweicloud_dms_kafka_instance.test.port)],
+      "broker_list": [for v in local.connect_addresses: format("%%s:%%d", v, local.connect_port)],
       "topic": "${huaweicloud_dms_kafka_topic.test.name}",
       "key": "",
       "max_retry_count": 3,
@@ -853,103 +809,10 @@ resource "huaweicloud_apig_plugin" "test" {
     }
   )
 }
-`, baseConfig, name)
-}
 
-func TestAccPlugin_breaker(t *testing.T) {
-	var (
-		plugin plugins.Plugin
-
-		rName      = "huaweicloud_apig_plugin.test"
-		name       = acceptance.RandomAccResourceName()
-		updateName = acceptance.RandomAccResourceName()
-		baseConfig = testAccPlugin_basicConfig(name)
-
-		rc = acceptance.InitResourceCheck(
-			rName,
-			&plugin,
-			getPluginFunc,
-		)
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccPlugin_breaker_step1(baseConfig, name),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "description", "Created by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "breaker"),
-				),
-			},
-			{
-				Config: testAccPlugin_breaker_step2(baseConfig, updateName),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "instance_id",
-						"huaweicloud_apig_instance.test", "id"),
-					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "description", "Updated by acc test"),
-					resource.TestCheckResourceAttr(rName, "type", "breaker"),
-				),
-			},
-			{
-				ResourceName:      rName,
-				ImportState:       true,
-				ImportStateVerify: true,
-				ImportStateIdFunc: testAccPluginImportStateFunc(rName),
-			},
-		},
-	})
-}
-
-func testAccPlugin_breaker_step1(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_plugin" "test" {
+resource "huaweicloud_apig_plugin" "breaker" {
   instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Created by acc test"
-  type        = "breaker"
-  content     = jsonencode(
-    {
-      "breaker_condition": {
-        "breaker_type": "timeout",
-        "breaker_mode": "percentage",
-        "unhealthy_condition": "",
-        "unhealthy_threshold": 30,
-        "min_call_threshold": 20,
-        "unhealthy_percentage": 51,
-        "time_window": 15,
-        "open_breaker_time": 15
-      },
-      "downgrade_default": null,
-      "downgrade_parameters": null,
-      "downgrade_rules": null,
-      "scope": "share"
-    }
-  )
-}
-`, baseConfig, name)
-}
-
-func testAccPlugin_breaker_step2(baseConfig, name string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-resource "huaweicloud_apig_plugin" "test" {
-  instance_id = huaweicloud_apig_instance.test.id
-  name        = "%[2]s"
-  description = "Updated by acc test" # Description cannot be updated to a empty value.
+  name        = "%[2]s_breaker"
   type        = "breaker"
   content     = jsonencode(
     {
