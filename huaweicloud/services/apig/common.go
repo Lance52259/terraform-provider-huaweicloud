@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chnsz/golangsdk"
+	"github.com/jmespath/go-jmespath"
 )
 
 type requestErr struct {
@@ -40,5 +41,29 @@ func handleMultiOperationsError(err error) (bool, error) {
 		}
 	}
 	// Operation execution failed due to some resource or server issues, no need to try again.
+	return false, err
+}
+
+// When multiple jobs are performed simultaneously, some jobs may fail and return the 409 error.
+// To ensure that resources are created correctly, we need to identify this error and add corresponding retry logic.
+func handleOperationError409(err error, specErrCode string) (bool, error) {
+	if err == nil {
+		return false, nil
+	}
+	if errCode, ok := err.(golangsdk.ErrUnexpectedResponseCode); ok && errCode.Actual == 409 {
+		var apiError interface{}
+		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
+			return false, jsonErr
+		}
+
+		errCode, searchErr := jmespath.Search("error_code", apiError)
+		if searchErr != nil {
+			return false, err
+		}
+
+		if specErrCode != "" && errCode == "APIG.3711" {
+			return true, err
+		}
+	}
 	return false, err
 }

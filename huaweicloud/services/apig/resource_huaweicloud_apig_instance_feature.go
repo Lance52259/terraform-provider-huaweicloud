@@ -2,7 +2,6 @@ package apig
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -87,7 +86,8 @@ func updateFeatureConfiguration(ctx context.Context, client *golangsdk.ServiceCl
 	var reqErr error
 	err := resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *resource.RetryError {
 		resp, reqErr = client.Request("POST", path, &opts)
-		isRetry, err := handleOperationError409(reqErr)
+		// APIG.3711: A configuration parameter can be modified only once per minute.
+		isRetry, err := handleOperationError409(reqErr, "APIG.3711")
 		if isRetry {
 			// lintignore:R018
 			time.Sleep(30 * time.Second)
@@ -129,29 +129,6 @@ func resourceInstanceFeatureCreate(ctx context.Context, d *schema.ResourceData, 
 
 	d.SetId(featureName.(string))
 	return resourceInstanceFeatureRead(ctx, d, meta)
-}
-
-func handleOperationError409(err error) (bool, error) {
-	if err == nil {
-		return false, nil
-	}
-	if errCode, ok := err.(golangsdk.ErrUnexpectedResponseCode); ok && errCode.Actual == 409 {
-		var apiError interface{}
-		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
-			return false, jsonErr
-		}
-
-		errCode, searchErr := jmespath.Search("error_code", apiError)
-		if searchErr != nil {
-			return false, err
-		}
-
-		// APIG.3711: A configuration parameter can be modified only once per minute.
-		if errCode == "APIG.3711" {
-			return true, err
-		}
-	}
-	return false, err
 }
 
 func buildConfigInstanceFeatureParams(featrueName string, enabled, cfg interface{}) map[string]interface{} {
@@ -235,9 +212,6 @@ func resourceInstanceFeatureUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	_, err = updateFeatureConfiguration(ctx, client, d, instanceId, featureName)
 	if err != nil {
-		return diag.Errorf("error creating instance feature: %s", err)
-	}
-	if err != nil {
 		return diag.Errorf("error updating feature (%s) under specified instance (%s): %s", featureName, instanceId, err)
 	}
 
@@ -245,7 +219,13 @@ func resourceInstanceFeatureUpdate(ctx context.Context, d *schema.ResourceData, 
 }
 
 func resourceInstanceFeatureDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	return nil
+	errorMsg := `Unable to restore the feature value during the related API limit and the data can only be removed from the tfstate file.`
+	return diag.Diagnostics{
+		diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  errorMsg,
+		},
+	}
 }
 
 func resourceInstanceFeatureImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
