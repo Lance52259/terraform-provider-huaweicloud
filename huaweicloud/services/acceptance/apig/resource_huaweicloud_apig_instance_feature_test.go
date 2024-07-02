@@ -2,6 +2,7 @@ package apig
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -25,14 +26,11 @@ func getInstanceFeatureFunc(cfg *config.Config, state *terraform.ResourceState) 
 func TestAccInstanceFeature_basic(t *testing.T) {
 	var (
 		feature interface{}
-		rName   = "huaweicloud_apig_instance_feature.test"
-		name    = acceptance.RandomAccResourceName()
-	)
 
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&feature,
-		getInstanceFeatureFunc,
+		rName      = "huaweicloud_apig_instance_feature.test"
+		name       = acceptance.RandomAccResourceName()
+		baseConfig = testAccInstanceFeature_base(name)
+		rc         = acceptance.InitResourceCheck(rName, &feature, getInstanceFeatureFunc)
 	)
 
 	// Avoid CheckDestroy because this resource already exists and does not need to be deleted.
@@ -44,7 +42,12 @@ func TestAccInstanceFeature_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccInstanceFeature_basic_step1(name),
+				// Check whether illegal feature name ​​can be intercepted normally (create phase).
+				Config:      testAccInstanceFeature_basic_step1(baseConfig),
+				ExpectError: regexp.MustCompile(`error creating instance feature`),
+			},
+			{
+				Config: testAccInstanceFeature_basic_step2(baseConfig),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", "ratelimit"),
@@ -53,7 +56,12 @@ func TestAccInstanceFeature_basic(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccInstanceFeature_basic_step2(name),
+				// Check whether illegal feature content ​​can be intercepted normally (update phase).
+				Config:      testAccInstanceFeature_basic_step3(baseConfig),
+				ExpectError: regexp.MustCompile(`error updating feature \(ratelimit\) under specified instance \([a-f0-9-]+\)`),
+			},
+			{
+				Config: testAccInstanceFeature_basic_step4(baseConfig),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", "ratelimit"),
@@ -104,7 +112,23 @@ resource "huaweicloud_apig_instance" "test" {
 `, common.TestBaseNetwork(name), name)
 }
 
-func testAccInstanceFeature_basic_step1(name string) string {
+func testAccInstanceFeature_basic_step1(baseConfig string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_apig_instance_feature" "test" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "INVALID_FEATURE_NAME"
+  enabled     = true
+
+  config = jsonencode({
+    api_limits = 200
+  })
+}
+`, baseConfig)
+}
+
+func testAccInstanceFeature_basic_step2(baseConfig string) string {
 	return fmt.Sprintf(`
 %s
 
@@ -117,10 +141,26 @@ resource "huaweicloud_apig_instance_feature" "test" {
     api_limits = 200
   })
 }
-`, testAccInstanceFeature_base(name))
+`, baseConfig)
 }
 
-func testAccInstanceFeature_basic_step2(name string) string {
+func testAccInstanceFeature_basic_step3(baseConfig string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_apig_instance_feature" "test" {
+  instance_id = huaweicloud_apig_instance.test.id
+  name        = "ratelimit"
+  enabled     = true
+
+  config = jsonencode({
+    INVALID_KEY = "INVALID_VALUE"
+  })
+}
+`, baseConfig)
+}
+
+func testAccInstanceFeature_basic_step4(baseConfig string) string {
 	return fmt.Sprintf(`
 %s
 
@@ -133,5 +173,5 @@ resource "huaweicloud_apig_instance_feature" "test" {
     api_limits = 300
   })
 }
-`, testAccInstanceFeature_base(name))
+`, baseConfig)
 }
