@@ -71,48 +71,66 @@ func ResourceSignatureAssociate() *schema.Resource {
 	}
 }
 
+func querySignatureUnbindApis(client *golangsdk.ServiceClient, instanceId, signId string) ([]interface{}, error) {
+	var (
+		httpUrl = "v2/{project_id}/apigw/instances/{instance_id}/sign-bindings/unbinded-apis?sign_id={sign_id}"
+		offset  = 0
+		result  = make([]interface{}, 0)
+	)
+
+	listPath := client.Endpoint + httpUrl
+	listPath = strings.ReplaceAll(listPath, "{project_id}", client.ProjectID)
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", instanceId)
+	listPath = strings.ReplaceAll(listPath, "{sign_id}", signId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+
+	for {
+		listPathWithOffset := fmt.Sprintf("%s&limit=100&offset=%d", listPath, offset)
+		requestResp, err := client.Request("GET", listPathWithOffset, &opt)
+		if err != nil {
+			return nil, fmt.Errorf("error retrieving unassociated signatures: %s", err)
+		}
+		respBody, err := utils.FlattenResponse(requestResp)
+		if err != nil {
+			return nil, err
+		}
+		unbindPublishIds := utils.PathSearch("apis[*].publish_id", respBody, make([]interface{}, 0)).([]interface{})
+		if len(unbindPublishIds) < 1 {
+			break
+		}
+		result = append(result, unbindPublishIds...)
+		offset += len(unbindPublishIds)
+	}
+	return result, nil
+}
+
 func signatureBindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, signId string,
 	publishIds []string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		var (
-			httpUrl  = "v2/{project_id}/apigw/instances/{instance_id}/sign-bindings/unbinded-apis"
-			queryUrl = "?sign_id={sign_id}"
-			offset   = 0
-			result   = make([]interface{}, 0)
-		)
-
-		listPath := client.Endpoint + httpUrl
-		listPath = strings.ReplaceAll(listPath, "{project_id}", client.ProjectID)
-		listPath = strings.ReplaceAll(listPath, "{instance_id}", instanceId)
-		queryUrl = strings.ReplaceAll(queryUrl, "{sign_id}", signId)
-		listPath += queryUrl
-
-		opt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
+		// Query the list of APIs that are not bound to the signature and ensure that the target API information has
+		// been removed from the list.
+		// However, this step alone is not enough to ensure that the API is bound to the signature.
+		unbindSignatures, err := querySignatureUnbindApis(client, instanceId, signId)
+		if err != nil {
+			return nil, "ERROR", err
+		}
+		if utils.IsSliceContainsAnyAnotherSliceElement(utils.ExpandToStringList(unbindSignatures), publishIds, false, true) {
+			return unbindSignatures, "PENDING", nil
 		}
 
-		for {
-			listPathWithOffset := fmt.Sprintf("%s&limit=100&offset=%d", listPath, offset)
-			requestResp, err := client.Request("GET", listPathWithOffset, &opt)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error retrieving unassociated signatures: %s", err)
-			}
-			respBody, err := utils.FlattenResponse(requestResp)
-			if err != nil {
-				return nil, "ERROR", err
-			}
-			unbindPublishIds := utils.PathSearch("apis[*].publish_id", respBody, make([]interface{}, 0)).([]interface{})
-			if len(unbindPublishIds) < 1 {
-				break
-			}
-			result = append(result, unbindPublishIds...)
-			offset += len(unbindPublishIds)
+		// Confirm the binding status of the current API by binds query API, because there may be a situation where
+		// the APIs does not exist in the query results of unbinds query API or binds query API.
+		bindSignatures, err := signs.ListBind(client, buildSignBindApiListOpts(instanceId, signId))
+		if err != nil {
+			return nil, "ERROR", err
 		}
-
-		if utils.IsSliceContainsAnyAnotherSliceElement(utils.ExpandToStringList(result), publishIds, false, true) {
-			return result, "PENDING", nil
+		if utils.StrSliceContainsAnother(flattenApiPublishIdsForSignature(bindSignatures), publishIds) {
+			return bindSignatures, "COMPLETED", nil
 		}
-		return result, "COMPLETED", nil
+		return bindSignatures, "PENDING", nil
 	}
 }
 
