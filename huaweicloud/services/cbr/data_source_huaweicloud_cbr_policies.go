@@ -10,7 +10,6 @@ import (
 
 	"github.com/chnsz/golangsdk/openstack/cbr/v3/policies"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
@@ -281,12 +280,12 @@ func dataSourcePoliciesRead(_ context.Context, d *schema.ResourceData, meta inte
 	}
 	allPages, err := policies.List(client, listOpts).AllPages()
 	if err != nil {
-		return diag.FromErr(err)
+		return diag.Errorf("error querying CBR policies: %s", err)
 	}
 
 	policyList, err := policies.ExtractPolicies(allPages)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "CBR policies")
+		return diag.Errorf("error retrieving CBR policies: %s", err)
 	}
 
 	randUUID, err := uuid.GenerateUUID()
