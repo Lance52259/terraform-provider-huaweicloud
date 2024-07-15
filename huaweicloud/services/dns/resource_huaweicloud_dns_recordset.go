@@ -253,7 +253,7 @@ func resourceDNSRecordsetRead(_ context.Context, d *schema.ResourceData, meta in
 
 	dnsClient, zoneType, err := chooseDNSClientbyZoneID(d, zoneID, meta)
 	if err != nil {
-		return diag.FromErr(err)
+		return common.CheckDeletedDiag(d, err, "error creating DNS client")
 	}
 
 	version := getApiVersionByZoneType(zoneType)
