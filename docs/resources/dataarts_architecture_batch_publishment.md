@@ -3,14 +3,15 @@ subcategory: "DataArts Studio"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_dataarts_architecture_batch_publishment"
 description: |-
-  Manages a DataArts Architecture batch publish resource within HuaweiCloud.
+  Using this resource to manage the batch publishing for DataArts Architecture resources within HuaweiCloud.
 ---
 
 # huaweicloud_dataarts_architecture_batch_publishment
 
-Manages a DataArts Architecture batch publish resource within HuaweiCloud.
+Using this resource to manage the batch publishing for DataArts Architecture resources within HuaweiCloud.
 
--> Destroying this resource will not change the status of the published resource.
+-> 1. Before using this resource, please make sure that the current user has the approver permission.
+   <br>2. Deleting this resource will take the published objects offline.
 
 ## Example Usage
 
@@ -18,17 +19,24 @@ Manages a DataArts Architecture batch publish resource within HuaweiCloud.
 variable "workspace_id" {}
 variable "approver_user_id" {}
 variable "approver_user_name" {}
-variable "biz_id" {}
+variable "batch_publish_objects" {
+  type = list(object({
+    object_id   = string
+    object_type = string
+  }))
+}
 
 resource "huaweicloud_dataarts_architecture_batch_publishment" "test" {
   workspace_id       = var.workspace_id
   approver_user_id   = var.approver_user_id
   approver_user_name = var.approver_user_name
-  fast_approval      = true
 
-  biz_infos {
-    biz_id   = var.biz_id
-    biz_type = "SUBJECT"
+  dynamic "biz_infos" {
+    for_each = var.batch_publish_objects
+    content {
+      biz_id   = biz_infos.value["object_id"]
+      biz_type = biz_infos.value["object_type"]
+    }
   }
 }
 ```
@@ -44,23 +52,19 @@ The following arguments are supported:
 * `workspace_id` - (Required, String, ForceNew) The ID of DataArts Studio workspace.
   Changing this creates a new resource.
 
-* `biz_infos` - (Required, List, ForceNew) Specifies the list of the business information.
+* `biz_infos` - (Required, List, ForceNew) Specifies the list of objects to be published.
   Changing this creates a new resource.
   The [biz_infos](#publishment_biz_infos) structure is documented below.
-
-  -> If the parameter contains published objects, the resource creation will fail, but the remaining objects
-     will continue to be published.
 
 * `approver_user_id` - (Required, String, ForceNew) Specifies the user ID of the architecture reviewer.
   Changing this creates a new resource.
 
 * `approver_user_name` - (Required, String, ForceNew) Specifies the user name of the architecture reviewer.
   Changing this creates a new resource.
-  
-* `fast_approval` - (Optional, Bool, ForceNew) Whether to automatically review.
-  Changing this creates a new resource.
 
-  -> This parameter is available only when the current user has approval authority.
+* `schedule_time` - (Optional, String, ForceNew) Specifies scheduling time of the DataArts quality job.
+  The format is `mm_hh`. e.g. `30_18`, it means `18:30`.
+  Changing this creates a new resource.
 
 <a name="publishment_biz_infos"></a>
 The `biz_infos` block supports:
@@ -69,8 +73,8 @@ The `biz_infos` block supports:
   Changing this creates a new resource.
 
 * `biz_type` - (Required, String, ForceNew) Specifies the type of the object to be published.
-  Changing this creates a new resource.
-  The valid values are as follows:  
+  Changing this creates a new resource.  
+  The valid values are as follows:
   + **AGGREGATION_LOGIC_TABLE**
   + **ATOMIC_INDEX**
   + **ATOMIC_METRIC**
