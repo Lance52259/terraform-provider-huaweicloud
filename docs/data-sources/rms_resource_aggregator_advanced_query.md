@@ -40,7 +40,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `results` - The list of query results.
 
-* `query_info` - The policy states list.
+* `query_info` - The query info.
 
   The [query_info](#query_info) structure is documented below.
 
