@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk/pagination"
 
@@ -179,7 +177,7 @@ func flattenListEventsBody(resp interface{}) []interface{} {
 			"status":       utils.PathSearch("state", v, nil),
 			"created_at":   utils.FormatTimeStampRFC3339(int64(createAt.(float64))/1000, false),
 			"updated_at":   utils.FormatTimeStampRFC3339(int64(updateAt.(float64))/1000, false),
-			"notification": flattenNotification(v),
+			"notification": flattenNotification(utils.PathSearch("notification", v, make(map[string]interface{})).(map[string]interface{})),
 		})
 	}
 	return rst
@@ -208,23 +206,16 @@ func filterListEventsBody(all []interface{}, d *schema.ResourceData) []interface
 	return rst
 }
 
-func flattenNotification(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("notification", resp)
-	if err != nil {
-		log.Printf("[ERROR] Error parsing notification from response= %#v", resp)
-		return rst
-	}
-	if curJson == nil {
+func flattenNotification(notification map[string]interface{}) []interface{} {
+	if len(notification) < 1 {
 		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"target_type": utils.PathSearch("target_type", curJson, nil),
-			"target_id":   utils.PathSearch("target_id", curJson, nil),
-			"target_name": utils.PathSearch("target_name", curJson, nil),
+			"target_type": utils.PathSearch("target_type", notification, nil),
+			"target_id":   utils.PathSearch("target_id", notification, nil),
+			"target_name": utils.PathSearch("target_name", notification, nil),
 		},
 	}
-	return rst
 }

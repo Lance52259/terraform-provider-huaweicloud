@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -168,11 +167,11 @@ func resourceDdsParameterTemplateCreate(ctx context.Context, d *schema.ResourceD
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("configuration.id", createParameterTemplateRespBody)
-	if err != nil {
-		return diag.Errorf("error creating DDS parameter template: ID is not found in API response")
+	configId := utils.PathSearch("configuration.id", createParameterTemplateRespBody, "").(string)
+	if configId == "" {
+		return diag.Errorf("unable to find the DDS parameter template ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(configId)
 
 	return resourceDdsParameterTemplateRead(ctx, d, meta)
 }

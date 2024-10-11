@@ -7,13 +7,11 @@ package dli
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -288,11 +286,11 @@ func resourceSparkTemplateCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createSparkTemplateRespBody)
-	if err != nil {
-		return diag.Errorf("error creating DLI spark template: ID is not found in API response")
+	templateId := utils.PathSearch("id", createSparkTemplateRespBody, "").(string)
+	if templateId == "" {
+		return diag.Errorf("unable to find the DLI spark template ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(templateId)
 
 	return resourceSparkTemplateRead(ctx, d, meta)
 }
@@ -423,56 +421,54 @@ func resourceSparkTemplateRead(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("name", utils.PathSearch("name", getSparkTemplateRespBody, nil)),
 		d.Set("group", utils.PathSearch("group", getSparkTemplateRespBody, nil)),
 		d.Set("description", utils.PathSearch("description", getSparkTemplateRespBody, nil)),
-		d.Set("body", flattenGetSparkTemplateResponseBody(getSparkTemplateRespBody)),
+		d.Set("body", flattenGetSparkTemplateResponseBody(utils.PathSearch("body",
+			getSparkTemplateRespBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenGetSparkTemplateResponseBody(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("body", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing body from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"queue_name":         utils.PathSearch("queue", curJson, nil),
-			"name":               utils.PathSearch("name", curJson, nil),
-			"app_name":           utils.PathSearch("file", curJson, nil),
-			"main_class":         utils.PathSearch("className", curJson, nil),
-			"app_parameters":     utils.PathSearch("args", curJson, nil),
-			"specification":      utils.PathSearch("sc_type", curJson, nil),
-			"jars":               utils.PathSearch("jars", curJson, nil),
-			"python_files":       utils.PathSearch("pyFiles", curJson, nil),
-			"files":              utils.PathSearch("files", curJson, nil),
-			"modules":            utils.PathSearch("modules", curJson, nil),
-			"resources":          flattenSparkTemplateResources(curJson),
-			"dependent_packages": flattenSparkTemplateGroups(curJson),
-			"configurations":     utils.PathSearch("conf", curJson, nil),
-			"driver_memory":      utils.PathSearch("driverMemory", curJson, nil),
-			"driver_cores":       utils.PathSearch("driverCores", curJson, nil),
-			"executor_memory":    utils.PathSearch("executorMemory", curJson, nil),
-			"executor_cores":     utils.PathSearch("executorCores", curJson, nil),
-			"num_executors":      utils.PathSearch("numExecutors", curJson, nil),
-			"obs_bucket":         utils.PathSearch("obs_bucket", curJson, nil),
-			"auto_recovery":      utils.PathSearch("auto_recovery", curJson, nil),
-			"max_retry_times":    utils.PathSearch("max_retry_times", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenSparkTemplateResources(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenGetSparkTemplateResponseBody(body map[string]interface{}) []interface{} {
+	if len(body) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("resources", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	return []interface{}{
+		map[string]interface{}{
+			"queue_name":     utils.PathSearch("queue", body, nil),
+			"name":           utils.PathSearch("name", body, nil),
+			"app_name":       utils.PathSearch("file", body, nil),
+			"main_class":     utils.PathSearch("className", body, nil),
+			"app_parameters": utils.PathSearch("args", body, nil),
+			"specification":  utils.PathSearch("sc_type", body, nil),
+			"jars":           utils.PathSearch("jars", body, nil),
+			"python_files":   utils.PathSearch("pyFiles", body, nil),
+			"files":          utils.PathSearch("files", body, nil),
+			"modules":        utils.PathSearch("modules", body, nil),
+			"resources": flattenSparkTemplateResources(utils.PathSearch("resources",
+				body, make([]interface{}, 0)).([]interface{})),
+			"dependent_packages": flattenSparkTemplateGroups(utils.PathSearch("groups",
+				body, make([]interface{}, 0)).([]interface{})),
+			"configurations":  utils.PathSearch("conf", body, nil),
+			"driver_memory":   utils.PathSearch("driverMemory", body, nil),
+			"driver_cores":    utils.PathSearch("driverCores", body, nil),
+			"executor_memory": utils.PathSearch("executorMemory", body, nil),
+			"executor_cores":  utils.PathSearch("executorCores", body, nil),
+			"num_executors":   utils.PathSearch("numExecutors", body, nil),
+			"obs_bucket":      utils.PathSearch("obs_bucket", body, nil),
+			"auto_recovery":   utils.PathSearch("auto_recovery", body, nil),
+			"max_retry_times": utils.PathSearch("max_retry_times", body, nil),
+		},
+	}
+}
+
+func flattenSparkTemplateResources(resources []interface{}) []interface{} {
+	if len(resources) < 1 {
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(resources))
+	for _, v := range resources {
 		rst = append(rst, map[string]interface{}{
 			"name": utils.PathSearch("name", v, nil),
 			"type": utils.PathSearch("type", v, nil),
@@ -481,17 +477,17 @@ func flattenSparkTemplateResources(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenSparkTemplateGroups(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenSparkTemplateGroups(groups []interface{}) []interface{} {
+	if len(groups) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("groups", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	rst := make([]interface{}, 0, len(groups))
+	for _, v := range groups {
 		rst = append(rst, map[string]interface{}{
-			"name":      utils.PathSearch("name", v, nil),
-			"resources": flattenSparkTemplateResources(v),
+			"name": utils.PathSearch("name", v, nil),
+			"resources": flattenSparkTemplateResources(utils.PathSearch("resources",
+				v, make([]interface{}, 0)).([]interface{})),
 		})
 	}
 	return rst

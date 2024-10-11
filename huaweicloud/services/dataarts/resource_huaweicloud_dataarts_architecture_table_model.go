@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -672,12 +671,12 @@ func resourceTableModelCreate(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	tableModel := utils.PathSearch("data.value", createTableModelRespBody, nil)
-	id, err := jmespath.Search("id", tableModel)
+
+	modelId := utils.PathSearch("data.value.id", createTableModelRespBody, "").(string)
 	if err != nil {
-		return diag.Errorf("error creating DataArts Architecture table model: %s is not found in API response", "id")
+		return diag.Errorf("unable to find the DataArts Architecture table model ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(modelId)
 
 	return resourceTableModelRead(ctx, d, meta)
 }

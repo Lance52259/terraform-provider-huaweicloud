@@ -8,7 +8,6 @@ package cph
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -307,28 +305,28 @@ func resourceCphServerCreate(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("server_ids[0]", createCphServerRespBody)
-	if err != nil {
-		return diag.Errorf("error creating CPH Server: ID is not found in API response")
+	serverId := utils.PathSearch("server_ids[0]", createCphServerRespBody, "").(string)
+	if serverId == "" {
+		return diag.Errorf("unable to find the CPH Server ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(serverId)
 
 	err = createCphServerWaitingForStateCompleted(ctx, d, meta, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return diag.Errorf("error waiting for the Create of CPH server (%s) to complete: %s", d.Id(), err)
 	}
 
-	orderId, err := jmespath.Search("order_id", createCphServerRespBody)
-	if err != nil {
-		return diag.Errorf("error creating CPH Server: order_id is not found in API response")
+	orderId := utils.PathSearch("order_id", createCphServerRespBody, "").(string)
+	if orderId == "" {
+		return diag.Errorf("unable to find the order ID of the CPH Server from the API response")
 	}
 
 	bssClient, err := cfg.BssV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating BSS v2 client: %s", err)
 	}
-	err = common.WaitOrderComplete(ctx, bssClient, orderId.(string), d.Timeout(schema.TimeoutCreate))
+	err = common.WaitOrderComplete(ctx, bssClient, orderId, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return diag.Errorf("error waiting for the Create of CPH server (%s) to complete: %s", d.Id(), err)
 	}
@@ -475,12 +473,11 @@ func createCphServerWaitingForStateCompleted(ctx context.Context, d *schema.Reso
 			if err != nil {
 				return nil, "ERROR", err
 			}
-			statusRaw, err := jmespath.Search(`status`, createCphServerRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `status`)
+			statusRaw := utils.PathSearch(`status`, createCphServerRespBody, float64(0)).(float64)
+			if statusRaw == 0 {
+				return nil, "ERROR", fmt.Errorf("unable to find the status from the API response")
 			}
-
-			status := fmt.Sprintf("%v", statusRaw)
+			status := fmt.Sprint(statusRaw)
 
 			targetStatus := []string{
 				"5", "8", "10",
@@ -559,7 +556,8 @@ func resourceCphServerRead(_ context.Context, d *schema.ResourceData, meta inter
 		d.Set("subnet_id", utils.PathSearch("subnet_id", getCphServerRespBody, nil)),
 		d.Set("order_id", utils.PathSearch("metadata.order_id", getCphServerRespBody, nil)),
 		d.Set("addresses", flattenGetCphServerResponseBodyAddress(getCphServerRespBody)),
-		d.Set("bandwidth", flattenGetCphServerResponseBodyBandWidth(getCphServerRespBody)),
+		d.Set("bandwidth", flattenGetCphServerResponseBodyBandWidth(
+			utils.PathSearch("band_widths[0]", getCphServerRespBody, make(map[string]interface{})).(map[string]interface{}))),
 		d.Set("availability_zone", utils.PathSearch("availability_zone", getCphServerRespBody, nil)),
 		d.Set("enterprise_project_id", utils.PathSearch("enterprise_project_id", getCphServerRespBody, nil)),
 		d.Set("status", utils.PathSearch("status", getCphServerRespBody, nil)),
@@ -585,23 +583,19 @@ func flattenGetCphServerResponseBodyAddress(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenGetCphServerResponseBodyBandWidth(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("band_widths[0]", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing band_widths from response= %#v", resp)
-		return rst
+func flattenGetCphServerResponseBodyBandWidth(bandwidth map[string]interface{}) []interface{} {
+	if len(bandwidth) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"share_type":  fmt.Sprint(utils.PathSearch("band_width_share_type", curJson, nil)),
-			"id":          utils.PathSearch("band_width_id", curJson, nil),
-			"size":        utils.PathSearch("band_width_size", curJson, nil),
-			"charge_mode": fmt.Sprint(utils.PathSearch("band_width_charge_mode", curJson, nil)),
+			"share_type":  fmt.Sprint(utils.PathSearch("band_width_share_type", bandwidth, nil)),
+			"id":          utils.PathSearch("band_width_id", bandwidth, nil),
+			"size":        utils.PathSearch("band_width_size", bandwidth, nil),
+			"charge_mode": fmt.Sprint(utils.PathSearch("band_width_charge_mode", bandwidth, nil)),
 		},
 	}
-	return rst
 }
 
 func resourceCphServerUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -703,12 +697,11 @@ func deleteCphServerWaitingForStateCompleted(ctx context.Context, d *schema.Reso
 				return nil, "ERROR", err
 			}
 
-			statusRaw, err := jmespath.Search(`status`, getCphServerRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `status`)
+			statusRaw := utils.PathSearch(`status`, getCphServerRespBody, float64(0)).(float64)
+			if statusRaw == 0 {
+				return nil, "ERROR", fmt.Errorf("unable to find the status from the API response")
 			}
-
-			status := fmt.Sprintf("%v", statusRaw)
+			status := fmt.Sprint(statusRaw)
 
 			targetStatus := []string{
 				"6",

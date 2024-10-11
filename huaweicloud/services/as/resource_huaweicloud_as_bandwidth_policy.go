@@ -7,13 +7,11 @@ package as
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -203,11 +201,11 @@ func resourceASBandWidthPolicyCreate(ctx context.Context, d *schema.ResourceData
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("scaling_policy_id", createBandwidthPolicyRespBody)
-	if err != nil || id == nil {
-		return diag.Errorf("error creating AS bandwidth policy: ID is not found in API response")
+	policyId := utils.PathSearch("scaling_policy_id", createBandwidthPolicyRespBody, "").(string)
+	if policyId == "" {
+		return diag.Errorf("unable to find the AS bandwidth policy ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(policyId)
 
 	return resourceASBandWidthPolicyRead(ctx, d, meta)
 }
@@ -304,49 +302,43 @@ func resourceASBandWidthPolicyRead(_ context.Context, d *schema.ResourceData, me
 		d.Set("cool_down_time", utils.PathSearch("scaling_policy.cool_down_time", respBody, nil)),
 		d.Set("description", utils.PathSearch("scaling_policy.description", respBody, nil)),
 		d.Set("status", utils.PathSearch("scaling_policy.policy_status", respBody, nil)),
-		d.Set("scaling_policy_action", flattenGetBandwidthPolicyResponseBodyScalingPolicyAction(respBody)),
-		d.Set("scheduled_policy", flattenGetBandwidthPolicyResponseBodyScheduledPolicy(respBody)),
+		d.Set("scaling_policy_action", flattenGetBandwidthPolicyResponseBodyScalingPolicyAction(
+			utils.PathSearch("scaling_policy.scaling_policy_action", respBody, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("scheduled_policy", flattenGetBandwidthPolicyResponseBodyScheduledPolicy(
+			utils.PathSearch("scaling_policy.scheduled_policy", respBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenGetBandwidthPolicyResponseBodyScalingPolicyAction(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("scaling_policy.scaling_policy_action", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing scaling_policy_action from response= %#v", resp)
-		return rst
+func flattenGetBandwidthPolicyResponseBodyScalingPolicyAction(action map[string]interface{}) []interface{} {
+	if len(action) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"operation": utils.PathSearch("operation", curJson, nil),
-			"size":      utils.PathSearch("size", curJson, nil),
-			"limits":    utils.PathSearch("limits", curJson, nil),
+			"operation": utils.PathSearch("operation", action, nil),
+			"size":      utils.PathSearch("size", action, nil),
+			"limits":    utils.PathSearch("limits", action, nil),
 		},
 	}
-	return rst
 }
 
-func flattenGetBandwidthPolicyResponseBodyScheduledPolicy(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("scaling_policy.scheduled_policy", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing scheduled_policy from response= %#v", resp)
-		return rst
+func flattenGetBandwidthPolicyResponseBodyScheduledPolicy(policy map[string]interface{}) []interface{} {
+	if len(policy) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"launch_time":      utils.PathSearch("launch_time", curJson, nil),
-			"recurrence_type":  utils.PathSearch("recurrence_type", curJson, nil),
-			"recurrence_value": utils.PathSearch("recurrence_value", curJson, nil),
-			"start_time":       utils.PathSearch("start_time", curJson, nil),
-			"end_time":         utils.PathSearch("end_time", curJson, nil),
+			"launch_time":      utils.PathSearch("launch_time", policy, nil),
+			"recurrence_type":  utils.PathSearch("recurrence_type", policy, nil),
+			"recurrence_value": utils.PathSearch("recurrence_value", policy, nil),
+			"start_time":       utils.PathSearch("start_time", policy, nil),
+			"end_time":         utils.PathSearch("end_time", policy, nil),
 		},
 	}
-	return rst
 }
 
 func resourceASBandWidthPolicyUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

@@ -18,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/common/tags"
@@ -367,12 +366,14 @@ func flattenGetDDSInstancesResponseBodyInstance(resp interface{}, client *golang
 		}
 
 		rst = append(rst, map[string]interface{}{
-			"id":                    id,
-			"name":                  utils.PathSearch("name", v, nil),
-			"ssl":                   sslEnable,
-			"port":                  port,
-			"datastore":             flattenInstanceDatastore(v),
-			"backup_strategy":       flattenInstanceBackupStrategy(v),
+			"id":   id,
+			"name": utils.PathSearch("name", v, nil),
+			"ssl":  sslEnable,
+			"port": port,
+			"datastore": flattenInstanceDatastore(utils.PathSearch("datastore",
+				v, make(map[string]interface{})).(map[string]interface{})),
+			"backup_strategy": flattenInstanceBackupStrategy(utils.PathSearch("backup_strategy",
+				v, make(map[string]interface{})).(map[string]interface{})),
 			"vpc_id":                utils.PathSearch("vpc_id", v, nil),
 			"subnet_id":             utils.PathSearch("subnet_id", v, nil),
 			"security_group_id":     utils.PathSearch("security_group_id", v, nil),
@@ -381,22 +382,21 @@ func flattenGetDDSInstancesResponseBodyInstance(resp interface{}, client *golang
 			"db_username":           utils.PathSearch("db_username", v, nil),
 			"status":                utils.PathSearch("status", v, nil),
 			"enterprise_project_id": utils.PathSearch("enterprise_project_id", v, nil),
-			"nodes":                 flattenInstanceNodes(v),
-			"groups":                flattenInstanceGroups(v),
+			"nodes":                 flattenInstanceNodes(utils.PathSearch("nodes", v, make([]interface{}, 0)).([]interface{})),
+			"groups":                flattenInstanceGroups(utils.PathSearch("groups", v, make([]interface{}, 0)).([]interface{})),
 			"tags":                  tagMap,
 		})
 	}
 	return rst
 }
 
-func flattenInstanceGroups(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenInstanceGroups(groups []interface{}) []interface{} {
+	if len(groups) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("groups", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	rst := make([]interface{}, 0, len(groups))
+	for _, v := range groups {
 		rst = append(rst, map[string]interface{}{
 			"type":   utils.PathSearch("type", v, nil),
 			"id":     utils.PathSearch("id", v, nil),
@@ -404,20 +404,19 @@ func flattenInstanceGroups(resp interface{}) []interface{} {
 			"status": utils.PathSearch("status", v, nil),
 			"size":   utils.PathSearch("volume.size", v, nil),
 			"used":   utils.PathSearch("volume.used", v, nil),
-			"nodes":  flattenInstanceNodes(v),
+			"nodes":  flattenInstanceNodes(utils.PathSearch("nodes", v, make([]interface{}, 0)).([]interface{})),
 		})
 	}
 	return rst
 }
 
-func flattenInstanceNodes(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenInstanceNodes(nodes []interface{}) []interface{} {
+	if len(nodes) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("nodes", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	rst := make([]interface{}, 0, len(nodes))
+	for _, v := range nodes {
 		rst = append(rst, map[string]interface{}{
 			"id":         utils.PathSearch("id", v, nil),
 			"name":       utils.PathSearch("name", v, nil),
@@ -431,39 +430,31 @@ func flattenInstanceNodes(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenInstanceDatastore(resp interface{}) interface{} {
-	var rst []map[string]interface{}
-	curJson, err := jmespath.Search("datastore", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing datastore from response= %#v", resp)
-		return rst
+func flattenInstanceDatastore(datastore map[string]interface{}) interface{} {
+	if len(datastore) < 1 {
+		return nil
 	}
 
-	rst = []map[string]interface{}{
+	return []map[string]interface{}{
 		{
-			"type":           utils.PathSearch("type", curJson, nil),
-			"version":        utils.PathSearch("version", curJson, nil),
-			"storage_engine": utils.PathSearch("storage_engine", curJson, nil),
+			"type":           utils.PathSearch("type", datastore, nil),
+			"version":        utils.PathSearch("version", datastore, nil),
+			"storage_engine": utils.PathSearch("storage_engine", datastore, nil),
 		},
 	}
-	return rst
 }
 
-func flattenInstanceBackupStrategy(resp interface{}) interface{} {
-	var rst []map[string]interface{}
-	curJson, err := jmespath.Search("backup_strategy", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing backup_strategy from response= %#v", resp)
-		return rst
+func flattenInstanceBackupStrategy(backupStrategy map[string]interface{}) interface{} {
+	if len(backupStrategy) < 1 {
+		return nil
 	}
 
-	rst = []map[string]interface{}{
+	return []map[string]interface{}{
 		{
-			"start_time": utils.PathSearch("start_time", curJson, nil),
-			"keep_days":  utils.PathSearch("keep_days", curJson, nil),
+			"start_time": utils.PathSearch("start_time", backupStrategy, nil),
+			"keep_days":  utils.PathSearch("keep_days", backupStrategy, nil),
 		},
 	}
-	return rst
 }
 
 func buildGetDDSInstancesQueryParams(d *schema.ResourceData) string {

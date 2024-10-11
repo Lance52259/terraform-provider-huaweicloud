@@ -8,13 +8,11 @@ package aom
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -311,8 +309,10 @@ func resourceAlarmSilenceRuleRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("name", utils.PathSearch("name", rule, nil)),
 		d.Set("description", utils.PathSearch("desc", rule, nil)),
 		d.Set("time_zone", utils.PathSearch("timezone", rule, nil)),
-		d.Set("silence_time", flattenSilenceRuleSilenceTime(rule)),
-		d.Set("silence_conditions", flattenSilenceRuleSilenceConditions(rule)),
+		d.Set("silence_time", flattenSilenceRuleSilenceTime(utils.PathSearch("mute_config",
+			rule, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("silence_conditions", flattenSilenceRuleSilenceConditions(utils.PathSearch("match",
+			rule, make([]interface{}, 0)).([]interface{}))),
 		d.Set("created_at", utils.PathSearch("create_time", rule, nil)),
 		d.Set("updated_at", utils.PathSearch("update_time", rule, nil)),
 	)
@@ -320,33 +320,28 @@ func resourceAlarmSilenceRuleRead(_ context.Context, d *schema.ResourceData, met
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenSilenceRuleSilenceTime(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("mute_config", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing silence_time from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"type":      utils.PathSearch("type", curJson, nil),
-			"starts_at": utils.PathSearch("starts_at", curJson, nil),
-			"ends_at":   utils.PathSearch("ends_at", curJson, nil),
-			"scope":     utils.PathSearch("scope", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenSilenceRuleSilenceConditions(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenSilenceRuleSilenceTime(silenceTime map[string]interface{}) []interface{} {
+	if len(silenceTime) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("match", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	return []interface{}{
+		map[string]interface{}{
+			"type":      utils.PathSearch("type", silenceTime, nil),
+			"starts_at": utils.PathSearch("starts_at", silenceTime, nil),
+			"ends_at":   utils.PathSearch("ends_at", silenceTime, nil),
+			"scope":     utils.PathSearch("scope", silenceTime, nil),
+		},
+	}
+}
+
+func flattenSilenceRuleSilenceConditions(conditions []interface{}) []interface{} {
+	if len(conditions) < 1 {
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(conditions))
+	for _, v := range conditions {
 		rst = append(rst, map[string]interface{}{
 			"conditions": flattenSilenceRuleConditions(v),
 		})

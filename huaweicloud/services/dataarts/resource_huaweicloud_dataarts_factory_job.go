@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -951,12 +950,15 @@ func resourceFactoryJobRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("region", region),
 		d.Set("name", utils.PathSearch("name", getJobRespBody, nil)),
 		d.Set("nodes", flattenGetJobResponseBodyNode(getJobRespBody)),
-		d.Set("schedule", flattenGetJobResponseBodySchedule(getJobRespBody)),
-		d.Set("params", flattenGetJobResponseBodyParam(getJobRespBody)),
+		d.Set("schedule", flattenGetJobResponseBodySchedule(utils.PathSearch("schedule",
+			getJobRespBody, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("params", flattenGetJobResponseBodyParam(utils.PathSearch("params",
+			getJobRespBody, make([]interface{}, 0)).([]interface{}))),
 		d.Set("directory", utils.PathSearch("directory", getJobRespBody, nil)),
 		d.Set("process_type", utils.PathSearch("processType", getJobRespBody, nil)),
 		d.Set("log_path", utils.PathSearch("logPath", getJobRespBody, nil)),
-		d.Set("basic_config", flattenGetJobResponseBodyBasicConfig(getJobRespBody)),
+		d.Set("basic_config", flattenGetJobResponseBodyBasicConfig(utils.PathSearch("basicConfig",
+			getJobRespBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -973,47 +975,42 @@ func flattenGetJobResponseBodyNode(resp interface{}) []interface{} {
 		rst = append(rst, map[string]interface{}{
 			"name":               utils.PathSearch("name", v, nil),
 			"type":               utils.PathSearch("type", v, nil),
-			"location":           flattenNodeLocation(v),
+			"location":           flattenNodeLocation(utils.PathSearch("location", v, make(map[string]interface{})).(map[string]interface{})),
 			"pre_node_name":      utils.PathSearch("preNodeName", v, nil),
-			"conditions":         flattenNodeConditions(v),
-			"properties":         flattenNodeProperties(v),
+			"conditions":         flattenNodeConditions(utils.PathSearch("conditions", v, make([]interface{}, 0)).([]interface{})),
+			"properties":         flattenNodeProperties(utils.PathSearch("properties", v, make([]interface{}, 0)).([]interface{})),
 			"polling_interval":   utils.PathSearch("pollingInterval", v, nil),
 			"max_execution_time": utils.PathSearch("maxExecutionTime", v, nil),
 			"retry_times":        utils.PathSearch("retryTimes", v, nil),
 			"retry_interval":     utils.PathSearch("retryInterval", v, nil),
 			"fail_policy":        utils.PathSearch("failPolicy", v, nil),
-			"event_trigger":      flattenNodeEventTrigger(v),
-			"cron_trigger":       flattenNodeCronTrigger(v),
+			"event_trigger":      flattenNodeEventTrigger(utils.PathSearch("eventTrigger", v, make(map[string]interface{})).(map[string]interface{})),
+			"cron_trigger":       flattenNodeCronTrigger(utils.PathSearch("cron_trigger", v, make(map[string]interface{})).(map[string]interface{})),
 		})
 	}
 	return rst
 }
 
-func flattenNodeLocation(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("location", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing location from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"x": int(utils.PathSearch("to_number(x)", curJson, 0.0).(float64)),
-			"y": int(utils.PathSearch("to_number(y)", curJson, 0.0).(float64)),
-		},
-	}
-	return rst
-}
-
-func flattenNodeConditions(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenNodeLocation(location map[string]interface{}) []interface{} {
+	if len(location) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("conditions", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	return []interface{}{
+		map[string]interface{}{
+			"x": int(utils.PathSearch("to_number(x)", location, 0.0).(float64)),
+			"y": int(utils.PathSearch("to_number(y)", location, 0.0).(float64)),
+		},
+	}
+}
+
+func flattenNodeConditions(conditions []interface{}) []interface{} {
+	if len(conditions) < 1 {
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(conditions))
+	for _, v := range conditions {
 		rst = append(rst, map[string]interface{}{
 			"pre_node_name": utils.PathSearch("preNodeName", v, nil),
 			"expression":    utils.PathSearch("expression", v, nil),
@@ -1022,14 +1019,13 @@ func flattenNodeConditions(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenNodeProperties(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenNodeProperties(properties []interface{}) []interface{} {
+	if len(properties) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("properties", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	rst := make([]interface{}, 0, len(properties))
+	for _, v := range properties {
 		rst = append(rst, map[string]interface{}{
 			"name":  utils.PathSearch("name", v, nil),
 			"value": utils.PathSearch("value", v, nil),
@@ -1038,152 +1034,127 @@ func flattenNodeProperties(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenNodeEventTrigger(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("eventTrigger", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing eventTrigger from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"event_type":  utils.PathSearch("eventType", curJson, nil),
-			"channel":     utils.PathSearch("channel", curJson, nil),
-			"fail_policy": utils.PathSearch("failPolicy", curJson, nil),
-			"concurrent":  utils.PathSearch("concurrent", curJson, nil),
-			"read_policy": utils.PathSearch("readPolicy", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenNodeCronTrigger(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("cron_trigger", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing cron_trigger from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"start_time":           utils.PathSearch("startTime", curJson, nil),
-			"end_time":             utils.PathSearch("endTime", curJson, nil),
-			"expression":           utils.PathSearch("expression", curJson, nil),
-			"expression_time_zone": utils.PathSearch("expressionTimeZone", curJson, nil),
-			"period":               utils.PathSearch("period", curJson, nil),
-			"depend_pre_period":    utils.PathSearch("dependPrePeriod", curJson, nil),
-			"depend_jobs":          flattenCronTriggerDependJobs(curJson),
-			"concurrent":           utils.PathSearch("concurrent", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenCronTriggerDependJobs(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("dependJobs", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing dependJobs from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"jobs":               utils.PathSearch("jobs", curJson, nil),
-			"depend_period":      utils.PathSearch("dependPeriod", curJson, nil),
-			"depend_fail_policy": utils.PathSearch("dependFailPolicy", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenGetJobResponseBodySchedule(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("schedule", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing schedule from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"type":  utils.PathSearch("type", curJson, nil),
-			"cron":  flattenScheduleCron(curJson),
-			"event": flattenScheduleEvent(curJson),
-		},
-	}
-	return rst
-}
-
-func flattenScheduleCron(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("cron", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing cron from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"start_time":           utils.PathSearch("startTime", curJson, nil),
-			"end_time":             utils.PathSearch("endTime", curJson, nil),
-			"expression":           utils.PathSearch("expression", curJson, nil),
-			"expression_time_zone": utils.PathSearch("expressionTimeZone", curJson, nil),
-			"depend_pre_period":    utils.PathSearch("dependPrePeriod", curJson, nil),
-			"depend_jobs":          flattenCronDependJobs(curJson),
-		},
-	}
-	return rst
-}
-
-func flattenCronDependJobs(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("dependJobs", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing dependJobs from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"jobs":               utils.PathSearch("jobs", curJson, nil),
-			"depend_period":      utils.PathSearch("dependPeriod", curJson, nil),
-			"depend_fail_policy": utils.PathSearch("dependFailPolicy", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenScheduleEvent(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("event", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing event from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"event_type":  utils.PathSearch("eventType", curJson, nil),
-			"channel":     utils.PathSearch("channel", curJson, nil),
-			"fail_policy": utils.PathSearch("failPolicy", curJson, nil),
-			"concurrent":  utils.PathSearch("concurrent", curJson, nil),
-			"read_policy": utils.PathSearch("readPolicy", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenGetJobResponseBodyParam(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenNodeEventTrigger(trigger map[string]interface{}) []interface{} {
+	if len(trigger) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("params", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	return []interface{}{
+		map[string]interface{}{
+			"event_type":  utils.PathSearch("eventType", trigger, nil),
+			"channel":     utils.PathSearch("channel", trigger, nil),
+			"fail_policy": utils.PathSearch("failPolicy", trigger, nil),
+			"concurrent":  utils.PathSearch("concurrent", trigger, nil),
+			"read_policy": utils.PathSearch("readPolicy", trigger, nil),
+		},
+	}
+}
+
+func flattenNodeCronTrigger(trigger map[string]interface{}) []interface{} {
+	if len(trigger) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"start_time":           utils.PathSearch("startTime", trigger, nil),
+			"end_time":             utils.PathSearch("endTime", trigger, nil),
+			"expression":           utils.PathSearch("expression", trigger, nil),
+			"expression_time_zone": utils.PathSearch("expressionTimeZone", trigger, nil),
+			"period":               utils.PathSearch("period", trigger, nil),
+			"depend_pre_period":    utils.PathSearch("dependPrePeriod", trigger, nil),
+			"depend_jobs": flattenCronTriggerDependJobs(utils.PathSearch("dependJobs",
+				trigger, make(map[string]interface{})).(map[string]interface{})),
+			"concurrent": utils.PathSearch("concurrent", trigger, nil),
+		},
+	}
+}
+
+func flattenCronTriggerDependJobs(jobs map[string]interface{}) []interface{} {
+	if len(jobs) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"jobs":               utils.PathSearch("jobs", jobs, nil),
+			"depend_period":      utils.PathSearch("dependPeriod", jobs, nil),
+			"depend_fail_policy": utils.PathSearch("dependFailPolicy", jobs, nil),
+		},
+	}
+}
+
+func flattenGetJobResponseBodySchedule(schedule map[string]interface{}) []interface{} {
+	if len(schedule) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"type": utils.PathSearch("type", schedule, nil),
+			"cron": flattenScheduleCron(utils.PathSearch("cron",
+				schedule, make(map[string]interface{})).(map[string]interface{})),
+			"event": flattenScheduleEvent(utils.PathSearch("event",
+				schedule, make(map[string]interface{})).(map[string]interface{})),
+		},
+	}
+}
+
+func flattenScheduleCron(schedule map[string]interface{}) []interface{} {
+	if len(schedule) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"start_time":           utils.PathSearch("startTime", schedule, nil),
+			"end_time":             utils.PathSearch("endTime", schedule, nil),
+			"expression":           utils.PathSearch("expression", schedule, nil),
+			"expression_time_zone": utils.PathSearch("expressionTimeZone", schedule, nil),
+			"depend_pre_period":    utils.PathSearch("dependPrePeriod", schedule, nil),
+			"depend_jobs": flattenCronDependJobs(utils.PathSearch("dependJobs",
+				schedule, make(map[string]interface{})).(map[string]interface{})),
+		},
+	}
+}
+
+func flattenCronDependJobs(jobs map[string]interface{}) []interface{} {
+	if len(jobs) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"jobs":               utils.PathSearch("jobs", jobs, nil),
+			"depend_period":      utils.PathSearch("dependPeriod", jobs, nil),
+			"depend_fail_policy": utils.PathSearch("dependFailPolicy", jobs, nil),
+		},
+	}
+}
+
+func flattenScheduleEvent(event map[string]interface{}) []interface{} {
+	if len(event) < 1 {
+		return nil
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"event_type":  utils.PathSearch("eventType", event, nil),
+			"channel":     utils.PathSearch("channel", event, nil),
+			"fail_policy": utils.PathSearch("failPolicy", event, nil),
+			"concurrent":  utils.PathSearch("concurrent", event, nil),
+			"read_policy": utils.PathSearch("readPolicy", event, nil),
+		},
+	}
+}
+
+func flattenGetJobResponseBodyParam(params []interface{}) []interface{} {
+	if len(params) < 1 {
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(params))
+	for _, v := range params {
 		rst = append(rst, map[string]interface{}{
 			"name":  utils.PathSearch("name", v, nil),
 			"value": utils.PathSearch("value", v, nil),
@@ -1193,24 +1164,20 @@ func flattenGetJobResponseBodyParam(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenGetJobResponseBodyBasicConfig(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("basicConfig", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing basicConfig from response= %#v", resp)
-		return rst
+func flattenGetJobResponseBodyBasicConfig(basicConfig map[string]interface{}) []interface{} {
+	if len(basicConfig) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"owner":            utils.PathSearch("owner", curJson, nil),
-			"priority":         utils.PathSearch("priority", curJson, nil),
-			"execute_user":     utils.PathSearch("executeUser", curJson, nil),
-			"instance_timeout": utils.PathSearch("instanceTimeout", curJson, nil),
-			"custom_fields":    utils.PathSearch("customFields", curJson, nil),
+			"owner":            utils.PathSearch("owner", basicConfig, nil),
+			"priority":         utils.PathSearch("priority", basicConfig, nil),
+			"execute_user":     utils.PathSearch("executeUser", basicConfig, nil),
+			"instance_timeout": utils.PathSearch("instanceTimeout", basicConfig, nil),
+			"custom_fields":    utils.PathSearch("customFields", basicConfig, nil),
 		},
 	}
-	return rst
 }
 
 func resourceFactoryJobUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

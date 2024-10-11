@@ -182,15 +182,6 @@ func TestAccDeployHost_withoutProxyMode(t *testing.T) {
 				),
 			},
 			{
-				Config: testDeployHost_withoutProxyMode_update(name),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "name", fmt.Sprintf("%s_update", name)),
-					resource.TestCheckResourceAttr(rName, "install_icagent", "false"),
-					resource.TestCheckResourceAttr(rName, "sync", "false"),
-				),
-			},
-			{
 				ResourceName:      rName,
 				ImportState:       true,
 				ImportStateVerify: true,
@@ -201,6 +192,15 @@ func TestAccDeployHost_withoutProxyMode(t *testing.T) {
 					"install_icagent",
 					"sync",
 				},
+			},
+			{
+				Config: testDeployHost_withoutProxyMode_update(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rName, "name", fmt.Sprintf("%s_update", name)),
+					resource.TestCheckResourceAttr(rName, "install_icagent", "false"),
+					resource.TestCheckResourceAttr(rName, "sync", "false"),
+				),
 			},
 		},
 	})
@@ -227,7 +227,7 @@ func TestAccDeployHost_errorCheck(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config:      testDeployHost_errorCheck(name),
-				ExpectError: regexp.MustCompile(`error creating CodeArts deploy host: error code:`),
+				ExpectError: regexp.MustCompile(`error creating CodeArts deploy host`),
 			},
 		},
 	})

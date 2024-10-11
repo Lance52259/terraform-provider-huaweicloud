@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -114,12 +113,12 @@ func resourceCmdbComponentCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createComponentRespBody)
-	if err != nil {
-		return diag.Errorf("error creating CMDB component: ID is not found in API response")
+	componentId := utils.PathSearch("id", createComponentRespBody, "").(string)
+	if componentId == "" {
+		return diag.Errorf("unable to find the CMDB component ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(componentId)
 	return resourceCmdbComponentRead(ctx, d, meta)
 }
 

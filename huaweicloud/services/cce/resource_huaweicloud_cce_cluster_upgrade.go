@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -388,12 +387,10 @@ func clusterUpgradeWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 			if err != nil {
 				return nil, "ERROR", err
 			}
-			statusRaw, err := jmespath.Search(`status.phase`, clusterUpgradeWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `status.phase`)
+			status := utils.PathSearch(`status.phase`, clusterUpgradeWaitingRespBody, "").(string)
+			if status == "" {
+				return nil, "ERROR", fmt.Errorf("unable to find the status phase form the API response")
 			}
-
-			status := fmt.Sprintf("%v", statusRaw)
 
 			targetStatus := []string{
 				"Success",

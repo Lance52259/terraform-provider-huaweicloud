@@ -363,19 +363,19 @@ func buildClientByAgencyV5(c *Config) error {
 		return fmt.Errorf("error extracting IAM agency assume response: %s", err)
 	}
 
-	accessKey, err := jmespath.Search("credentials.access_key_id", createAssumeRespBody)
-	if err != nil {
-		return fmt.Errorf("error fetching assume credentials: access_key_id is not found in API response")
+	accessKey := utils.PathSearch("credentials.access_key_id", createAssumeRespBody, "").(string)
+	if accessKey == "" {
+		return fmt.Errorf("unable to find the access key ID of the assume credential from the API response")
 	}
-	secretKey, err := jmespath.Search("credentials.secret_access_key", createAssumeRespBody)
-	if err != nil {
-		return fmt.Errorf("error fetching assume credentials: secret_access_id is not found in API response")
+	secretKey := utils.PathSearch("credentials.secret_access_key", createAssumeRespBody, "").(string)
+	if secretKey == "" {
+		return fmt.Errorf("unable to find the secret access ID of the assume credential from the API response")
 	}
-	securityToken, err := jmespath.Search("credentials.security_token", createAssumeRespBody)
-	if err != nil {
-		return fmt.Errorf("error fetching assume credentials: security_token is not found in API response")
+	securityToken := utils.PathSearch("credentials.security_token", createAssumeRespBody, "").(string)
+	if securityToken == "" {
+		return fmt.Errorf("unable to find the security token of the assume credential from the API response")
 	}
-	c.AccessKey, c.SecretKey, c.SecurityToken = accessKey.(string), secretKey.(string), securityToken.(string)
+	c.AccessKey, c.SecretKey, c.SecurityToken = accessKey, secretKey, securityToken
 
 	return buildClientByAKSK(c)
 }

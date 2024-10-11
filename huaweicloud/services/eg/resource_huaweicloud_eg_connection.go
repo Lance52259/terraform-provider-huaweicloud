@@ -7,13 +7,11 @@ package eg
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -180,11 +178,11 @@ func resourceConnectionCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createConnectionRespBody)
-	if err != nil {
-		return diag.Errorf("error creating Connection: ID is not found in API response")
+	connectionId := utils.PathSearch("id", createConnectionRespBody, "").(string)
+	if connectionId == "" {
+		return diag.Errorf("unable to find the connection ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(connectionId)
 
 	return resourceConnectionRead(ctx, d, meta)
 }
@@ -274,7 +272,8 @@ func resourceConnectionRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("subnet_id", utils.PathSearch("subnet_id", getConnectionRespBody, nil)),
 		d.Set("description", utils.PathSearch("description", getConnectionRespBody, nil)),
 		d.Set("type", utils.PathSearch("type", getConnectionRespBody, nil)),
-		d.Set("kafka_detail", flattenGetConnectionResponseBodyKafkaDetail(getConnectionRespBody)),
+		d.Set("kafka_detail", flattenGetConnectionResponseBodyKafkaDetail(utils.PathSearch("kafka_detail",
+			getConnectionRespBody, make(map[string]interface{})).(map[string]interface{}))),
 		d.Set("status", utils.PathSearch("status", getConnectionRespBody, nil)),
 		d.Set("created_at", utils.PathSearch("created_time", getConnectionRespBody, nil)),
 		d.Set("updated_at", utils.PathSearch("updated_time", getConnectionRespBody, nil)),
@@ -283,24 +282,20 @@ func resourceConnectionRead(_ context.Context, d *schema.ResourceData, meta inte
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenGetConnectionResponseBodyKafkaDetail(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("kafka_detail", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing kafka_detail from response= %#v", resp)
-		return rst
+func flattenGetConnectionResponseBodyKafkaDetail(kafkaDetail map[string]interface{}) []interface{} {
+	if len(kafkaDetail) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"instance_id":     utils.PathSearch("instance_id", curJson, nil),
-			"connect_address": utils.PathSearch("addr", curJson, nil),
-			"user_name":       utils.PathSearch("username", curJson, nil),
-			"password":        utils.PathSearch("password", curJson, nil),
-			"acks":            utils.PathSearch("acks", curJson, nil),
+			"instance_id":     utils.PathSearch("instance_id", kafkaDetail, nil),
+			"connect_address": utils.PathSearch("addr", kafkaDetail, nil),
+			"user_name":       utils.PathSearch("username", kafkaDetail, nil),
+			"password":        utils.PathSearch("password", kafkaDetail, nil),
+			"acks":            utils.PathSearch("acks", kafkaDetail, nil),
 		},
 	}
-	return rst
 }
 
 func resourceConnectionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

@@ -8,13 +8,11 @@ package codearts
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -216,11 +214,11 @@ func resourceDeployHostCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.Errorf("error creating CodeArts deploy host: %s", err)
 	}
 
-	id, err := jmespath.Search("id", createRespBody)
-	if err != nil || id == nil {
-		return diag.Errorf("error creating CodeArts deploy host: ID is not found in API response")
+	hostId := utils.PathSearch("id", createRespBody, "").(string)
+	if hostId == "" {
+		return diag.Errorf("unable to find the CodeArts deploy host ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(hostId)
 
 	if d.Get("sync").(bool) {
 		if err := updateDeployHost(client, d); err != nil {
@@ -318,30 +316,27 @@ func resourceDeployHostRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("username", utils.PathSearch("authorization.username", resultRespBody, nil)),
 		d.Set("created_at", utils.PathSearch("create_time", resultRespBody, nil)),
 		d.Set("updated_at", utils.PathSearch("update_time", resultRespBody, nil)),
-		d.Set("lastest_connection_at", utils.PathSearch("lastest_connection_time", resultRespBody,
-			nil)),
-		d.Set("connection_status", utils.PathSearch("connection_status", resultRespBody,
-			nil)),
-		d.Set("permission", flattenDeployHostPermission(resultRespBody)),
+		d.Set("lastest_connection_at", utils.PathSearch("lastest_connection_time", resultRespBody, nil)),
+		d.Set("connection_status", utils.PathSearch("connection_status", resultRespBody, nil)),
+		d.Set("permission", flattenDeployHostPermission(utils.PathSearch("permission",
+			resultRespBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenDeployHostPermission(resp interface{}) []interface{} {
-	curJson, err := jmespath.Search("permission", resp)
-	if err != nil {
-		log.Printf("[ERROR] error flatten permission, cause this field is not found in API response")
+func flattenDeployHostPermission(permission map[string]interface{}) []interface{} {
+	if len(permission) < 1 {
 		return nil
 	}
 
 	return []interface{}{
 		map[string]interface{}{
-			"can_view":     utils.PathSearch("can_view", curJson, nil),
-			"can_edit":     utils.PathSearch("can_edit", curJson, nil),
-			"can_delete":   utils.PathSearch("can_delete", curJson, nil),
-			"can_add_host": utils.PathSearch("can_add_host", curJson, nil),
-			"can_copy":     utils.PathSearch("can_copy", curJson, nil),
+			"can_view":     utils.PathSearch("can_view", permission, nil),
+			"can_edit":     utils.PathSearch("can_edit", permission, nil),
+			"can_delete":   utils.PathSearch("can_delete", permission, nil),
+			"can_add_host": utils.PathSearch("can_add_host", permission, nil),
+			"can_copy":     utils.PathSearch("can_copy", permission, nil),
 		},
 	}
 }

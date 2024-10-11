@@ -8,7 +8,6 @@ package cph
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -206,37 +204,34 @@ func flattenListServerModelsFlavors(resp interface{}) []interface{} {
 	rst := make([]interface{}, 0, len(curArray))
 	for _, v := range curArray {
 		rst = append(rst, map[string]interface{}{
-			"flavor_id":   utils.PathSearch("server_model_name", v, nil),
-			"vcpus":       utils.PathSearch("cpu", v, nil),
-			"memory":      utils.PathSearch("memory", v, nil),
-			"type":        fmt.Sprint(utils.PathSearch("product_type", v, nil)),
-			"extend_spec": flattenFlavorsExtendSpec(v),
+			"flavor_id": utils.PathSearch("server_model_name", v, nil),
+			"vcpus":     utils.PathSearch("cpu", v, nil),
+			"memory":    utils.PathSearch("memory", v, nil),
+			"type":      fmt.Sprint(utils.PathSearch("product_type", v, nil)),
+			"extend_spec": flattenFlavorsExtendSpec(utils.PathSearch("extend_spec",
+				v, make(map[string]interface{})).(map[string]interface{})),
 		})
 	}
 	return rst
 }
 
-func flattenFlavorsExtendSpec(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("extend_spec", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing extend_spec from response= %#v", resp)
-		return rst
+func flattenFlavorsExtendSpec(extendSpec map[string]interface{}) []interface{} {
+	if len(extendSpec) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"vcpus":             utils.PathSearch("cpu", curJson, nil),
-			"memory":            utils.PathSearch("memory", curJson, nil),
-			"disk":              utils.PathSearch("disk", curJson, nil),
-			"network_interface": utils.PathSearch("network_interface", curJson, nil),
-			"gpu":               utils.PathSearch("gpu", curJson, nil),
-			"bms_flavor":        utils.PathSearch("bms_flavor", curJson, nil),
-			"gpu_count":         utils.PathSearch("gpu_count", curJson, nil),
-			"numa_count":        utils.PathSearch("numa_count", curJson, nil),
+			"vcpus":             utils.PathSearch("cpu", extendSpec, nil),
+			"memory":            utils.PathSearch("memory", extendSpec, nil),
+			"disk":              utils.PathSearch("disk", extendSpec, nil),
+			"network_interface": utils.PathSearch("network_interface", extendSpec, nil),
+			"gpu":               utils.PathSearch("gpu", extendSpec, nil),
+			"bms_flavor":        utils.PathSearch("bms_flavor", extendSpec, nil),
+			"gpu_count":         utils.PathSearch("gpu_count", extendSpec, nil),
+			"numa_count":        utils.PathSearch("numa_count", extendSpec, nil),
 		},
 	}
-	return rst
 }
 
 func filterListServerModelsFlavors(all []interface{}, d *schema.ResourceData) []interface{} {

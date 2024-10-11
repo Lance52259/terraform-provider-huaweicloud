@@ -195,7 +195,7 @@ func dataSourceDdsBackupsRead(_ context.Context, d *schema.ResourceData, meta in
 				"name":          utils.PathSearch("name", backup, nil),
 				"instance_id":   utils.PathSearch("instance_id", backup, nil),
 				"instance_name": utils.PathSearch("instance_name", backup, nil),
-				"datastore":     flattenGetBackupResponseDatastore(backup),
+				"datastore":     flattenGetBackupResponseDatastore(utils.PathSearch("datastore", backup, make(map[string]interface{})).(map[string]interface{})),
 				"type":          utils.PathSearch("type", backup, nil),
 				"begin_time":    utils.PathSearch("begin_time", backup, nil),
 				"end_time":      utils.PathSearch("end_time", backup, nil),

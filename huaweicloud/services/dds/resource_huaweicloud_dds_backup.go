@@ -314,7 +314,8 @@ func resourceDdsBackupRead(_ context.Context, d *schema.ResourceData, meta inter
 		d.Set("name", utils.PathSearch("name", backups[0], nil)),
 		d.Set("instance_id", utils.PathSearch("instance_id", backups[0], nil)),
 		d.Set("instance_name", utils.PathSearch("instance_name", backups[0], nil)),
-		d.Set("datastore", flattenGetBackupResponseDatastore(backups[0])),
+		d.Set("datastore", flattenGetBackupResponseDatastore(utils.PathSearch("datastore",
+			backups[0], make(map[string]interface{})).(map[string]interface{}))),
 		d.Set("type", utils.PathSearch("type", backups[0], nil)),
 		d.Set("begin_time", utils.PathSearch("begin_time", backups[0], nil)),
 		d.Set("end_time", utils.PathSearch("end_time", backups[0], nil)),
@@ -326,20 +327,17 @@ func resourceDdsBackupRead(_ context.Context, d *schema.ResourceData, meta inter
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenGetBackupResponseDatastore(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("datastore", resp)
-	if err != nil {
-		return rst
+func flattenGetBackupResponseDatastore(datastore map[string]interface{}) []interface{} {
+	if len(datastore) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"type":    utils.PathSearch("type", curJson, nil),
-			"version": utils.PathSearch("version", curJson, nil),
+			"type":    utils.PathSearch("type", datastore, nil),
+			"version": utils.PathSearch("version", datastore, nil),
 		},
 	}
-	return rst
 }
 
 func buildGetBackupQueryParams(backupId string) string {

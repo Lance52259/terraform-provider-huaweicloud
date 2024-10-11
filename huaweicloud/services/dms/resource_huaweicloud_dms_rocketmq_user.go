@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -160,11 +159,11 @@ func resourceDmsRocketMQUserCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("access_key", createRocketmqUserRespBody)
-	if err != nil {
-		return diag.Errorf("error creating DmsRocketMQUser: ID is not found in API response")
+	accessKey := utils.PathSearch("access_key", createRocketmqUserRespBody, "").(string)
+	if accessKey == "" {
+		return diag.Errorf("unable to find the DMS RocketMQ user ID from the API response")
 	}
-	d.SetId(instanceID + "/" + id.(string))
+	d.SetId(instanceID + "/" + accessKey)
 
 	return resourceDmsRocketMQUserRead(ctx, d, meta)
 }

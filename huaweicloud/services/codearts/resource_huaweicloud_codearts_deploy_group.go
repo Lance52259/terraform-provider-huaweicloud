@@ -8,13 +8,11 @@ package codearts
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -192,12 +190,12 @@ func resourceDeployGroupCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating CodeArts deploy group: %s", err)
 	}
 
-	id, err := jmespath.Search("id", createRespBody)
-	if err != nil || id == nil {
-		return diag.Errorf("error creating CodeArts deploy group: ID is not found in API response")
+	groupId := utils.PathSearch("id", createRespBody, "").(string)
+	if groupId == "" {
+		return diag.Errorf("unable to find the CodeArts deploy group ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(groupId)
 
 	return resourceDeployGroupRead(ctx, d, meta)
 }
@@ -260,42 +258,40 @@ func resourceDeployGroupRead(_ context.Context, d *schema.ResourceData, meta int
 		d.Set("is_proxy_mode", utils.PathSearch("is_proxy_mode", resultRespBody, nil)),
 		d.Set("created_at", utils.PathSearch("created_time", resultRespBody, nil)),
 		d.Set("updated_at", utils.PathSearch("updated_time", resultRespBody, nil)),
-		d.Set("created_by", flattenDeployGroupCreatedBy(resultRespBody)),
-		d.Set("permission", flattenDeployGroupPermission(resultRespBody)),
+		d.Set("created_by", flattenDeployGroupCreatedBy(utils.PathSearch("created_by",
+			resultRespBody, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("permission", flattenDeployGroupPermission(utils.PathSearch("permission",
+			resultRespBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenDeployGroupCreatedBy(resp interface{}) []interface{} {
-	curJson, err := jmespath.Search("created_by", resp)
-	if err != nil {
-		log.Printf("[ERROR] error flatten created_by, cause this field is not found in API response")
+func flattenDeployGroupCreatedBy(createBy map[string]interface{}) []interface{} {
+	if len(createBy) < 1 {
 		return nil
 	}
 
 	return []interface{}{
 		map[string]interface{}{
-			"user_id":   utils.PathSearch("user_id", curJson, nil),
-			"user_name": utils.PathSearch("user_name", curJson, nil),
+			"user_id":   utils.PathSearch("user_id", createBy, nil),
+			"user_name": utils.PathSearch("user_name", createBy, nil),
 		},
 	}
 }
 
-func flattenDeployGroupPermission(resp interface{}) []interface{} {
-	curJson, err := jmespath.Search("permission", resp)
-	if err != nil {
-		log.Printf("[ERROR] error flatten permission, cause this field is not found in API response")
+func flattenDeployGroupPermission(permission map[string]interface{}) []interface{} {
+	if len(permission) < 1 {
 		return nil
 	}
 
 	return []interface{}{
 		map[string]interface{}{
-			"can_view":     utils.PathSearch("can_view", curJson, nil),
-			"can_edit":     utils.PathSearch("can_edit", curJson, nil),
-			"can_delete":   utils.PathSearch("can_delete", curJson, nil),
-			"can_add_host": utils.PathSearch("can_add_host", curJson, nil),
-			"can_manage":   utils.PathSearch("can_manage", curJson, nil),
+			"can_view":     utils.PathSearch("can_view", permission, nil),
+			"can_edit":     utils.PathSearch("can_edit", permission, nil),
+			"can_delete":   utils.PathSearch("can_delete", permission, nil),
+			"can_add_host": utils.PathSearch("can_add_host", permission, nil),
+			"can_manage":   utils.PathSearch("can_manage", permission, nil),
 		},
 	}
 }

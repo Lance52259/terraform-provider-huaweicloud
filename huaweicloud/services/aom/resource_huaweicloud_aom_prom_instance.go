@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -109,12 +108,12 @@ func resourcePromInstanceCreate(ctx context.Context, d *schema.ResourceData, met
 		return diag.FromErr(err)
 	}
 	expression := fmt.Sprintf("prometheus[?prom_name== '%s'].prom_id | [0]", d.Get("prom_name"))
-	id, err := jmespath.Search(expression, createPrometheusInstanceRespBody)
-	if err != nil || id == nil {
-		return diag.Errorf("error creating AOM prometheus instance: ID is not found in API response")
+	instanceId := utils.PathSearch(expression, createPrometheusInstanceRespBody, "").(string)
+	if instanceId == "" {
+		return diag.Errorf("unable to find the AOM prometheus instance ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(instanceId)
 
 	return resourcePromInstanceRead(ctx, d, meta)
 }

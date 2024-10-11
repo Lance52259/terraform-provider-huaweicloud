@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -122,12 +121,12 @@ func resourceCmdbEnvironmentCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createEnvironmentRespBody)
-	if err != nil {
-		return diag.Errorf("error creating CMDB environment: ID is not found in API response")
+	envId := utils.PathSearch("id", createEnvironmentRespBody, "").(string)
+	if envId == "" {
+		return diag.Errorf("unable to find the CMDB environment ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(envId)
 	return resourceCmdbEnvironmentRead(ctx, d, meta)
 }
 

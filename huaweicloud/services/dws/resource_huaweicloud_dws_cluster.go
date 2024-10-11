@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -481,11 +480,11 @@ func resourceDwsClusterCreateV2(ctx context.Context, d *schema.ResourceData, met
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("cluster.id", createDwsClusterRespBody)
-	if err != nil {
-		return diag.Errorf("error creating DWS Cluster: ID is not found in API response")
+	clusterId := utils.PathSearch("cluster.id", createDwsClusterRespBody, "").(string)
+	if clusterId == "" {
+		return diag.Errorf("unable to find the DWS Cluster ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(clusterId)
 
 	err = clusterWaitingForAvailable(ctx, d, createDwsClusterClient, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
@@ -551,11 +550,11 @@ func resourceDwsClusterCreateV1(ctx context.Context, d *schema.ResourceData, met
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("cluster.id", createDwsClusterRespBody)
-	if err != nil {
-		return diag.Errorf("error creating DWS Cluster: ID is not found in API response")
+	clusterId := utils.PathSearch("cluster.id", createDwsClusterRespBody, "").(string)
+	if clusterId == "" {
+		return diag.Errorf("unable to find the DWS Cluster ID from the API response")
 	}
-	d.SetId(id.(string))
+	d.SetId(clusterId)
 
 	err = clusterWaitingForAvailable(ctx, d, createDwsClusterClient, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
@@ -673,12 +672,10 @@ func clusterWaitingForAvailable(ctx context.Context, d *schema.ResourceData, cli
 				return clusterWaitingRespBody, "PENDING", nil
 			}
 
-			statusRaw, err := jmespath.Search(`cluster.status`, clusterWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `cluster.status`)
+			status := utils.PathSearch(`cluster.status`, clusterWaitingRespBody, "").(string)
+			if status == "" {
+				return nil, "ERROR", fmt.Errorf("unable to find the cluster status from the API response")
 			}
-
-			status := fmt.Sprintf("%v", statusRaw)
 
 			targetStatus := []string{
 				"AVAILABLE",
@@ -766,14 +763,18 @@ func resourceDwsClusterRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("vpc_id", utils.PathSearch("cluster.vpc_id", getDwsClusterRespBody, nil)),
 		d.Set("network_id", utils.PathSearch("cluster.subnet_id", getDwsClusterRespBody, nil)),
 		d.Set("security_group_id", utils.PathSearch("cluster.security_group_id", getDwsClusterRespBody, nil)),
-		d.Set("public_ip", flattenGetDwsClusterRespBodyPublicIp(getDwsClusterRespBody)),
-		d.Set("public_endpoints", flattenGetDwsClusterRespBodyPublicEndpoint(getDwsClusterRespBody)),
+		d.Set("public_ip", flattenGetDwsClusterRespBodyPublicIp(utils.PathSearch("cluster.public_ip",
+			getDwsClusterRespBody, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("public_endpoints", flattenGetDwsClusterRespBodyPublicEndpoint(utils.PathSearch("cluster.public_endpoints",
+			getDwsClusterRespBody, make([]interface{}, 0)).([]interface{}))),
 		d.Set("sub_status", utils.PathSearch("cluster.sub_status", getDwsClusterRespBody, nil)),
 		d.Set("task_status", utils.PathSearch("cluster.task_status", getDwsClusterRespBody, nil)),
 		d.Set("recent_event", utils.PathSearch("cluster.recent_event", getDwsClusterRespBody, nil)),
 		d.Set("private_ip", utils.PathSearch("cluster.private_ip", getDwsClusterRespBody, nil)),
-		d.Set("maintain_window", flattenGetDwsClusterRespBodyMaintainWindow(getDwsClusterRespBody)),
-		d.Set("elb", flattenGetDwsClusterRespBodyElb(getDwsClusterRespBody)),
+		d.Set("maintain_window", flattenGetDwsClusterRespBodyMaintainWindow(utils.PathSearch("cluster.maintain_window",
+			getDwsClusterRespBody, make(map[string]interface{})).(map[string]interface{}))),
+		d.Set("elb", flattenGetDwsClusterRespBodyElb(utils.PathSearch("cluster.elb",
+			getDwsClusterRespBody, make(map[string]interface{})).(map[string]interface{}))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -795,31 +796,26 @@ func flattenGetDwsClusterRespBodyEndpoint(resp interface{}) []interface{} {
 	return rst
 }
 
-func flattenGetDwsClusterRespBodyPublicIp(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("cluster.public_ip", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing cluster.public_ip from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
-		map[string]interface{}{
-			"public_bind_type": utils.PathSearch("public_bind_type", curJson, nil),
-			"eip_id":           utils.PathSearch("eip_id", curJson, nil),
-		},
-	}
-	return rst
-}
-
-func flattenGetDwsClusterRespBodyPublicEndpoint(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenGetDwsClusterRespBodyPublicIp(publicIpInfo map[string]interface{}) []interface{} {
+	if len(publicIpInfo) < 1 {
 		return nil
 	}
-	curJson := utils.PathSearch("cluster.public_endpoints", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, 0, len(curArray))
-	for _, v := range curArray {
+
+	return []interface{}{
+		map[string]interface{}{
+			"public_bind_type": utils.PathSearch("public_bind_type", publicIpInfo, nil),
+			"eip_id":           utils.PathSearch("eip_id", publicIpInfo, nil),
+		},
+	}
+}
+
+func flattenGetDwsClusterRespBodyPublicEndpoint(endpoints []interface{}) []interface{} {
+	if len(endpoints) < 1 {
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(endpoints))
+	for _, v := range endpoints {
 		rst = append(rst, map[string]interface{}{
 			"public_connect_info": utils.PathSearch("public_connect_info", v, nil),
 			"jdbc_url":            utils.PathSearch("jdbc_url", v, nil),
@@ -828,45 +824,36 @@ func flattenGetDwsClusterRespBodyPublicEndpoint(resp interface{}) []interface{} 
 	return rst
 }
 
-func flattenGetDwsClusterRespBodyMaintainWindow(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("cluster.maintain_window", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing cluster.maintain_window from response= %#v", resp)
-		return rst
+func flattenGetDwsClusterRespBodyMaintainWindow(maintainWindow map[string]interface{}) []interface{} {
+	if len(maintainWindow) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"day":        utils.PathSearch("day", curJson, nil),
-			"start_time": utils.PathSearch("start_time", curJson, nil),
-			"end_time":   utils.PathSearch("end_time", curJson, nil),
+			"day":        utils.PathSearch("day", maintainWindow, nil),
+			"start_time": utils.PathSearch("start_time", maintainWindow, nil),
+			"end_time":   utils.PathSearch("end_time", maintainWindow, nil),
 		},
 	}
-	return rst
 }
 
-func flattenGetDwsClusterRespBodyElb(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("cluster.elb", resp)
-	if err != nil {
-		log.Printf("[WARN] error parsing elb object from response: %v", err)
-		return rst
+func flattenGetDwsClusterRespBodyElb(elbInfo map[string]interface{}) []interface{} {
+	if len(elbInfo) < 1 {
+		return nil
 	}
 
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"name":             utils.PathSearch("name", curJson, nil),
-			"id":               utils.PathSearch("id", curJson, nil),
-			"public_ip":        utils.PathSearch("public_ip", curJson, nil),
-			"private_ip":       utils.PathSearch("private_ip", curJson, nil),
-			"private_endpoint": utils.PathSearch("private_endpoint", curJson, nil),
-			"vpc_id":           utils.PathSearch("vpc_id", curJson, nil),
-			"private_ip_v6":    utils.PathSearch("private_ip_v6", curJson, nil),
+			"name":             utils.PathSearch("name", elbInfo, nil),
+			"id":               utils.PathSearch("id", elbInfo, nil),
+			"public_ip":        utils.PathSearch("public_ip", elbInfo, nil),
+			"private_ip":       utils.PathSearch("private_ip", elbInfo, nil),
+			"private_endpoint": utils.PathSearch("private_endpoint", elbInfo, nil),
+			"vpc_id":           utils.PathSearch("vpc_id", elbInfo, nil),
+			"private_ip_v6":    utils.PathSearch("private_ip_v6", elbInfo, nil),
 		},
 	}
-
-	return rst
 }
 
 func resourceDwsClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1124,12 +1111,10 @@ func deleteClusterWaitingForCompleted(ctx context.Context, d *schema.ResourceDat
 				return nil, "ERROR", err
 			}
 
-			statusRaw, err := jmespath.Search(`cluster.status`, deleteDwsClusterWaitingRespBody)
-			if err != nil {
-				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `cluster.status`)
+			status := utils.PathSearch(`cluster.status`, deleteDwsClusterWaitingRespBody, "").(string)
+			if status == "" {
+				return nil, "ERROR", fmt.Errorf("unable to find the cluster status from the API response")
 			}
-
-			status := fmt.Sprintf("%v", statusRaw)
 
 			targetStatus := []string{
 				"DELETED",
@@ -1259,14 +1244,14 @@ func bindElb(ctx context.Context, d *schema.ResourceData, client *golangsdk.Serv
 		return err
 	}
 
-	jobId, err := jmespath.Search("job_id", bindElbRespBody)
-	if err != nil {
+	jobId := utils.PathSearch("job_id", bindElbRespBody, "").(string)
+	if jobId == "" {
 		return fmt.Errorf("error binding ELB to DWS cluster: job ID is not found in API response")
 	}
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"INIT"},
 		Target:       []string{"SUCCESS"},
-		Refresh:      jobStatusRefreshFunc(client, jobId.(string)),
+		Refresh:      jobStatusRefreshFunc(client, jobId),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        60 * time.Second,
 		PollInterval: 10 * time.Second,
@@ -1307,14 +1292,14 @@ func unbindElb(ctx context.Context, d *schema.ResourceData, client *golangsdk.Se
 		return err
 	}
 
-	jobId, err := jmespath.Search("job_id", unbindElbRespBody)
-	if err != nil {
+	jobId := utils.PathSearch("job_id", unbindElbRespBody, "").(string)
+	if jobId == "" {
 		return fmt.Errorf("error unbinding ELB from DWS cluster: job ID is not found in API response: %s", jobId)
 	}
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"INIT"},
 		Target:       []string{"SUCCESS"},
-		Refresh:      jobStatusRefreshFunc(client, jobId.(string)),
+		Refresh:      jobStatusRefreshFunc(client, jobId),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        60 * time.Second,
 		PollInterval: 10 * time.Second,

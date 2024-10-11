@@ -113,12 +113,12 @@ func resourceCmdbApplicationCreate(ctx context.Context, d *schema.ResourceData, 
 		return diag.FromErr(err)
 	}
 
-	id, err := jmespath.Search("id", createApplicationRespBody)
-	if err != nil {
-		return diag.Errorf("error creating CMDB application: ID is not found in API response")
+	appId := utils.PathSearch("id", createApplicationRespBody, "").(string)
+	if appId == "" {
+		return diag.Errorf("unable to find the CMDB application ID from the API response")
 	}
 
-	d.SetId(id.(string))
+	d.SetId(appId)
 	return resourceCmdbApplicationRead(ctx, d, meta)
 }
 

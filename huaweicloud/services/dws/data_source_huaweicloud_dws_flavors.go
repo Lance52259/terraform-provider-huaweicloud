@@ -8,7 +8,6 @@ package dws
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -16,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
 
@@ -203,46 +201,33 @@ func flattenListNodeTypesFlavors(resp interface{}) []interface{} {
 	rst := make([]interface{}, 0, len(curArray))
 	for _, v := range curArray {
 		rst = append(rst, map[string]interface{}{
-			"flavor_id":            utils.PathSearch("spec_name", v, nil),
-			"datastore_type":       utils.PathSearch("datastore_type", v, nil),
-			"datastore_version":    flattenFlavorsDatastoreVersion(v),
-			"vcpus":                utils.PathSearch("vcpus", v, nil),
-			"memory":               utils.PathSearch("ram", v, nil),
-			"volumetype":           utils.PathSearch("detail[?type=='LOCAL_DISK' || type=='SSD' ].type|[0]", v, nil),
-			"size":                 utils.PathSearch("detail[?type=='LOCAL_DISK' || type=='SSD' ].value|[0]|to_number(@)", v, nil),
-			"availability_zones":   utils.PathSearch("availability_zones[?status=='normal'].code", v, nil),
-			"elastic_volume_specs": flattenFlavorsElasticVolumeSpecs(v),
+			"flavor_id":          utils.PathSearch("spec_name", v, nil),
+			"datastore_type":     utils.PathSearch("datastore_type", v, nil),
+			"datastore_version":  utils.PathSearch("datastores[0].version", v, nil),
+			"vcpus":              utils.PathSearch("vcpus", v, nil),
+			"memory":             utils.PathSearch("ram", v, nil),
+			"volumetype":         utils.PathSearch("detail[?type=='LOCAL_DISK' || type=='SSD' ].type|[0]", v, nil),
+			"size":               utils.PathSearch("detail[?type=='LOCAL_DISK' || type=='SSD' ].value|[0]|to_number(@)", v, nil),
+			"availability_zones": utils.PathSearch("availability_zones[?status=='normal'].code", v, nil),
+			"elastic_volume_specs": flattenFlavorsElasticVolumeSpecs(utils.PathSearch("elastic_volume_specs[0]",
+				v, make(map[string]interface{})).(map[string]interface{})),
 		})
 	}
 	return rst
 }
 
-func flattenFlavorsDatastoreVersion(resp interface{}) string {
-	version, err := jmespath.Search("datastores[0].version", resp)
-	if err != nil {
-		log.Printf("[WARN] error parsing version from response: %s", err)
-		return ""
+func flattenFlavorsElasticVolumeSpecs(volumeSpecs map[string]interface{}) []interface{} {
+	if len(volumeSpecs) < 1 {
+		return nil
 	}
 
-	return version.(string)
-}
-
-func flattenFlavorsElasticVolumeSpecs(resp interface{}) []interface{} {
-	var rst []interface{}
-	curJson, err := jmespath.Search("elastic_volume_specs[0]", resp)
-	if err != nil {
-		log.Printf("[ERROR] error parsing elastic_volume_specs[0] from response= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"step":     utils.PathSearch("step", curJson, nil),
-			"min_size": utils.PathSearch("min_size", curJson, nil),
-			"max_size": utils.PathSearch("max_size", curJson, nil),
+			"step":     utils.PathSearch("step", volumeSpecs, nil),
+			"min_size": utils.PathSearch("min_size", volumeSpecs, nil),
+			"max_size": utils.PathSearch("max_size", volumeSpecs, nil),
 		},
 	}
-	return rst
 }
 
 func filterListNodeTypesFlavors(all []interface{}, d *schema.ResourceData) []interface{} {

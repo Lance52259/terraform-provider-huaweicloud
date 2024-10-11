@@ -1,11 +1,11 @@
 package httphelper
 
 import (
+	"fmt"
 	"log"
 
-	"github.com/jmespath/go-jmespath"
-
 	"github.com/chnsz/golangsdk/pagination"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 type LinkPager struct {
@@ -38,12 +38,10 @@ func (p LinkPager) NextPageURL() (string, error) {
 		return "", err
 	}
 
-	val, err := jmespath.Search(p.LinkExp, rst.Value())
-	log.Printf("[DEBUG] [LinkPager] [%v] NextPageURL: %v, LinkExp: %s, error: %v", p.uuid, val, p.LinkExp, err)
-	if err != nil {
-		return "", err
+	link := utils.PathSearch(p.LinkExp, rst.Value(), "").(string)
+	log.Printf("[DEBUG] [LinkPager] [%v] NextPageURL: %v, LinkExp: %s, error: %v", p.uuid, link, p.LinkExp, err)
+	if link == "" {
+		return "", fmt.Errorf("unable to find the link info")
 	}
-
-	link, _ := val.(string)
 	return link, nil
 }

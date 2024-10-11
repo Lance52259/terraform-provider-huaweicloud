@@ -171,11 +171,13 @@ func flattenAlarmSilenceRules(rules []interface{}) []interface{} {
 	result := make([]interface{}, 0, len(rules))
 	for _, rule := range rules {
 		result = append(result, map[string]interface{}{
-			"name":               utils.PathSearch("name", rule, nil),
-			"description":        utils.PathSearch("desc", rule, nil),
-			"time_zone":          utils.PathSearch("timezone", rule, nil),
-			"silence_time":       flattenSilenceRuleSilenceTime(rule),
-			"silence_conditions": flattenSilenceRuleSilenceConditions(rule),
+			"name":        utils.PathSearch("name", rule, nil),
+			"description": utils.PathSearch("desc", rule, nil),
+			"time_zone":   utils.PathSearch("timezone", rule, nil),
+			"silence_time": flattenSilenceRuleSilenceTime(utils.PathSearch("mute_config",
+				rule, make(map[string]interface{})).(map[string]interface{})),
+			"silence_conditions": flattenSilenceRuleSilenceConditions(utils.PathSearch("match",
+				rule, make([]interface{}, 0)).([]interface{})),
 			"created_at": utils.FormatTimeStampRFC3339(
 				int64(utils.PathSearch("create_time", rule, float64(0)).(float64))/1000, false),
 			"updated_at": utils.FormatTimeStampRFC3339(
