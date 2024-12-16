@@ -42,6 +42,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cnad"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/coc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/codearts"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/codeartsdeploy"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/codeartsinspector"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cph"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cpts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cse"
@@ -1851,6 +1853,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_live_channel":              live.ResourceChannel(),
 			"huaweicloud_live_https_certificate":    live.ResourceHTTPSCertificate(),
 			"huaweicloud_live_geo_blocking":         live.ResourceGeoBlocking(),
+			"huaweicloud_live_ip_acl":               live.ResourceIpAcl(),
 
 			"huaweicloud_lts_aom_access":                       lts.ResourceAOMAccess(),
 			"huaweicloud_lts_group":                            lts.ResourceLTSGroup(),
@@ -2174,14 +2177,15 @@ func Provider() *schema.Provider {
 			"huaweicloud_cpts_task":    cpts.ResourceTask(),
 
 			// CodeArts
-			"huaweicloud_codearts_project":            codearts.ResourceProject(),
-			"huaweicloud_codearts_repository":         codearts.ResourceRepository(),
-			"huaweicloud_codearts_deploy_application": codearts.ResourceDeployApplication(),
-			"huaweicloud_codearts_deploy_group":       codearts.ResourceDeployGroup(),
-			"huaweicloud_codearts_deploy_host":        codearts.ResourceDeployHost(),
+			"huaweicloud_codearts_project":    codearts.ResourceProject(),
+			"huaweicloud_codearts_repository": codearts.ResourceRepository(),
 
-			"huaweicloud_codearts_inspector_website":      codearts.ResourceInspectorWebsite(),
-			"huaweicloud_codearts_inspector_website_scan": codearts.ResourceInspectorWebsiteScan(),
+			"huaweicloud_codearts_deploy_application": codeartsdeploy.ResourceDeployApplication(),
+			"huaweicloud_codearts_deploy_group":       codeartsdeploy.ResourceDeployGroup(),
+			"huaweicloud_codearts_deploy_host":        codeartsdeploy.ResourceDeployHost(),
+
+			"huaweicloud_codearts_inspector_website":      codeartsinspector.ResourceInspectorWebsite(),
+			"huaweicloud_codearts_inspector_website_scan": codeartsinspector.ResourceInspectorWebsiteScan(),
 
 			"huaweicloud_dsc_instance":           dsc.ResourceDscInstance(),
 			"huaweicloud_dsc_asset_obs":          dsc.ResourceAssetObs(),
