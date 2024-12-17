@@ -802,6 +802,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_gaussdb_redis_flavors":                geminidb.DataSourceGaussDBRedisFlavors(),
 			"huaweicloud_gaussdb_influx_instances":             geminidb.DataSourceGaussDBInfluxInstances(),
 
+			"huaweicloud_gaussdb_opengauss_datastores":     gaussdb.DataSourceGaussdbOpengaussDatastores(),
 			"huaweicloud_gaussdb_opengauss_flavors":        gaussdb.DataSourceGaussdbOpengaussFlavors(),
 			"huaweicloud_gaussdb_opengauss_instance":       gaussdb.DataSourceOpenGaussInstance(),
 			"huaweicloud_gaussdb_opengauss_instances":      gaussdb.DataSourceOpenGaussInstances(),
@@ -905,9 +906,11 @@ func Provider() *schema.Provider {
 			"huaweicloud_lb_certificate":  lb.DataSourceLBCertificateV2(),
 			"huaweicloud_lb_pools":        lb.DataSourcePools(),
 
-			"huaweicloud_live_domains":      live.DataSourceLiveDomains(),
-			"huaweicloud_live_recordings":   live.DataSourceLiveRecordings(),
-			"huaweicloud_live_transcodings": live.DataSourceLiveTranscodings(),
+			"huaweicloud_live_domains":       live.DataSourceLiveDomains(),
+			"huaweicloud_live_recordings":    live.DataSourceLiveRecordings(),
+			"huaweicloud_live_transcodings":  live.DataSourceLiveTranscodings(),
+			"huaweicloud_live_snapshots":     live.DataSourceLiveSnapshots(),
+			"huaweicloud_live_geo_blockings": live.DataSourceGeoBlockings(),
 
 			"huaweicloud_lts_aom_accesses":                 lts.DataSourceAOMAccesses(),
 			"huaweicloud_lts_cce_accesses":                 lts.DataSourceCceAccesses(),
