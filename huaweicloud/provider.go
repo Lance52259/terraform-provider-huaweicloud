@@ -1069,6 +1069,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_servicestage_component_runtimes": servicestage.DataSourceComponentRuntimes(),
 			// Querying by Ver.3 APIs
 			"huaweicloud_servicestagev3_applications":   servicestage.DataSourceV3Applications(),
+			"huaweicloud_servicestagev3_components":     servicestage.DataSourceV3Components(),
 			"huaweicloud_servicestagev3_environments":   servicestage.DataSourceV3Environments(),
 			"huaweicloud_servicestagev3_runtime_stacks": servicestage.DataSourceV3RuntimeStacks(),
 
@@ -1864,6 +1865,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_lts_host_access":                      lts.ResourceHostAccessConfig(),
 			"huaweicloud_lts_log_converge":                     lts.ResourceLogConverge(),
 			"huaweicloud_lts_log_converge_switch":              lts.ResourceLogConvergeSwitch(),
+			"huaweicloud_lts_metric_rule":                      lts.ResourceMetricRule(),
 			"huaweicloud_lts_stream":                           lts.ResourceLTSStream(),
 			"huaweicloud_lts_structing_template":               lts.ResourceStructConfig(),
 			"huaweicloud_lts_structuring_custom_configuration": lts.ResourceStructCustomConfig(),
