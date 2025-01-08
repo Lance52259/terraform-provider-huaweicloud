@@ -974,7 +974,7 @@ func resourceV3ComponentCreate(ctx context.Context, d *schema.ResourceData, meta
 	return resourceV3ComponentRead(ctx, d, meta)
 }
 
-func QueryV3Component(client *golangsdk.ServiceClient, applicationId, componentId string) (interface{}, error) {
+func QueryV3ComponentWithoutVersion(client *golangsdk.ServiceClient, applicationId, componentId string) (interface{}, error) {
 	httpUrl := "v3/{project_id}/cas/applications/{application_id}/components/{component_id}"
 
 	queryPath := client.Endpoint + httpUrl
@@ -991,7 +991,39 @@ func QueryV3Component(client *golangsdk.ServiceClient, applicationId, componentI
 
 	requestResp, err := client.Request("GET", queryPath, &opt)
 	if err != nil {
-		return nil, common.ConvertExpected401ErrInto404Err(err, "error_code", v3ComponentNotFoundCodes...)
+		return nil, err
+	}
+
+	return utils.FlattenResponse(requestResp)
+}
+
+func queryV3ComponentWithVersion(client *golangsdk.ServiceClient, applicationId, componentId, version string) (interface{}, error) {
+	httpUrl := "v3/{project_id}/cas/applications/{application_id}/components/{component_id}?version={version}"
+
+	queryPath := client.Endpoint + httpUrl
+	queryPath = strings.ReplaceAll(queryPath, "{project_id}", client.ProjectID)
+	queryPath = strings.ReplaceAll(queryPath, "{application_id}", applicationId)
+	queryPath = strings.ReplaceAll(queryPath, "{component_id}", componentId)
+	queryPath = strings.ReplaceAll(queryPath, "{version}", version)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+
+	requestResp, err := client.Request("GET", queryPath, &opt)
+	if err != nil {
+		parsedErr := common.ConvertExpected401ErrInto404Err(err, "error_code", v3ComponentNotFoundCodes...)
+		if _, ok := parsedErr.(golangsdk.ErrDefault404); ok {
+			log.Printf("[DEBUG] unable to find the component via specified version (%s): %s", version, err)
+			log.Printf("[DEBUG] try to find the current version of the component (%s): %s", componentId, err)
+			// If the version to be queried is manually rolled back, no release records can be queried based on the
+			// current configuration version information. You must query the current version to apply the update.
+			return QueryV3ComponentWithoutVersion(client, applicationId, componentId)
+		}
+		return nil, parsedErr
 	}
 
 	return utils.FlattenResponse(requestResp)
@@ -1236,13 +1268,14 @@ func resourceV3ComponentRead(_ context.Context, d *schema.ResourceData, meta int
 		region      = cfg.GetRegion(d)
 		appId       = d.Get("application_id").(string)
 		componentId = d.Id()
+		version     = d.Get("version").(string)
 	)
 	client, err := cfg.NewServiceClient("servicestage", region)
 	if err != nil {
 		return diag.Errorf("error creating ServiceStage client: %s", err)
 	}
 
-	respBody, err := QueryV3Component(client, appId, componentId)
+	respBody, err := queryV3ComponentWithVersion(client, appId, componentId, version)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err,
 			fmt.Sprintf("error getting component (%s)", componentId))
@@ -1342,7 +1375,8 @@ func buildV3ComponentUpdteBodyParams(d *schema.ResourceData) map[string]interfac
 
 func componentStatusRefreshFunc(client *golangsdk.ServiceClient, appId, commponetId string, targets []string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		respBody, err := QueryV3Component(client, appId, commponetId)
+		// Get the latest version.
+		respBody, err := QueryV3ComponentWithoutVersion(client, appId, commponetId)
 		if err != nil {
 			if _, ok := err.(golangsdk.ErrDefault404); ok && len(targets) < 1 {
 				log.Printf("[DEBUG] The component (%s) does not exist", commponetId)

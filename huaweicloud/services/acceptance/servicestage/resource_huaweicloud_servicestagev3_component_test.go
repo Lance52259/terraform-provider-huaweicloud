@@ -18,7 +18,8 @@ func getV3ComponentFunc(conf *config.Config, state *terraform.ResourceState) (in
 	if err != nil {
 		return nil, fmt.Errorf("error creating ServiceStage client: %s", err)
 	}
-	return servicestage.QueryV3Component(client, state.Primary.Attributes["application_id"], state.Primary.ID)
+	return servicestage.QueryV3Component(client, state.Primary.Attributes["application_id"], state.Primary.ID,
+		state.Primary.Attributes["version"])
 }
 
 func TestAccV3Component_basic(t *testing.T) {
