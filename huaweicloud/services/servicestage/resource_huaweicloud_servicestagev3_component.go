@@ -1211,18 +1211,21 @@ func flattenV3ComponentReferResources(refResources []interface{}) []map[string]i
 	return result
 }
 
-func flattenV3ExternalAccesses(access map[string]interface{}) []map[string]interface{} {
-	if len(access) < 1 {
+func flattenV3ExternalAccesses(accesses []interface{}) []map[string]interface{} {
+	if len(accesses) < 1 {
 		return nil
 	}
 
-	return []map[string]interface{}{
-		{
+	result := make([]map[string]interface{}, 0, len(accesses))
+	for _, access := range accesses {
+		result = append(result, map[string]interface{}{
 			"protocol":     utils.PathSearch("protocol", access, nil),
 			"address":      utils.PathSearch("address", access, nil),
 			"forward_port": utils.PathSearch("forward_port", access, nil),
-		},
+		})
 	}
+
+	return result
 }
 
 func resourceV3ComponentRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1251,7 +1254,7 @@ func resourceV3ComponentRead(_ context.Context, d *schema.ResourceData, meta int
 		d.Set("environment_id", utils.PathSearch("environment_id", respBody, nil)),
 		d.Set("description", utils.PathSearch("description", respBody, nil)),
 		d.Set("source", utils.JsonToString(utils.PathSearch("source", respBody, nil))),
-		d.Set("build", utils.JsonToString(utils.PathSearch("build", respBody, nil))),
+		d.Set("build", utils.JsonToString(utils.PathSearch("build", respBody, nil), "id")),
 		d.Set("limit_cpu", utils.PathSearch("limit_cpu", respBody, nil)),
 		d.Set("limit_memory", utils.PathSearch("limit_memory", respBody, nil)),
 		d.Set("request_cpu", utils.PathSearch("request_cpu", respBody, nil)),
@@ -1286,7 +1289,7 @@ func resourceV3ComponentRead(_ context.Context, d *schema.ResourceData, meta int
 		d.Set("refer_resources", flattenV3ComponentReferResources(utils.PathSearch("refer_resources", respBody,
 			make([]interface{}, 0)).([]interface{}))),
 		d.Set("external_accesses", flattenV3ExternalAccesses(utils.PathSearch("external_accesses", respBody,
-			make(map[string]interface{})).(map[string]interface{}))),
+			make([]interface{}, 0)).([]interface{}))),
 		d.Set("status", utils.PathSearch("status.component_status", respBody, nil)),
 		d.Set("created_at", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("status.create_time", respBody,
 			float64(0)).(float64))/1000, false)),
