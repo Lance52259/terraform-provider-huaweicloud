@@ -605,3 +605,542 @@ resource "huaweicloud_servicestagev3_component" "test" {
 		acceptance.HW_CCE_CLUSTER_ID,
 		acceptance.HW_CSE_MICROSERVICE_ENGINE_ID)
 }
+
+func TestAccV3Component_deploy(t *testing.T) {
+	var (
+		component interface{}
+
+		resourceName = "huaweicloud_servicestagev3_component.test"
+		rc           = acceptance.InitResourceCheck(resourceName, &component, getV3ComponentFunc)
+
+		name = acceptance.RandomAccResourceNameWithDash()
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckServiceStageEnabled(t)
+			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckPublicRemoteIpAddress(t)
+			acceptance.TestAccPreCheckJarObsStoragePaths(t, 2)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccV3Component_deploy_step1(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttrPair(resourceName, "application_id", "huaweicloud_servicestagev3_application.test", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "environment_id", "huaweicloud_servicestagev3_environment.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "name", name),
+					resource.TestCheckResourceAttr(resourceName, "version", "1.0.1"),
+					resource.TestCheckResourceAttrSet(resourceName, "build"),
+					resource.TestCheckResourceAttrSet(resourceName, "source"),
+					resource.TestCheckResourceAttr(resourceName, "runtime_stack.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "runtime_stack.0.deploy_mode", "container"),
+					resource.TestCheckResourceAttrSet(resourceName, "runtime_stack.0.name"),
+					resource.TestCheckResourceAttr(resourceName, "runtime_stack.0.type", "Java"),
+					resource.TestCheckResourceAttrSet(resourceName, "runtime_stack.0.version"),
+					resource.TestCheckResourceAttr(resourceName, "refer_resources.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "limit_cpu", "0.25"),
+					resource.TestCheckResourceAttr(resourceName, "limit_memory", "0.5"),
+					resource.TestCheckResourceAttr(resourceName, "request_cpu", "0.25"),
+					resource.TestCheckResourceAttr(resourceName, "request_memory", "0.5"),
+					resource.TestCheckResourceAttr(resourceName, "replica", "2"),
+					resource.TestCheckResourceAttr(resourceName, "external_accesses.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "external_accesses.0.protocol", "HTTP"),
+					resource.TestCheckResourceAttr(resourceName, "external_accesses.0.forward_port", "8000"),
+					resource.TestCheckResourceAttrPair(resourceName, "external_accesses.0.address",
+						"huaweicloud_elb_certificate.test", "domain"),
+					resource.TestCheckResourceAttr(resourceName, "envs.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "envs.0.name", "MOCK_ENABLED"),
+					resource.TestCheckResourceAttr(resourceName, "envs.0.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "timezone", "Asia/Shanghai"),
+					resource.TestMatchResourceAttr(resourceName, "created_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
+				),
+			},
+			{
+				Config: testAccV3Component_deploy_step2(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "version", "1.0.2"),
+					resource.TestCheckResourceAttr(resourceName, "deploy_strategy.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "deploy_strategy.0.type", "GrayRelease"),
+					resource.TestCheckResourceAttrSet(resourceName, "deploy_strategy.0.gray_release"),
+					resource.TestMatchResourceAttr(resourceName, "updated_at",
+						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testAccV3ComponentImportStateIdFunc(resourceName),
+				ImportStateVerifyIgnore: []string{
+					"tags",
+				},
+			},
+		},
+	})
+}
+
+func testAccV3Component_deploy_base(name string) string {
+	return fmt.Sprintf(`
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_compute_flavors" "test" {
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  performance_type  = "normal"
+  cpu_core_count    = 8
+  memory_size       = 16
+}
+
+resource "huaweicloud_kps_keypair" "test" {
+  name = "%[1]s"
+}
+
+resource "huaweicloud_vpc" "test" {
+  name = "%[1]s"
+  cidr = "192.168.0.0/16"
+}
+
+resource "huaweicloud_vpc_subnet" "test" {
+  vpc_id     = huaweicloud_vpc.test.id
+  name       = "%[1]s"
+  cidr       = cidrsubnet(huaweicloud_vpc.test.cidr, 4, 1)
+  gateway_ip = cidrhost(cidrsubnet(huaweicloud_vpc.test.cidr, 4, 1), 1)
+}
+
+resource "huaweicloud_networking_secgroup" "test" {
+  name                 ="%[1]s"
+  delete_default_rules = true
+}
+
+resource "huaweicloud_networking_secgroup_rule" "ingress_ipv4_icmp_allow" {
+  security_group_id = try(huaweicloud_networking_secgroup.test.id, "")
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "icmp"
+  remote_ip_prefix  = "%[2]s/32" // Only specified PC can access it.
+  priority          = 1
+}
+
+resource "huaweicloud_networking_secgroup_rule" "ingress_ipv4_tcp_allow" {
+  security_group_id = try(huaweicloud_networking_secgroup.test.id, "")
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  protocol          = "tcp"
+  ports             = "22-23,443,30100-30130"
+  remote_ip_prefix  = "%[2]s/32" // Only specified PC can access it.
+  priority          = 1
+}
+
+resource "huaweicloud_networking_secgroup_rule" "ingress_ipv4_all_allow_inside_group" {
+  security_group_id = try(huaweicloud_networking_secgroup.test.id, "")
+  direction         = "ingress"
+  ethertype         = "IPv4"
+  remote_group_id   = try(huaweicloud_networking_secgroup.test.id, "")
+  priority          = 1
+}
+
+resource "huaweicloud_networking_secgroup_rule" "egress_ip6_all_allow" {
+  security_group_id = try(huaweicloud_networking_secgroup.test.id, "")
+  direction         = "egress"
+  ethertype         = "IPv6"
+  remote_ip_prefix  = "::/0"
+  priority          = 1
+}
+
+resource "huaweicloud_networking_secgroup_rule" "egress_ipv4_all_allow" {
+  security_group_id = try(huaweicloud_networking_secgroup.test.id, "")
+  direction         = "egress"
+  ethertype         = "IPv4"
+  remote_ip_prefix  = "0.0.0.0/0"
+  priority          = 1
+}
+
+data "huaweicloud_cse_microservice_engine_flavors" "test" {}
+
+locals {
+  engine_flavor_id = try([for o in data.huaweicloud_cse_microservice_engine_flavors.test.flavors: o.id if
+    strcontains(o.id, "s1") && strcontains(o.id, "small")][0], "")
+}
+
+resource "huaweicloud_vpc_eip" "cse_used" {
+  publicip {
+    type = "5_bgp"
+  }
+  bandwidth {
+    name        = "%[1]s"
+    size        = 5
+    share_type  = "PER"
+    charge_mode = "traffic"
+  }
+}
+
+resource "huaweicloud_cse_microservice_engine" "test" {
+  auth_type             = "NONE"
+  name                  = "%[1]s"
+  description           = "Created by terraform test"
+  flavor                = local.engine_flavor_id
+  network_id            = huaweicloud_vpc_subnet.test.id
+  eip_id                = huaweicloud_vpc_eip.cse_used.id
+  enterprise_project_id = "%[3]s"
+  availability_zones    = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
+}
+
+resource "huaweicloud_cce_cluster" "test" {
+  name                   = "%[1]s"
+  vpc_id                 = huaweicloud_vpc.test.id
+  subnet_id              = huaweicloud_vpc_subnet.test.id
+  flavor_id              = "cce.s2.small"
+  container_network_type = "vpc-router"
+  cluster_version        = "v1.19"
+  cluster_type           = "VirtualMachine"
+
+  kube_proxy_mode = "iptables"
+
+  dynamic "masters" {
+    for_each = slice(data.huaweicloud_availability_zones.test.names, 0, 3)
+
+    content {
+      availability_zone = masters.value
+    }
+  }
+}
+
+resource "huaweicloud_vpc_eip" "cce_used" {
+  publicip {
+    type = "5_bgp"
+  }
+  bandwidth {
+    name        = "%[1]s-cce-used"
+    size        = 5
+    share_type  = "PER"
+    charge_mode = "traffic"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+    ]
+  }
+}
+
+resource "huaweicloud_cce_node" "test" {
+  cluster_id        = huaweicloud_cce_cluster.test.id
+  name              = "%[1]s"
+  flavor_id         = data.huaweicloud_compute_flavors.test.ids[0]
+  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  key_pair          = huaweicloud_kps_keypair.test.name
+  eip_id            = huaweicloud_vpc_eip.cce_used.id
+
+  root_volume {
+    volumetype = "SSD"
+    size       = 100
+  }
+
+  data_volumes {
+    volumetype = "SSD"
+    size       = 100
+  }
+}
+
+resource "huaweicloud_servicestagev3_environment" "test" {
+  vpc_id                = huaweicloud_vpc.test.id
+  name                  = "%[1]s"
+  deploy_mode           = "container"
+  enterprise_project_id = "%[3]s"
+}
+
+resource "huaweicloud_vpc_eip" "servicestage_used" {
+  publicip {
+    type = "5_bgp"
+  }
+  bandwidth {
+    name        = "%[1]s-cce-used"
+    size        = 5
+    share_type  = "PER"
+    charge_mode = "traffic"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+    ]
+  }
+}
+
+resource "huaweicloud_vpc_eip" "loadbalancer_used" {
+  publicip {
+    type = "5_bgp"
+  }
+  bandwidth {
+    name        = "%[1]s-loadbalancer-used"
+    size        = 5
+    share_type  = "PER"
+    charge_mode = "traffic"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      tags,
+    ]
+  }
+}
+
+data "huaweicloud_elb_flavors" "l4flavors" {
+  type            = "L4"
+  max_connections = 1000000
+  cps             = 20000
+  bandwidth       = 100
+}
+
+data "huaweicloud_elb_flavors" "l7flavors" {
+  type            = "L7"
+  max_connections = 400000
+  cps             = 4000
+  bandwidth       = 100
+}
+
+resource "huaweicloud_elb_loadbalancer" "test" {
+  name              = "%[1]s"
+  ipv4_subnet_id    = huaweicloud_vpc_subnet.test.ipv4_subnet_id
+  l4_flavor_id      = data.huaweicloud_elb_flavors.l4flavors.ids[0]
+  l7_flavor_id      = data.huaweicloud_elb_flavors.l7flavors.ids[0]
+  availability_zone = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
+  ipv4_eip_id       = huaweicloud_vpc_eip.loadbalancer_used.id
+}
+
+resource "huaweicloud_elb_certificate" "test" {
+  name        = "%[1]s"
+  domain      = "p2cserver.com"
+  type        = "server"
+  private_key = "%[4]s"
+  certificate = "%[5]s"
+}
+
+resource "huaweicloud_servicestagev3_environment_associate" "test" {
+  environment_id = huaweicloud_servicestagev3_environment.test.id
+
+  resources {
+    id   = huaweicloud_cce_cluster.test.id
+    type = "cce"
+  }
+  resources {
+    id   = huaweicloud_vpc_eip.servicestage_used.id
+    type = "eip"
+  }
+  resources {
+    id   = huaweicloud_cse_microservice_engine.test.id
+    type = "cse"
+  }
+  resources {
+    id   = huaweicloud_elb_loadbalancer.test.id
+    type = "elb"
+  }
+}
+
+resource "huaweicloud_servicestagev3_application" "test" {
+  name                  = "%[1]s"
+  enterprise_project_id = "%[3]s"
+}
+
+data "huaweicloud_servicestagev3_runtime_stacks" "test" {}
+
+locals {
+  java_runtime_stack = try([for o in data.huaweicloud_servicestagev3_runtime_stacks.test.runtime_stacks: o if o.type == "Java" && o.deploy_mode == "container"][0], {})
+}
+`, name, acceptance.HW_PUBLIC_REMOTE_IP_ADDRESS,
+		acceptance.HW_ENTERPRISE_PROJECT_ID_TEST,
+		acceptance.HW_CERTIFICATE_PRIVATE_KEY,
+		acceptance.HW_CERTIFICATE_CONTENT)
+}
+
+func testAccV3Component_deploy_step1(name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_servicestagev3_component" "test" {
+  depends_on = [
+    huaweicloud_elb_certificate.test
+    huaweicloud_servicestagev3_environment_associate.test
+  ]
+
+  application_id = huaweicloud_servicestagev3_application.test.id
+  environment_id = huaweicloud_servicestagev3_environment.test.id
+  name           = "%[2]s"
+  version        = "1.0.1"
+
+  build = jsonencode({
+    "parameters": {
+      "artifact_namespace": "%[3]s",
+      "environment_id": huaweicloud_servicestagev3_environment.test.id,
+      "cluster_namespace": "default",
+      "use_public_cluster": false,
+      "cluster_id": huaweicloud_cce_cluster.test.id,
+      "dockerfile_path": "./",
+      "build_env_selected": "current"
+    }
+  })
+
+  source = jsonencode({
+    "kind": "package",
+    "url": try(element(split("%[4]s", ","), 0), ""),
+    "storage": "obs"
+  })
+
+  runtime_stack {
+    deploy_mode = try(local.java_runtime_stack.deploy_mode, "container")
+    name        = try(local.java_runtime_stack.name, "OpenJDK17")
+    type        = try(local.java_runtime_stack.type, "Java")
+    version     = try(local.java_runtime_stack.version, null)
+  }
+
+  refer_resources {
+    id         = huaweicloud_cce_cluster.test.id
+    type       = "cce"
+    parameters = jsonencode({
+      "namespace": "default",
+      "type": "VirtualMachine"
+      "name": huaweicloud_cce_cluster.test.name
+    })
+  }
+  refer_resources {
+    id         = huaweicloud_elb_loadbalancer.test.id
+    type       = "elb"
+    parameters = jsonencode({
+      "name": huaweicloud_elb_loadbalancer.test.name
+    })
+  }
+  refer_resources {
+    id   = huaweicloud_cse_microservice_engine.test.id
+    type = "cse"
+  }
+
+  limit_cpu      = 0.25
+  limit_memory   = 0.5
+  request_cpu    = 0.25
+  request_memory = 0.5
+  replica        = 2
+
+  external_accesses {
+    protocol     = "HTTP"
+    forward_port = "8000"
+    address      = huaweicloud_elb_certificate.test.domain
+  }
+
+  envs {
+    name  = "MOCK_ENABLED"
+    value = "false"
+  }
+
+  timezone = "Asia/Shanghai"
+}
+`, testAccV3Component_deploy_base(name), name,
+		acceptance.HW_SERVICESTAGE_ORGANIZATION_NAME,
+		acceptance.HW_JAR_OBS_STORAGE_PATHS)
+}
+
+func testAccV3Component_deploy_step2(name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_servicestagev3_component" "test" {
+  depends_on = [
+    huaweicloud_elb_certificate.test
+    huaweicloud_servicestagev3_environment_associate.test
+  ]
+
+  application_id = huaweicloud_servicestagev3_application.test.id
+  environment_id = huaweicloud_servicestagev3_environment.test.id
+  name           = "%[2]s"
+  version        = "1.0.2"
+
+  build = jsonencode({
+    "parameters": {
+      "artifact_namespace": "%[3]s",
+      "environment_id": huaweicloud_servicestagev3_environment.test.id,
+      "cluster_namespace": "default",
+      "use_public_cluster": false,
+      "cluster_id": huaweicloud_cce_cluster.test.id,
+      "dockerfile_path": "./",
+      "build_env_selected": "current"
+    }
+  })
+
+  source = jsonencode({
+    "kind": "package",
+    "url": try(element(split("%[4]s", ","), 1), ""),
+    "storage": "obs"
+  })
+
+  runtime_stack {
+    deploy_mode = try(local.java_runtime_stack.deploy_mode, "container")
+    name        = try(local.java_runtime_stack.name, "OpenJDK17")
+    type        = try(local.java_runtime_stack.type, "Java")
+    version     = try(local.java_runtime_stack.version, null)
+  }
+
+  refer_resources {
+    id         = huaweicloud_cce_cluster.test.id
+    type       = "cce"
+    parameters = jsonencode({
+      "namespace": "default",
+      "type": "VirtualMachine"
+      "name": huaweicloud_cce_cluster.test.name
+    })
+  }
+  refer_resources {
+    id         = huaweicloud_elb_loadbalancer.test.id
+    type       = "elb"
+    parameters = jsonencode({
+      "name": huaweicloud_elb_loadbalancer.test.name
+    })
+  }
+  refer_resources {
+    id   = huaweicloud_cse_microservice_engine.test.id
+    type = "cse"
+  }
+
+  limit_cpu      = 0.25
+  limit_memory   = 0.5
+  request_cpu    = 0.25
+  request_memory = 0.5
+  replica        = 2
+
+  external_accesses {
+    protocol     = "HTTP"
+    forward_port = "8000"
+    address      = huaweicloud_elb_certificate.test.domain
+  }
+  external_accesses {
+    protocol = "tcp"
+    address  = huaweicloud_vpc_eip.cce_used.address
+  }
+
+  envs {
+    name  = "MOCK_ENABLED"
+    value = "false"
+  }
+
+  timezone = "Asia/Shanghai"
+
+  deploy_strategy {
+    type         = "GrayRelease"
+    gray_release = jsonencode({
+      "type": "WEIGHT",
+      "first_batch_replica": 1,
+      "first_batch_weight": 10,
+      "remaining_batch": 1,
+      "deployment_mode": "4",
+      "replica_surge_mode": "EXTRA"
+    })
+  }
+}
+`, testAccV3Component_deploy_base(name), name,
+		acceptance.HW_SERVICESTAGE_ORGANIZATION_NAME,
+		acceptance.HW_JAR_OBS_STORAGE_PATHS)
+}

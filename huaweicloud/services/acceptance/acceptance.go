@@ -52,6 +52,7 @@ var (
 	HW_ADMIN                         = os.Getenv("HW_ADMIN")
 	HW_IAM_V5                        = os.Getenv("HW_IAM_V5")
 	HW_RUNNER_PUBLIC_IP              = os.Getenv("HW_RUNNER_PUBLIC_IP")
+	HW_PUBLIC_REMOTE_IP_ADDRESS      = os.Getenv("HW_PUBLIC_REMOTE_IP_ADDRESS")
 
 	HW_APIG_DEDICATED_INSTANCE_ID             = os.Getenv("HW_APIG_DEDICATED_INSTANCE_ID")
 	HW_APIG_DEDICATED_INSTANCE_USED_SUBNET_ID = os.Getenv("HW_APIG_DEDICATED_INSTANCE_USED_SUBNET_ID")
@@ -163,12 +164,15 @@ var (
 	HW_DLI_FLINK_STREAM_GRAPH           = os.Getenv("HW_DLI_FLINK_STREAM_GRAPH")
 	HW_DLI_ELASTIC_RESOURCE_POOL        = os.Getenv("HW_DLI_ELASTIC_RESOURCE_POOL")
 
-	HW_GITHUB_PERSONAL_TOKEN   = os.Getenv("HW_GITHUB_PERSONAL_TOKEN")   // Personal access token (Github, Gitlab, Gitee)
-	HW_GITHUB_REPO_PWD         = os.Getenv("HW_GITHUB_REPO_PWD")         // Repository password (DevCloud, BitBucket)
-	HW_GITHUB_REPO_URL         = os.Getenv("HW_GITHUB_REPO_URL")         // Repository URL (Github, Gitlab, Gitee)
-	HW_OBS_STORAGE_URL         = os.Getenv("HW_OBS_STORAGE_URL")         // OBS storage URL where ZIP file is located
-	HW_BUILD_IMAGE_URL         = os.Getenv("HW_BUILD_IMAGE_URL")         // SWR Image URL for component deployment
-	HW_BUILD_IMAGE_URL_UPDATED = os.Getenv("HW_BUILD_IMAGE_URL_UPDATED") // SWR Image URL for component deployment update
+	HW_GITHUB_PERSONAL_TOKEN          = os.Getenv("HW_GITHUB_PERSONAL_TOKEN")   // Personal access token (Github, Gitlab, Gitee)
+	HW_GITHUB_REPO_PWD                = os.Getenv("HW_GITHUB_REPO_PWD")         // Repository password (DevCloud, BitBucket)
+	HW_GITHUB_REPO_URL                = os.Getenv("HW_GITHUB_REPO_URL")         // Repository URL (Github, Gitlab, Gitee)
+	HW_OBS_STORAGE_URL                = os.Getenv("HW_OBS_STORAGE_URL")         // OBS storage URL where ZIP file is located
+	HW_BUILD_IMAGE_URL                = os.Getenv("HW_BUILD_IMAGE_URL")         // SWR Image URL for component deployment
+	HW_BUILD_IMAGE_URL_UPDATED        = os.Getenv("HW_BUILD_IMAGE_URL_UPDATED") // SWR Image URL for component deployment update
+	HW_SERVICESTAGE_ORGANIZATION_NAME = os.Getenv("HW_SERVICESTAGE_ORGANIZATION_NAME")
+	HW_JAR_OBS_STORAGE_PATHS          = os.Getenv("HW_JAR_OBS_STORAGE_PATHS")
+	HW_SERVICESTAGE_ENABLE_FLAG       = os.Getenv("HW_SERVICESTAGE_ENABLE_FLAG")
 
 	HW_GAUSSDB_MYSQL_INSTANCE_ID               = os.Getenv("HW_GAUSSDB_MYSQL_INSTANCE_ID")
 	HW_GAUSSDB_MYSQL_NODE_ID                   = os.Getenv("HW_GAUSSDB_MYSQL_NODE_ID")
@@ -953,6 +957,13 @@ func TestAccPreCheckRunnerPublicIP(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckPublicRemoteIpAddress(t *testing.T) {
+	if HW_PUBLIC_REMOTE_IP_ADDRESS == "" {
+		t.Skip("HW_PUBLIC_REMOTE_IP_ADDRESS must be set for this acceptance test.")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckReplication(t *testing.T) {
 	if HW_DEST_REGION == "" || HW_DEST_PROJECT_ID == "" {
 		t.Skip("Skip the replication policy acceptance tests.")
@@ -1294,6 +1305,22 @@ func TestAccPreCheckComponentDeployment(t *testing.T) {
 func TestAccPreCheckImageUrlUpdated(t *testing.T) {
 	if HW_BUILD_IMAGE_URL_UPDATED == "" {
 		t.Skip("SWR image update URL configuration is not completed for acceptance test of component deployment.")
+	}
+}
+
+// HW_JAR_OBS_STORAGE_PATHS defines the OBS storage paths of the Jar packages for deploy/upgrade component.
+// lintignore:AT003
+func TestAccPreCheckJarObsStoragePaths(t *testing.T, min int) {
+	// For this acceptance test, you should prepare three SFS file systems.
+	if HW_JAR_OBS_STORAGE_PATHS == "" || len(strings.Split(HW_JAR_OBS_STORAGE_PATHS, ",")) < min {
+		t.Skip("HW_JAR_OBS_STORAGE_PATHS must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckServiceStageEnabled(t *testing.T) {
+	if HW_SERVICESTAGE_ENABLE_FLAG == "" {
+		t.Skip("Acceptance test is disabled before HW_SERVICESTAGE_ENABLE_FLAG set.")
 	}
 }
 
