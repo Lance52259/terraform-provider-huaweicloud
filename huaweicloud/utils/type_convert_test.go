@@ -58,6 +58,19 @@ func TestTypeConvertFunc_JsonToString(t *testing.T) {
 		functionInput = func() {
 			fmt.Println("Hello, this is a function!")
 		}
+
+		inputWithNestedKeys = map[string]interface{}{
+			"owner": "utils/function",
+			"parameters": map[string]interface{}{
+				"id":   "4c8374e0-8632-4151-80e8-374b81f80f3e",
+				"name": "example",
+				"age":  18,
+			},
+			"usage": "value conversion",
+		}
+		// Test whether both nested keys and normal keys can be removed correctly.
+		nestedKeys                = []string{"parameters.id", "usage"}
+		expectedWithoutNestedKeys = "{\"owner\":\"utils/function\",\"parameters\":{\"age\":18,\"name\":\"example\"}}"
 	)
 
 	testOutput := utils.JsonToString(emptyInput)
@@ -82,6 +95,12 @@ func TestTypeConvertFunc_JsonToString(t *testing.T) {
 	if !reflect.DeepEqual(testOutput, "") {
 		t.Fatalf("The processing result of the JsonToString method is not as expected, want \"\", but got %s",
 			utils.Yellow(testOutput))
+	}
+
+	testOutput = utils.JsonToString(inputWithNestedKeys, nestedKeys...)
+	if !reflect.DeepEqual(testOutput, expectedWithoutNestedKeys) {
+		t.Fatalf("The processing result of the JsonToString method is not as expected, want %s, but got %s",
+			utils.Green(expectedWithoutNestedKeys), utils.Yellow(testOutput))
 	}
 
 	t.Logf("All processing results of the JsonToString method meets expectation")
