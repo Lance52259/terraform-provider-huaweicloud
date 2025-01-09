@@ -109,10 +109,11 @@ func ResourceV3Component() *schema.Resource {
 				Description: "The configuration of the runtime stack.",
 			},
 			"source": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringIsJSON,
-				Description:  `The source configuration of the component, in JSON format.`,
+				Type:             schema.TypeString,
+				Required:         true,
+				ValidateFunc:     validation.StringIsJSON,
+				DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+				Description:      `The source configuration of the component, in JSON format.`,
 			},
 			"version": {
 				Type:        schema.TypeString,
@@ -157,10 +158,11 @@ func ResourceV3Component() *schema.Resource {
 				Description: `The description of the component.`,
 			},
 			"build": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringIsJSON,
-				Description:  `The build configuration of the component, in JSON format.`,
+				Type:             schema.TypeString,
+				Optional:         true,
+				ValidateFunc:     validation.StringIsJSON,
+				DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+				Description:      `The build configuration of the component, in JSON format.`,
 			},
 			"limit_cpu": {
 				Type:        schema.TypeFloat,
@@ -262,29 +264,32 @@ func ResourceV3Component() *schema.Resource {
 							Description: `The deploy type.`,
 						},
 						"rolling_release": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.StringIsJSON,
-							Description:  `The rolling release parameters, in JSON format.`,
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							ValidateFunc:     validation.StringIsJSON,
+							DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+							Description:      `The rolling release parameters, in JSON format.`,
 						},
 						"gray_release": {
-							Type:         schema.TypeString,
-							Optional:     true,
-							Computed:     true,
-							ValidateFunc: validation.StringIsJSON,
-							Description:  `The gray release parameters, in JSON format.`,
+							Type:             schema.TypeString,
+							Optional:         true,
+							Computed:         true,
+							ValidateFunc:     validation.StringIsJSON,
+							DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+							Description:      `The gray release parameters, in JSON format.`,
 						},
 					},
 				},
 				Description: `The configuration of the deploy strategy.`,
 			},
 			"command": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.StringIsJSON,
-				Description:  `The start commands of the component, in JSON format.`,
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				ValidateFunc:     validation.StringIsJSON,
+				DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+				Description:      `The start commands of the component, in JSON format.`,
 			},
 			"post_start": {
 				Type:        schema.TypeList,
@@ -328,11 +333,12 @@ func ResourceV3Component() *schema.Resource {
 				Description: `The JVM parameters of the component.`,
 			},
 			"tomcat_opts": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: validation.StringIsJSON,
-				Description:  `The configuration of the tomcat server.`,
+				Type:             schema.TypeString,
+				Optional:         true,
+				Computed:         true,
+				ValidateFunc:     validation.StringIsJSON,
+				DiffSuppressFunc: JsonStringIgnoreNonUserConfigs(),
+				Description:      `The configuration of the tomcat server.`,
 			},
 			"logs": {
 				Type:     schema.TypeSet,
@@ -603,6 +609,26 @@ func componentProbeSchema() *schema.Resource {
 	return &sc
 }
 
+func getJsonObject(jsonStr string) map[string]interface{} {
+	jsonObj, ok := utils.StringToJson(jsonStr).(map[string]interface{})
+	if ok {
+		return jsonObj
+	}
+	return make(map[string]interface{})
+}
+
+func JsonStringIgnoreNonUserConfigs() schema.SchemaDiffSuppressFunc {
+	return func(_, o, n string, _ *schema.ResourceData) bool {
+		for key, value := range getJsonObject(n) {
+			if mapValue, exists := getJsonObject(o)[key]; exists && mapValue == value {
+				continue
+			}
+			return false
+		}
+		return true
+	}
+}
+
 func buildV3ComponentRuntimeStackConfig(runtimeStacks []interface{}) map[string]interface{} {
 	if len(runtimeStacks) < 1 {
 		return nil
@@ -799,6 +825,7 @@ func buildV3ComponentReferResources(refResources *schema.Set) []interface{} {
 	if refResources.Len() < 1 {
 		return nil
 	}
+	log.Printf("[Lance][Build] The reference resources is: %#v", refResources.List())
 
 	result := make([]interface{}, 0, refResources.Len())
 	for _, refRsource := range refResources.List() {
@@ -1232,6 +1259,7 @@ func flattenV3ComponentReferResources(refResources []interface{}) []map[string]i
 	if len(refResources) < 1 {
 		return nil
 	}
+	log.Printf("[Lance][Flatten] The reference resources is: %#v", refResources)
 
 	result := make([]map[string]interface{}, 0, len(refResources))
 	for _, refRsource := range refResources {
@@ -1335,7 +1363,20 @@ func resourceV3ComponentRead(_ context.Context, d *schema.ResourceData, meta int
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
+// func showDifference(oldRaw, newRaw *schema.Set, skipKeys ...string) (oldExtra, newExtra []interface{}) {
+
+// 	return
+// }
+
 func buildV3ComponentUpdteBodyParams(d *schema.ResourceData) map[string]interface{} {
+	// oldRaw, newRaw := d.GetChange("refer_resources")
+	// log.Printf("[Lance] The old reference resources: %#v", oldRaw.(*schema.Set).List())
+	// log.Printf("[Lance] The new reference resources: %#v", newRaw.(*schema.Set).List())
+	// newVal := newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
+	// oldVal := oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
+	// log.Printf("[Lance][Parsing] The old reference resources: %#v", oldVal)
+	// log.Printf("[Lance][Parsing] The new reference resources: %#v", newVal)
+
 	return map[string]interface{}{
 		// Cannot be updated but the request body needs them.
 		"name":          d.Get("name").(string),
