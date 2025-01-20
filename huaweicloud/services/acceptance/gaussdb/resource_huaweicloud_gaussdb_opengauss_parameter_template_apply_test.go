@@ -47,8 +47,8 @@ func testAccOpenGaussParameterTemplateApply_base(rName string) string {
 data "huaweicloud_availability_zones" "test" {}
 
 data "huaweicloud_gaussdb_opengauss_flavors" "test" {
-  version   = "8.201"
-  ha_mode   = "centralization_standard"
+  version = "8.201"
+  ha_mode = "centralization_standard"
 }
 
 resource "huaweicloud_networking_secgroup_rule" "in_v4_tcp_opengauss" {
