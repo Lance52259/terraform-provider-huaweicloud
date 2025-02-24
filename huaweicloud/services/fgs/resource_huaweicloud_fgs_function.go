@@ -489,6 +489,11 @@ func ResourceFgsFunction() *schema.Resource {
 				Optional:    true,
 				Description: `Whether the dynamic memory configuration is enabled.`,
 			},
+			"is_stateful_function": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: `Whether the function is a stateful function.`,
+			},
 
 			// Deprecated parameters.
 			"package": {
@@ -673,6 +678,7 @@ func buildCreateFunctionBodyParams(cfg *config.Config, d *schema.ResourceData) m
 		"func_code":             buildFunctionCodeConfig(d.Get("func_code").(string)),
 		"log_config":            buildFunctionLogConfig(d),
 		"enable_dynamic_memory": d.Get("enable_dynamic_memory"),
+		"is_stateful_function":  d.Get("is_stateful_function"),
 	}
 }
 
@@ -794,6 +800,7 @@ func buildUpdateFunctionMetadataBodyParams(d *schema.ResourceData) map[string]in
 			d.Get("mount_user_id").(int), d.Get("mount_user_group_id").(int)),
 		"strategy_config":       buildFunctionStrategyConfig(d.Get("concurrency_num").(int)),
 		"enable_dynamic_memory": d.Get("enable_dynamic_memory"),
+		"is_stateful_function":  d.Get("is_stateful_function"),
 	}
 }
 
@@ -1583,6 +1590,7 @@ func resourceFunctionRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("func_mounts", flattenFuncionMounts(utils.PathSearch("mount_config.func_mounts",
 			function, make([]interface{}, 0)).([]interface{}))),
 		d.Set("enable_dynamic_memory", utils.PathSearch("enable_dynamic_memory", function, nil)),
+		d.Set("is_stateful_function", utils.PathSearch("is_stateful_function", function, nil)),
 		// Attributes.
 		d.Set("urn", utils.PathSearch("func_urn", function, nil)),
 		d.Set("version", utils.PathSearch("version", function, nil)),
@@ -1632,7 +1640,7 @@ func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		"user_data", "agency", "app_agency", "description", "initializer_handler", "initializer_timeout",
 		"vpc_id", "network_id", "dns_list", "mount_user_id", "mount_user_group_id", "func_mounts", "custom_image",
 		"log_group_id", "log_stream_id", "log_group_name", "log_stream_name", "concurrency_num", "gpu_memory", "gpu_type",
-		"enable_dynamic_memory") {
+		"enable_dynamic_memory", "is_stateful_function") {
 		err := updateFunctionMetadata(client, d, funcUrnWithoutVersion)
 		if err != nil {
 			return diag.FromErr(err)
