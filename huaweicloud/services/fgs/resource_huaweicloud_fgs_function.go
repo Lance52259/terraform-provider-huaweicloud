@@ -367,6 +367,18 @@ func ResourceFgsFunction() *schema.Resource {
 										Optional:    true,
 										Description: `The description of the version alias.`,
 									},
+									"additional_version_weights": {
+										Type:         schema.TypeString,
+										Optional:     true,
+										ValidateFunc: validation.StringIsJSON,
+										Description:  `The percentage grayscale configuration of the version alias.`,
+									},
+									"additional_version_strategy": {
+										Type:         schema.TypeString,
+										Optional:     true,
+										ValidateFunc: validation.StringIsJSON,
+										Description:  `The description of the version alias.`,
+									},
 								},
 							},
 							Description: `The aliases management for specified version.`,
@@ -1301,8 +1313,10 @@ func flattenFunctionVersionAliases(aliases []interface{}) []map[string]interface
 	result := make([]map[string]interface{}, 0, len(aliases))
 	for _, alias := range aliases {
 		result = append(result, map[string]interface{}{
-			"name":        utils.PathSearch("name", alias, nil),
-			"description": utils.PathSearch("description", alias, nil),
+			"name":                        utils.PathSearch("name", alias, nil),
+			"description":                 utils.PathSearch("description", alias, nil),
+			"additional_version_weights":  utils.JsonToString(utils.PathSearch("additional_version_weights", alias, nil)),
+			"additional_version_strategy": utils.JsonToString(utils.PathSearch("additional_version_strategy", alias, nil)),
 		})
 	}
 
@@ -1732,6 +1746,10 @@ func createFunctionVersionAlias(client *golangsdk.ServiceClient, functionUrn, ve
 			"version":     versionName,
 			"name":        utils.ValueIgnoreEmpty(utils.PathSearch("name", aliasCfg, nil)),
 			"description": utils.ValueIgnoreEmpty(utils.PathSearch("description", aliasCfg, nil)),
+			"additional_version_weights": utils.ValueIgnoreEmpty(utils.StringToJson(utils.PathSearch("additional_version_weights",
+				aliasCfg, "").(string))),
+			"additional_version_strategy": utils.ValueIgnoreEmpty(utils.StringToJson(utils.PathSearch("additional_version_strategy",
+				aliasCfg, "").(string))),
 		},
 	}
 
