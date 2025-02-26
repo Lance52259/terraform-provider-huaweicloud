@@ -346,6 +346,11 @@ func ResourceFgsFunction() *schema.Resource {
 							Required:    true,
 							Description: `The version name.`,
 						},
+						"description": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: `The description of the version.`,
+						},
 						"aliases": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -1321,14 +1326,21 @@ func flattenFunctionVersions(client *golangsdk.ServiceClient, functionUrn string
 			log.Printf("[DEBUG] The version name is not found from the API response: %v", version)
 			continue
 		}
+		versionDesc := utils.PathSearch("version_description", version, "").(string)
 		aliases := utils.PathSearch(fmt.Sprintf("[?version=='%s']", versionName),
 			aliasesConfig, make([]interface{}, 0)).([]interface{})
-		if versionName == "latest" && len(aliases) < 1 {
-			continue
+		if versionName == "latest" {
+			if len(aliases) < 1 {
+				continue
+			}
+			// The description of the latest version is configured through the 'description' parameter of the function resource,
+			// not the 'versions.description' parameter.
+			versionDesc = ""
 		}
 		result = append(result, utils.RemoveNil(map[string]interface{}{
-			"name":    versionName,
-			"aliases": flattenFunctionVersionAliases(aliases),
+			"name":        versionName,
+			"aliases":     flattenFunctionVersionAliases(aliases),
+			"description": utils.ValueIgnoreEmpty(versionDesc),
 		}))
 	}
 
@@ -1677,7 +1689,7 @@ func deleteFunctionVersionAlias(client *golangsdk.ServiceClient, functionUrn, al
 	return nil
 }
 
-func createFunctionVersion(client *golangsdk.ServiceClient, functionUrn, versionName string) error {
+func createFunctionVersion(client *golangsdk.ServiceClient, functionUrn, versionName, versionDesc string) error {
 	httpUrl := "v2/{project_id}/fgs/functions/{function_urn}/versions"
 
 	createPath := client.Endpoint + httpUrl
@@ -1689,7 +1701,8 @@ func createFunctionVersion(client *golangsdk.ServiceClient, functionUrn, version
 			"Content-Type": "application/json",
 		},
 		JSONBody: map[string]interface{}{
-			"version": versionName,
+			"version":     versionName,
+			"description": versionDesc,
 		},
 	}
 
@@ -1746,7 +1759,9 @@ func updateFunctionVersions(client *golangsdk.ServiceClient, d *schema.ResourceD
 	newVersionNames := utils.PathSearch("[*].name", newVersions, make([]interface{}, 0)).([]interface{})
 	for _, oldVersion := range oldVersions {
 		versionName := utils.PathSearch("name", oldVersion, nil)
-		if fmt.Sprint(versionName) != "latest" && !utils.SliceContains(newVersionNames, versionName) {
+		versionDesc := utils.PathSearch("description", oldVersion, nil)
+		if fmt.Sprint(versionName) != "latest" && (!utils.SliceContains(newVersionNames, versionName) ||
+			fmt.Sprint(versionDesc) != utils.PathSearch(fmt.Sprintf("[?name=='%s']|[0].description", versionName), newVersions, "").(string)) {
 			// Delete a specified function version.
 			err = deleteFunctionOrVersion(client, fmt.Sprintf("%s:%s", functionUrn, versionName))
 			if err != nil {
@@ -1772,10 +1787,12 @@ func updateFunctionVersions(client *golangsdk.ServiceClient, d *schema.ResourceD
 	oldVersionNames := utils.PathSearch("[*].name", oldVersions, make([]interface{}, 0)).([]interface{})
 	for _, newVersion := range newVersions {
 		versionName := utils.PathSearch("name", newVersion, nil)
-		isCreateNewVersion := versionName != "latest" && !utils.SliceContains(oldVersionNames, versionName)
+		versionDesc := utils.PathSearch("description", newVersion, "").(string)
+		isCreateNewVersion := versionName != "latest" && (!utils.SliceContains(oldVersionNames, versionName) ||
+			fmt.Sprint(versionDesc) != utils.PathSearch(fmt.Sprintf("[?name=='%s']|[0].description", versionName), oldVersions, "").(string))
 		if isCreateNewVersion {
 			// Create a new function version.
-			err := createFunctionVersion(client, functionUrn, fmt.Sprint(versionName))
+			err := createFunctionVersion(client, functionUrn, fmt.Sprint(versionName), versionDesc)
 			if err != nil {
 				return err
 			}
