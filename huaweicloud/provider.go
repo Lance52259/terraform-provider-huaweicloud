@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -243,7 +244,7 @@ func Provider() *schema.Provider {
 						},
 						"domain_name": {
 							Type:        schema.TypeString,
-							Required:    true,
+							Optional:    true,
 							Description: descriptions["assume_role_domain_name"],
 							DefaultFunc: schema.EnvDefaultFunc("HW_ASSUME_ROLE_DOMAIN_NAME", nil),
 						},
@@ -252,6 +253,12 @@ func Provider() *schema.Provider {
 							Optional:    true,
 							Description: descriptions["assume_role_domain_id"],
 							DefaultFunc: schema.EnvDefaultFunc("HW_ASSUME_ROLE_DOMAIN_ID", nil),
+						},
+						"duration": {
+							Type:        schema.TypeInt,
+							Optional:    true,
+							Description: descriptions["assume_role_duration"],
+							DefaultFunc: schema.EnvDefaultFunc("HW_ASSUME_ROLE_DURATION", nil),
 						},
 					},
 				},
@@ -502,6 +509,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_as_policies":            as.DataSourceASPolicies(),
 			"huaweicloud_as_policy_execute_logs": as.DataSourcePolicyExecuteLogs(),
 			"huaweicloud_as_quotas":              as.DataSourceAsQuotas(),
+			"huaweicloud_asv2_policies":          as.DataSourceAsv2Policies(),
 
 			"huaweicloud_asm_meshes": asm.DataSourceAsmMeshes(),
 
@@ -1081,6 +1089,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_networking_secgroup":       vpc.DataSourceNetworkingSecGroup(),
 			"huaweicloud_networking_secgroups":      vpc.DataSourceNetworkingSecGroups(),
 			"huaweicloud_networking_secgroup_rules": vpc.DataSourceNetworkingSecGroupRules(),
+			"huaweicloud_networking_secgroup_tags":  vpc.DataSourceVpcNetworkingSecgroupTags(),
 
 			"huaweicloud_mapreduce_versions": mrs.DataSourceMrsVersions(),
 
@@ -1266,6 +1275,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_vpc_address_groups":              vpc.DataSourceVpcAddressGroups(),
 			"huaweicloud_vpc_flow_logs":                   vpc.DataSourceVpcFlowLogs(),
 			"huaweicloud_vpc_network_acls":                vpc.DataSourceNetworkAcls(),
+			"huaweicloud_vpc_network_acl_tags":            vpc.DataSourceVpcNetworkAclTags(),
 			"huaweicloud_vpc_peering_connection":          vpc.DataSourceVpcPeeringConnectionV2(),
 			"huaweicloud_vpc_route_table":                 vpc.DataSourceVPCRouteTable(),
 			"huaweicloud_vpc_routes":                      vpc.DataSourceVpcRoutes(),
@@ -2126,7 +2136,9 @@ func Provider() *schema.Provider {
 			"huaweicloud_modelarts_authorization":          modelarts.ResourceModelArtsAuthorization(),
 			"huaweicloud_modelarts_network":                modelarts.ResourceModelartsNetwork(),
 			"huaweicloud_modelarts_resource_pool":          modelarts.ResourceModelartsResourcePool(),
-			"huaweicloud_modelartsv2_service_action":       modelarts.ResourceV2ServiceAction(),
+			// Resource management via V2 APIs.
+			"huaweicloud_modelartsv2_service":        modelarts.ResourceV2Service(),
+			"huaweicloud_modelartsv2_service_action": modelarts.ResourceV2ServiceAction(),
 
 			// DataArts Studio - Management Center
 			"huaweicloud_dataarts_studio_data_connection": dataarts.ResourceDataConnection(),
@@ -2278,6 +2290,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_secmaster_alert_rule_simulation":       secmaster.ResourceAlertRuleSimulation(),
 			"huaweicloud_secmaster_post_paid_order":             secmaster.ResourcePostPaidOrder(),
 			"huaweicloud_secmaster_workspace":                   secmaster.ResourceWorkspace(),
+			"huaweicloud_secmaster_workflow_action":             secmaster.ResourceWorkflowAction(),
 
 			"huaweicloud_servicestage_application":                 servicestage.ResourceApplication(),
 			"huaweicloud_servicestage_component_instance":          servicestage.ResourceComponentInstance(),
@@ -2288,6 +2301,7 @@ func Provider() *schema.Provider {
 			// v3 managements
 			"huaweicloud_servicestagev3_application":           servicestage.ResourceV3Application(),
 			"huaweicloud_servicestagev3_component":             servicestage.ResourceV3Component(),
+			"huaweicloud_servicestagev3_configuration_group":   servicestage.ResourceV3ConfigurationGroup(),
 			"huaweicloud_servicestagev3_environment":           servicestage.ResourceV3Environment(),
 			"huaweicloud_servicestagev3_environment_associate": servicestage.ResourceV3EnvironmentAssociate(),
 
@@ -2708,6 +2722,8 @@ func init() {
 
 		"assume_role_domain_id": "The id of domain for v5 assume role.",
 
+		"assume_role_duration": "The duration for v5 assume role.",
+
 		"cloud": "The endpoint of cloud provider, defaults to myhuaweicloud.com",
 
 		"endpoints": "The custom endpoints used to override the default endpoint URL.",
@@ -2771,16 +2787,28 @@ func configureProvider(_ context.Context, d *schema.ResourceData, terraformVersi
 		delegatedAgencyName := os.Getenv("HW_ASSUME_ROLE_AGENCY_NAME")
 		delegatedDomianName := os.Getenv("HW_ASSUME_ROLE_DOMAIN_NAME")
 		delegatedDomianID := os.Getenv("HW_ASSUME_ROLE_DOMAIN_ID")
-		if delegatedAgencyName != "" && delegatedDomianName != "" {
+		delegatedDurationStr := os.Getenv("HW_ASSUME_ROLE_DURATION")
+		var delegatedDuration int
+		if delegatedDurationStr != "" {
+			var err error
+			delegatedDuration, err = strconv.Atoi(delegatedDurationStr)
+			if err != nil {
+				log.Printf("Error converting HW_ASSUME_ROLE_DURATION to int: %v", err)
+				delegatedDuration = 0 // or some default value
+			}
+		}
+		if delegatedAgencyName != "" {
 			conf.AssumeRoleAgency = delegatedAgencyName
 			conf.AssumeRoleDomain = delegatedDomianName
 			conf.AssumeRoleDomainID = delegatedDomianID
+			conf.AssumeRoleDuration = delegatedDuration
 		}
 	} else {
 		assumeRole := assumeRoleList[0].(map[string]interface{})
 		conf.AssumeRoleAgency = assumeRole["agency_name"].(string)
 		conf.AssumeRoleDomain = assumeRole["domain_name"].(string)
 		conf.AssumeRoleDomainID = assumeRole["domain_id"].(string)
+		conf.AssumeRoleDuration = assumeRole["duration"].(int)
 	}
 
 	conf.Region = d.Get("region").(string)
