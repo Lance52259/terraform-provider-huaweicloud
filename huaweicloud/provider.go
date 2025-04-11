@@ -1085,11 +1085,12 @@ func Provider() *schema.Provider {
 			"huaweicloud_nat_private_transit_ips":     nat.DataSourcePrivateTransitIps(),
 			"huaweicloud_nat_snat_rules":              nat.DataSourceSnatRules(),
 
-			"huaweicloud_networking_port":           vpc.DataSourceNetworkingPortV2(),
-			"huaweicloud_networking_secgroup":       vpc.DataSourceNetworkingSecGroup(),
-			"huaweicloud_networking_secgroups":      vpc.DataSourceNetworkingSecGroups(),
-			"huaweicloud_networking_secgroup_rules": vpc.DataSourceNetworkingSecGroupRules(),
-			"huaweicloud_networking_secgroup_tags":  vpc.DataSourceVpcNetworkingSecgroupTags(),
+			"huaweicloud_networking_port":              vpc.DataSourceNetworkingPortV2(),
+			"huaweicloud_networking_secgroup":          vpc.DataSourceNetworkingSecGroup(),
+			"huaweicloud_networking_secgroups":         vpc.DataSourceNetworkingSecGroups(),
+			"huaweicloud_networking_secgroups_by_tags": vpc.DataSourceNetworkingSecGroupsByTags(),
+			"huaweicloud_networking_secgroup_rules":    vpc.DataSourceNetworkingSecGroupRules(),
+			"huaweicloud_networking_secgroup_tags":     vpc.DataSourceVpcNetworkingSecgroupTags(),
 
 			"huaweicloud_mapreduce_versions": mrs.DataSourceMrsVersions(),
 
@@ -1284,12 +1285,15 @@ func Provider() *schema.Provider {
 			"huaweicloud_vpc_subnet_ids":                  vpc.DataSourceVpcSubnetIdsV1(),
 			"huaweicloud_vpc_subnet_private_ips":          vpc.DataSourceVpcSubnetPrivateIps(),
 			"huaweicloud_vpc_subnets":                     vpc.DataSourceVpcSubnets(),
+			"huaweicloud_vpc_subnets_by_tags":             vpc.DataSourceVpcSubnetsByTags(),
 			"huaweicloud_vpc_traffic_mirror_filter_rules": vpc.DataSourceVpcTrafficMirrorFilterRules(),
 			"huaweicloud_vpc_traffic_mirror_filters":      vpc.DataSourceVpcTrafficMirrorFilters(),
 			"huaweicloud_vpc_traffic_mirror_sessions":     vpc.DataSourceVpcTrafficMirrorSessions(),
 			"huaweicloud_vpcs":                            vpc.DataSourceVpcs(),
+			"huaweicloud_vpcs_by_tags":                    vpc.DataSourceVpcsByTags(),
 			"huaweicloud_vpc_quotas":                      vpc.DataSourceVpcQuotas(),
 			"huaweicloud_vpc_subnet_ip_availabilities":    vpc.DataSourceVpcSubnetIpAvailabilities(),
+			"huaweicloud_vpc_network_interfaces":          vpc.DataSourceVpcNetworkInterfaces(),
 
 			"huaweicloud_vpcep_endpoints":           vpcep.DataSourceVPCEPEndpoints(),
 			"huaweicloud_vpcep_public_services":     vpcep.DataSourceVPCEPPublicServices(),
@@ -2301,6 +2305,7 @@ func Provider() *schema.Provider {
 			// v3 managements
 			"huaweicloud_servicestagev3_application":           servicestage.ResourceV3Application(),
 			"huaweicloud_servicestagev3_component":             servicestage.ResourceV3Component(),
+			"huaweicloud_servicestagev3_configuration":         servicestage.ResourceV3Configuration(),
 			"huaweicloud_servicestagev3_configuration_group":   servicestage.ResourceV3ConfigurationGroup(),
 			"huaweicloud_servicestagev3_environment":           servicestage.ResourceV3Environment(),
 			"huaweicloud_servicestagev3_environment_associate": servicestage.ResourceV3EnvironmentAssociate(),
