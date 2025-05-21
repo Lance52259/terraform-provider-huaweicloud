@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	awspolicy "github.com/jen20/awspolicyequivalence"
 )
@@ -27,6 +29,21 @@ func ComposeAnySchemaDiffSuppressFunc(fs ...schema.SchemaDiffSuppressFunc) schem
 			}
 		}
 		return false
+	}
+}
+
+// ComposeAnyCustomDiffFunc allows parameters to determine multiple customDiff methods.
+// When any method (CustomizeDiffFunc) returns an error, this compose function will record this error and return finaly.
+func ComposeAnyCustomDiffFunc(fs ...schema.CustomizeDiffFunc) schema.CustomizeDiffFunc {
+	return func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+		var mErr *multierror.Error
+
+		for _, f := range fs {
+			if err := f(ctx, d, meta); err != nil {
+				mErr = multierror.Append(mErr, err)
+			}
+		}
+		return mErr.ErrorOrNil()
 	}
 }
 

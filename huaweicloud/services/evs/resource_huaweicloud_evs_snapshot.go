@@ -18,6 +18,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+var snapshotDiffParamKeys = []string{
+	"metadata",
+}
+
 // @API EVS DELETE /v2/{project_id}/cloudsnapshots/{snapshot_id}
 // @API EVS GET /v2/{project_id}/cloudsnapshots/{snapshot_id}
 // @API EVS PUT /v2/{project_id}/cloudsnapshots/{snapshot_id}
@@ -31,6 +35,10 @@ func ResourceEvsSnapshot() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+
+		CustomizeDiff: utils.ComposeAnyCustomDiffFunc(
+			utils.RefreshObjectParamOriginValues(snapshotDiffParamKeys),
+		),
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(10 * time.Minute),
@@ -172,13 +180,10 @@ func waitingForSnapshotStatusAvailable(ctx context.Context, client *golangsdk.Se
 
 func resourceEvsSnapshotCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
-		cfg          = meta.(*config.Config)
-		region       = cfg.GetRegion(d)
-		httpUrl      = "v2/{project_id}/cloudsnapshots"
-		product      = "evs"
-		mapParamKeys = []string{
-			"metadata",
-		}
+		cfg     = meta.(*config.Config)
+		region  = cfg.GetRegion(d)
+		httpUrl = "v2/{project_id}/cloudsnapshots"
+		product = "evs"
 	)
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
@@ -210,15 +215,6 @@ func resourceEvsSnapshotCreate(ctx context.Context, d *schema.ResourceData, meta
 
 	if err := waitingForSnapshotStatusAvailable(ctx, client, d, d.Timeout(schema.TimeoutCreate)); err != nil {
 		return diag.Errorf("error waiting for EVS snapshot (%s) creation to available: %s", d.Id(), err)
-	}
-
-	// If the request is successful, obtain the values of all JSON|object parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	// And whether corresponding parameters are changed, the origin values must be refreshed.
-	err = utils.RefreshObjectParamOriginValues(d, mapParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	return resourceEvsSnapshotRead(ctx, d, meta)
@@ -269,13 +265,10 @@ func buildUpdateSnapshotBodyParams(d *schema.ResourceData) map[string]interface{
 
 func resourceEvsSnapshotUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
-		cfg          = meta.(*config.Config)
-		region       = cfg.GetRegion(d)
-		httpUrl      = "v2/{project_id}/cloudsnapshots/{snapshot_id}"
-		product      = "evs"
-		mapParamKeys = []string{
-			"metadata",
-		}
+		cfg     = meta.(*config.Config)
+		region  = cfg.GetRegion(d)
+		httpUrl = "v2/{project_id}/cloudsnapshots/{snapshot_id}"
+		product = "evs"
 	)
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
@@ -293,15 +286,6 @@ func resourceEvsSnapshotUpdate(ctx context.Context, d *schema.ResourceData, meta
 	_, err = client.Request("PUT", requestPath, &requestOpt)
 	if err != nil {
 		return diag.Errorf("error updating EVS snapshot: %s", err)
-	}
-
-	// If the request is successful, obtain the values of all JSON|object parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	// And whether corresponding parameters are changed, the origin values must be refreshed.
-	err = utils.RefreshObjectParamOriginValues(d, mapParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	return resourceEvsSnapshotRead(ctx, d, meta)

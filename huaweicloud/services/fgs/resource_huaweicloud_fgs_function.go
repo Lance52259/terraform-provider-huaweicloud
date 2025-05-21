@@ -21,6 +21,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+var functionDiffObjectParamKeys = []string{
+	"lts_custom_tag",
+}
+
 // @API FunctionGraph POST /v2/{project_id}/fgs/functions
 // @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/config
 // @API FunctionGraph PUT /v2/{project_id}/fgs/functions/{function_urn}/config-max-instance
@@ -42,9 +46,14 @@ func ResourceFgsFunction() *schema.Resource {
 		ReadContext:   resourceFunctionRead,
 		UpdateContext: resourceFunctionUpdate,
 		DeleteContext: resourceFunctionDelete,
+
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
+
+		CustomizeDiff: utils.ComposeAnyCustomDiffFunc(
+			utils.RefreshObjectParamOriginValues(functionDiffObjectParamKeys),
+		),
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(10 * time.Minute),
@@ -1255,11 +1264,8 @@ func updateFunctionReservedInstances(client *golangsdk.ServiceClient, d *schema.
 
 func resourceFunctionCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
-		cfg                             = meta.(*config.Config)
-		region                          = cfg.GetRegion(d)
-		functionMetadataObjectParamKeys = []string{
-			"lts_custom_tag",
-		}
+		cfg    = meta.(*config.Config)
+		region = cfg.GetRegion(d)
 	)
 
 	client, err := cfg.NewServiceClient("fgs", region)
@@ -1285,14 +1291,6 @@ func resourceFunctionCreate(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.FromErr(err)
 		}
-	}
-	// If the request is successful, obtain the values of all JSON|object parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	// And whether corresponding parameters are changed, the origin values must be refreshed.
-	err = utils.RefreshObjectParamOriginValues(d, functionMetadataObjectParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	if d.HasChange("depend_list") {
@@ -1748,12 +1746,9 @@ func resourceFunctionRead(_ context.Context, d *schema.ResourceData, meta interf
 
 func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
-		cfg                             = meta.(*config.Config)
-		region                          = cfg.GetRegion(d)
-		funcUrnWithoutVersion           = parseFunctionUrnWithoutVersion(d.Id())
-		functionMetadataObjectParamKeys = []string{
-			"lts_custom_tag",
-		}
+		cfg                   = meta.(*config.Config)
+		region                = cfg.GetRegion(d)
+		funcUrnWithoutVersion = parseFunctionUrnWithoutVersion(d.Id())
 	)
 
 	client, err := cfg.NewServiceClient("fgs", region)
@@ -1780,14 +1775,6 @@ func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.FromErr(err)
 		}
-	}
-	// If the request is successful, obtain the values ​​of all JSON|object parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	// And whether corresponding parameters are changed, the origin values must be refreshed.
-	err = utils.RefreshObjectParamOriginValues(d, functionMetadataObjectParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	if d.HasChange("max_instance_num") {

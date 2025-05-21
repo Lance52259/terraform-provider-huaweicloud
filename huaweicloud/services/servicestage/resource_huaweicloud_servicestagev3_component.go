@@ -21,11 +21,7 @@ import (
 )
 
 var (
-	v3ComponentNotFoundCodes = []string{
-		"SVCSTG.00100401",
-	}
-
-	componentJsonParamKeys = []string{
+	v3ComponentDiffParamKeys = []string{
 		"source",
 		"build",
 		"command",
@@ -33,6 +29,10 @@ var (
 		"deploy_strategy.0.rolling_release",
 		"deploy_strategy.0.gray_release",
 		"update_strategy",
+	}
+
+	v3ComponentNotFoundCodes = []string{
+		"SVCSTG.00100401",
 	}
 
 	componentNonUpdatableParams = []string{
@@ -64,7 +64,10 @@ func ResourceV3Component() *schema.Resource {
 			StateContext: resourceV3ComponentImportState,
 		},
 
-		CustomizeDiff: config.FlexibleForceNew(componentNonUpdatableParams),
+		CustomizeDiff: utils.ComposeAnyCustomDiffFunc(
+			utils.RefreshObjectParamOriginValues(v3ComponentDiffParamKeys),
+			config.FlexibleForceNew(componentNonUpdatableParams),
+		),
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(20 * time.Minute),
@@ -1126,14 +1129,6 @@ func resourceV3ComponentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.FromErr(err)
 	}
 
-	// If the request is successful, obtain the values ​​of all JSON parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	err = utils.RefreshObjectParamOriginValues(d, componentJsonParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
-	}
-
 	return resourceV3ComponentRead(ctx, d, meta)
 }
 
@@ -1591,14 +1586,6 @@ func resourceV3ComponentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	err = waitV3ComponentUpdateCompleted(ctx, client, d)
 	if err != nil {
 		return diag.FromErr(err)
-	}
-
-	// If the request is successful, obtain the values ​​of all JSON parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	err = utils.RefreshObjectParamOriginValues(d, componentJsonParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	return resourceV3ComponentRead(ctx, d, meta)

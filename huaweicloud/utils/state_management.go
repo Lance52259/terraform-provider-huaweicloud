@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,41 +12,107 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func RefreshObjectParamOriginValues(d *schema.ResourceData, objectParamKeys []string) error {
-	var mErr *multierror.Error
+// func RefreshObjectParamOriginValues(objectParamKeys []string) schema.CustomizeDiffFunc {
+// 	return func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+// 		var (
+// 			err  error
+// 			mErr *multierror.Error
+// 		)
 
-	for _, key := range objectParamKeys {
-		parts := strings.Split(key, ".")
-		// Construct the corresponding _origin path.
-		originParts := make([]string, len(parts))
-		copy(originParts, parts)
-		lastIdx := len(originParts) - 1
-		originParts[lastIdx] += "_origin"
+// 		for _, paramKey := range objectParamKeys {
+// 			originParamKey := fmt.Sprintf("%s_origin", paramKey)
 
-		// Obtain the origin value
-		rawVal, err := getNestedValue(d, parts)
-		if err != nil {
-			log.Printf("[DEBUG] failed to get origin value for the parameter '%s': %v", key, err)
-			// If the acquisition fails, the subsequent operation of the current parameter is skipped because this
-			// parameter may not be configured.
-			continue
+// 			// Obtain the origin value.
+// 			_, newVal := d.GetChange(originParamKey)
+
+// 			err = d.SetNew(originParamKey, newVal)
+// 			if err != nil {
+// 				log.Printf("[DEBUG] Unable to set the origin value (corresponding key: %s) because %v, the value is %v",
+// 					paramKey, err, newVal)
+// 			}
+
+// 			err = d.Clear(originParamKey)
+// 			if err != nil {
+// 				log.Printf("[DEBUG] Unable to clear the origin value (corresponding key: %s) because %v, the value is %v",
+// 					paramKey, err, newVal)
+// 			}
+// 		}
+// 		return mErr.ErrorOrNil()
+// 	}
+// }
+
+// If the request is successful, obtain the values of all JSON|object parameters first and save them to the
+// corresponding '_origin' attributes for subsequent determination and construction of the request body during
+// next updates.
+// And whether corresponding parameters are changed, the origin values must be refreshed.
+func RefreshObjectParamOriginValues(objectParamKeys []string) schema.CustomizeDiffFunc {
+	return func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+		var mErr *multierror.Error
+
+		for _, paramKey := range objectParamKeys {
+			parts := strings.Split(paramKey, ".")
+			log.Printf("[Lance][%s] The parts list is %v", paramKey, parts)
+			// Construct the corresponding _origin path.
+			originParts := make([]string, len(parts))
+			copy(originParts, parts)
+			lastIdx := len(originParts) - 1
+			originParts[lastIdx] += "_origin"
+
+			// Obtain the origin value.
+			rawVal, err := getNestedValue(d, parts)
+			if err != nil {
+				log.Printf("[DEBUG] failed to get origin value for the parameter '%s': %v", paramKey, err)
+				// If the acquisition fails, the subsequent operation of the current parameter is skipped because this
+				// parameter may not be configured.
+				continue
+			}
+			log.Printf("[Lance][%s] The rawVal that returned from the function getNestedValue is: %v", paramKey, rawVal)
+
+			// Setting the origin value to the origin attribute.
+			if err := setNestedValue(d, originParts, rawVal, true); err != nil {
+				mErr = multierror.Append(mErr, fmt.Errorf("failed to set origin value for '%s': %v", paramKey, err))
+			}
 		}
-
-		// Setting the origin value
-		if err := setNestedValue(d, originParts, rawVal); err != nil {
-			mErr = multierror.Append(mErr, fmt.Errorf("failed to set origin value for '%s': %v", key, err))
-		}
+		return mErr.ErrorOrNil()
 	}
-
-	return mErr.ErrorOrNil()
 }
+
+// func RefreshObjectParamOriginValues(d *schema.ResourceDiff, objectParamKeys []string) error {
+// 	var mErr *multierror.Error
+
+// 	for _, key := range objectParamKeys {
+// 		parts := strings.Split(key, ".")
+// 		// Construct the corresponding _origin path.
+// 		originParts := make([]string, len(parts))
+// 		copy(originParts, parts)
+// 		lastIdx := len(originParts) - 1
+// 		originParts[lastIdx] += "_origin"
+
+// 		// Obtain the origin value
+// 		rawVal, err := getNestedValue(d, parts)
+// 		if err != nil {
+// 			log.Printf("[DEBUG] failed to get origin value for the parameter '%s': %v", key, err)
+// 			// If the acquisition fails, the subsequent operation of the current parameter is skipped because this
+// 			// parameter may not be configured.
+// 			continue
+// 		}
+
+// 		// Setting the origin value
+// 		if err := setNestedValue(d, originParts, rawVal); err != nil {
+// 			mErr = multierror.Append(mErr, fmt.Errorf("failed to set origin value for '%s': %v", key, err))
+// 		}
+// 	}
+
+// 	return mErr.ErrorOrNil()
+// }
 
 // getNestedValue method that used to obtain nested values ​​based on the path recursively, because the nested parameter
 // must ensure that the complete structure nesting of its corresponding subscript is obtained (only the corresponding
 // index is covered)
-func getNestedValue(d *schema.ResourceData, parts []string) (interface{}, error) {
+func getNestedValue(d *schema.ResourceDiff, parts []string) (interface{}, error) {
 	var current interface{}
-	current = d.Get(parts[0])
+	_, current = d.GetChange(parts[0])
+	log.Printf("[Lance] The parts list is: %v", parts)
 
 	for i := 1; i < len(parts); i++ {
 		part := parts[i]
@@ -78,12 +145,13 @@ func getNestedValue(d *schema.ResourceData, parts []string) (interface{}, error)
 			return nil, fmt.Errorf("unsupported type at '%s'", strings.Join(parts[:i+1], "."))
 		}
 	}
+	log.Printf("[Lance] The current value is: %v", current)
 	return current, nil
 }
 
 // setNestedValue method that used to set nested value recursively, because nested parameters must set their full
 // structure nesting according to their index (only overwrite the corresponding index).
-func setNestedValue(d *schema.ResourceData, parts []string, value interface{}) error {
+func setNestedValue(d *schema.ResourceDiff, parts []string, value interface{}, clearAllElems bool) error {
 	rootKey := parts[0]
 	current := d.Get(rootKey)
 
@@ -92,8 +160,12 @@ func setNestedValue(d *schema.ResourceData, parts []string, value interface{}) e
 		return err
 	}
 
-	// lintignore:R001
-	return d.Set(rootKey, updated)
+	log.Printf("[Lance] The updated value is: %v", updated)
+	err = d.SetNew(rootKey, updated)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func updateNestedStructure(current interface{}, parts []string, value interface{}) (interface{}, error) {

@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	runtimeStackJsonObjectParamKeys = []string{
+	v3RuntimeStackDiffParamKeys = []string{
 		"spec",
 	}
+
 	runtimeStackNonUpdatableParams = []string{
 		"deploy_mode",
 		"type",
@@ -43,7 +44,10 @@ func ResourceV3RuntimeStack() *schema.Resource {
 			StateContext: resourceV3RuntimeStackImportState,
 		},
 
-		CustomizeDiff: config.FlexibleForceNew(runtimeStackNonUpdatableParams),
+		CustomizeDiff: utils.ComposeAnyCustomDiffFunc(
+			utils.RefreshObjectParamOriginValues(v3RuntimeStackDiffParamKeys),
+			config.FlexibleForceNew(runtimeStackNonUpdatableParams),
+		),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -181,14 +185,6 @@ func resourceV3RuntimeStackCreate(ctx context.Context, d *schema.ResourceData, m
 	}
 	d.SetId(runtimeStackId)
 
-	// If the request is successful, obtain the values ​​of all JSON parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	err = utils.RefreshObjectParamOriginValues(d, runtimeStackJsonObjectParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
-	}
-
 	return resourceV3RuntimeStackRead(ctx, d, meta)
 }
 
@@ -286,14 +282,6 @@ func resourceV3RuntimeStackUpdate(ctx context.Context, d *schema.ResourceData, m
 	_, err = client.Request("PUT", updatePath, &opt)
 	if err != nil {
 		return diag.Errorf("error updating runtime stack (%s): %s", runtimeStackId, err)
-	}
-
-	// If the request is successful, obtain the values ​​of all JSON parameters first and save them to the
-	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
-	// next updates.
-	err = utils.RefreshObjectParamOriginValues(d, runtimeStackJsonObjectParamKeys)
-	if err != nil {
-		return diag.Errorf("unable to refresh the origin values: %s", err)
 	}
 
 	return resourceV3RuntimeStackRead(ctx, d, meta)
