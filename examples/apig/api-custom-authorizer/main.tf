@@ -12,7 +12,7 @@ resource "huaweicloud_vpc_subnet" "default" {
   vpc_id     = huaweicloud_vpc.default.id
 }
 
-resource "huaweicloud_networking_secgroup" "default" {
+resource "huaweicloud_networking_secgroup" "test" {
   name = var.security_group_name
 }
 
