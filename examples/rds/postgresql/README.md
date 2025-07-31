@@ -1,7 +1,6 @@
-# Create a PostgreSQL RDS instance on HuaweiCloud
+# Create a PostgreSQL RDS instance
 
-This example provides best practice code for using Terraform to create a configurable PostgreSQL RDS instance on
-HuaweiCloud with VPC networking, security group, account, database, and backup management.
+This example provides best practice code for using Terraform to create a PostgreSQL RDS instance in HuaweiCloud RDS service.
 
 ## Prerequisites
 
@@ -15,7 +14,7 @@ The following variables need to be configured:
 
 ### Authentication Variables
 
-* `region_name` - The region name
+* `region_name` - The region where the PostgreSQL RDS instance is located
 * `access_key` - The access key of the IAM user
 * `secret_key` - The secret key of the IAM user
 
@@ -23,36 +22,34 @@ The following variables need to be configured:
 
 #### Required Variables
 
-* `vpc_name` - The name of the VPC
-* `subnet_name` - The name of the subnet
-* `secgroup_name` - The name of security group
-* `instance_name` - The name of the RDS instance
+* `vpc_name` - The VPC name
+* `subnet_name` - The subnet name
+* `security_group_name` - The security group name
+* `instance_name` - The PostgreSQL RDS instance name
 * `account_name` - Username with elevated privileges
-* `db_name` - The name of the initial database
+* `database_name` - The name of the initial database
 * `schema_name` - The name of the database schema
 * `backup_name` - The name for instance backups
-* `backup_time_window` - The backup time window in HH:MM-HH:MM format
-* `backup_keep_days` - The number of days to retain backups
+* `instance_backup_time_window` - The backup time window in HH:MM-HH:MM format
+* `instance_backup_keep_days` - The number of days to retain backups
 
 #### Optional Variables
 
-* `availability_zone` - The availability zone (default: "")
-* `flavor_id` - The flavor ID for the instance (default: "")
-* `db_type` - The database engine type (default: "PostgreSQL")
-* `db_version` - The database engine version (default: "16")
-* `db_port` -  The database port (default: 5432)
-* `instance_mode` - The instance mode for the RDS instance flavor (default: "single")
-* `group_type` - The group type (default: "general")
-* `vcpus` - The CPU of flavor for the instance (default: 2)
-* `vpc_id` - The ID of the existing VPC (default: "")
 * `vpc_cidr` - The CIDR block of the VPC (default: "192.168.0.0/16")
-* `subnet_id` - The ID of the existing subnet (default: "")
+* `availability_zone` - The availability zone to which the RDS instance belongs (default: "")
 * `subnet_cidr` - The CIDR block of the subnet (default: "")
-* `gateway` - The gateway IP of the subnet (default: "")
-* `secgroup_id` - The ID of the existing security group (default: "")
-* `charging_mode` - The billing method (default: "postPaid")
-* `volume_type` - The storage volume type (default: "CLOUDSSD")
-* `volume_size` - The storage volume size in GB (default: 40)
+* `gateway_ip` - The gateway IP address of the subnet (default: "")
+* `instance_flavor_id` - The flavor ID of the RDS instance (default: "")
+* `instance_db_type` - The database engine type (default: "PostgreSQL")
+* `instance_db_version` - The database engine version (default: "16")
+* `instance_db_port` - The database port (default: 5432)
+* `instance_password` - The password for the RDS instance (default: "")
+* `account_password` - The password for the database account (default: "")
+* `instance_mode` - The instance mode for the RDS instance flavor (default: "single")
+* `instance_flavor_group_type` - The group type for the RDS instance flavor (default: "general")
+* `instance_flavor_vcpus` - The number of the RDS instance CPU cores for the RDS instance flavor (default: 2)
+* `instance_volume_type` - The storage volume type (default: "CLOUDSSD")
+* `instance_volume_size` - The storage volume size in GB (default: 40)
 
 ## Usage
 
@@ -61,16 +58,16 @@ The following variables need to be configured:
 * Create a `terraform.tfvars` file and fill in the required variables:
 
   ```hcl
-  vpc_name           = "your_vpc_name"
-  subnet_name        = "your_subnet_name"
-  secgroup_name      = "your_security_group_name"
-  instance_name      = "your_instance_name"
-  account_name       = "your_account_name"
-  db_name            = "your_database_name"
-  schema_name        = "your_schema_name"
-  backup_name        = "your_backup_name"
-  backup_time_window = "08:00-09:00"
-  backup_keep_days   = 1
+  vpc_name                    = "your_vpc_name"
+  subnet_name                 = "your_subnet_name"
+  security_group_name         = "your_security_group_name"
+  instance_name               = "your_postgresql_instance_name"
+  account_name                = "your_account_name"
+  database_name               = "your_database_name"
+  schema_name                 = "your_schema_name"
+  backup_name                 = "your_backup_name"
+  instance_backup_time_window = "08:00-09:00"
+  instance_backup_keep_days   = 1
   ```
 
 * Initialize Terraform:
@@ -97,16 +94,27 @@ The following variables need to be configured:
   $ terraform destroy
   ```
 
+## Features
+
+This example demonstrates the following features:
+
+1. **PostgreSQL RDS Instance Creation**: Creates a complete PostgreSQL RDS instance with all necessary components
+2. **Network Configuration**: Sets up VPC, subnet, and security group for the RDS instance
+3. **Account Management**: Creates a PostgreSQL account with elevated privileges
+4. **Database and Schema Management**: Creates a database and schema with proper ownership
+5. **Backup Strategy**: Configures automated backup with customizable time window and retention period
+
 ## Note
 
-* Passwords are auto-generated with special characters and stored in Terraform state
-* Please read the implicit and explicit dependencies in the script carefully
+* Make sure to keep your credentials secure and never commit them to version control
+* The creation of the PostgreSQL RDS instance takes about 5 minutes
+* This example creates the PostgreSQL RDS instance, VPC, subnet, security group, account, database, schema, and backup
 * All resources will be created in the specified region
 
 ## Requirements
 
-| Name        | Version    |
-|-------------|------------|
-| terraform   | >= 0.12.0  |
-| huaweicloud | >= 1.67.0  |
-| random      | >= 3.7.2   |
+| Name | Version |
+| ---- | ---- |
+| terraform | >= 0.12.0 |
+| huaweicloud | >= 1.54.0 |
+| random | >= 3.0.0 |
