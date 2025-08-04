@@ -1297,6 +1297,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_ram_resource_share_associated_permissions": ram.DataSourceAssociatedPermissions(),
 			"huaweicloud_ram_resource_shares":                       ram.DataSourceRAMShares(),
 
+			"huaweicloud_rgc_home_region": rgc.DataSourceHomeRegion(),
+
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
 			"huaweicloud_rds_engine_versions":                   rds.DataSourceRdsEngineVersionsV3(),
