@@ -1,0 +1,467 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_modelarts_resource_pool": {
+          "block": {
+            "attributes": {
+              "auto_renew": {
+                "type": "string",
+                "optional": true
+              },
+              "charging_mode": {
+                "type": "string",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the resource pool.",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the resource pool.",
+                "required": true,
+                "forcenew": true
+              },
+              "network_id": {
+                "type": "string",
+                "description": "The ModelArts network ID of the resource pool.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "period": {
+                "type": "number",
+                "optional": true,
+                "forcenew": true
+              },
+              "period_unit": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
+              "prefix": {
+                "type": "string",
+                "description": "The prefix of the user-defined node name of the resource pool.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "resource_pool_id": {
+                "type": "string",
+                "description": "The resource ID of the resource pool.",
+                "computed": true
+              },
+              "scope": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "description": "List of job types supported by the resource pool.",
+                "required": true
+              },
+              "server_ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "description": "The list of service IDs corresponding to the latest expanded nodes.",
+                "computed": true
+              },
+              "status": {
+                "type": "string",
+                "description": "The status of the resource pool.",
+                "computed": true
+              },
+              "subnet_id": {
+                "type": "string",
+                "description": "The network ID of a subnet.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "vpc_id": {
+                "type": "string",
+                "description": "The VPC ID.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "workspace_id": {
+                "type": "string",
+                "description": "Workspace ID, which defaults to 0.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              }
+            },
+            "block_types": {
+              "clusters": {
+                "block": {
+                  "attributes": {
+                    "name": {
+                      "type": "string",
+                      "description": "The name of the CCE cluster.",
+                      "computed": true
+                    },
+                    "provider_id": {
+                      "type": "string",
+                      "description": "The ID of the CCE cluster.",
+                      "required": true,
+                      "forcenew": true
+                    }
+                  },
+                  "description": "The list of the CCE clusters."
+                },
+                "nesting_mode": "list",
+                "forcenew": true
+              },
+              "metadata": {
+                "block": {
+                  "attributes": {
+                    "annotations": {
+                      "type": "string",
+                      "description": "The annotations of the resource pool, in JSON format.",
+                      "optional": true
+                    }
+                  },
+                  "description": "The metadata of the resource pool."
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
+              "resources": {
+                "block": {
+                  "attributes": {
+                    "count": {
+                      "type": "number",
+                      "description": "Number of resources of the corresponding flavors.",
+                      "required": true
+                    },
+                    "extend_params": {
+                      "type": "string",
+                      "description": "The extend parameters of the resource pool.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "flavor_id": {
+                      "type": "string",
+                      "description": "The resource flavor ID.",
+                      "required": true
+                    },
+                    "labels": {
+                      "type": [
+                        "map",
+                        "string"
+                      ],
+                      "description": "The labels of resource pool.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "max_count": {
+                      "type": "number",
+                      "description": "The max number of resources of the corresponding flavors.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "node_pool": {
+                      "type": "string",
+                      "description": "The name of resource pool nodes.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "security_group_ids": {
+                      "type": [
+                        "set",
+                        "string"
+                      ],
+                      "description": "The security group IDs.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "subnet_id": {
+                      "type": "string",
+                      "description": "The network ID of a subnet.",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "tags": {
+                      "type": [
+                        "map",
+                        "string"
+                      ],
+                      "optional": true,
+                      "computed": true
+                    },
+                    "vpc_id": {
+                      "type": "string",
+                      "description": "The VPC ID.",
+                      "optional": true,
+                      "computed": true
+                    }
+                  },
+                  "block_types": {
+                    "azs": {
+                      "block": {
+                        "attributes": {
+                          "az": {
+                            "type": "string",
+                            "description": "The AZ name.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "count": {
+                            "type": "number",
+                            "description": "Number of nodes.",
+                            "optional": true,
+                            "computed": true
+                          }
+                        },
+                        "description": "AZs for resource pool nodes."
+                      },
+                      "nesting_mode": "set"
+                    },
+                    "creating_step": {
+                      "block": {
+                        "attributes": {
+                          "step": {
+                            "type": "number",
+                            "description": "The creation step of the resource pool nodes.",
+                            "required": true
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "The type of the resource pool nodes.",
+                            "required": true
+                          }
+                        },
+                        "description": "The creation step configuration of the resource pool nodes."
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    },
+                    "data_volumes": {
+                      "block": {
+                        "attributes": {
+                          "count": {
+                            "type": "number",
+                            "description": "The count of the current data volume configuration.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "extend_params": {
+                            "type": "string",
+                            "description": "The extend parameters of the data volume.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "size": {
+                            "type": "string",
+                            "description": "The size of the data volume.",
+                            "required": true
+                          },
+                          "volume_type": {
+                            "type": "string",
+                            "description": "The type of the data volume.",
+                            "required": true
+                          }
+                        },
+                        "description": "The data volumes of the resource pool nodes."
+                      },
+                      "nesting_mode": "set"
+                    },
+                    "driver": {
+                      "block": {
+                        "attributes": {
+                          "version": {
+                            "type": "string",
+                            "description": "The driver version.",
+                            "optional": true,
+                            "computed": true
+                          }
+                        },
+                        "description": "The driver information."
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    },
+                    "os": {
+                      "block": {
+                        "attributes": {
+                          "image_id": {
+                            "type": "string",
+                            "description": "The image ID.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "image_type": {
+                            "type": "string",
+                            "description": "The image type.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "The OS name of the image.",
+                            "optional": true,
+                            "computed": true
+                          }
+                        },
+                        "description": "The image information for the specified OS."
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    },
+                    "root_volume": {
+                      "block": {
+                        "attributes": {
+                          "extend_params": {
+                            "type": "string",
+                            "description": "The extend parameters of the root volume, in JSON format.",
+                            "computed": true
+                          },
+                          "size": {
+                            "type": "string",
+                            "description": "The size of the root volume.",
+                            "required": true
+                          },
+                          "volume_type": {
+                            "type": "string",
+                            "description": "The type of the root volume.",
+                            "required": true
+                          }
+                        },
+                        "description": "The root volume of the resource pool nodes."
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    },
+                    "taints": {
+                      "block": {
+                        "attributes": {
+                          "effect": {
+                            "type": "string",
+                            "description": "The effect of the taint.",
+                            "required": true
+                          },
+                          "key": {
+                            "type": "string",
+                            "description": "The key of the taint.",
+                            "required": true
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "The value of the taint.",
+                            "optional": true,
+                            "computed": true
+                          }
+                        },
+                        "description": "The taints added to nodes."
+                      },
+                      "nesting_mode": "set"
+                    },
+                    "volume_group_configs": {
+                      "block": {
+                        "attributes": {
+                          "docker_thin_pool": {
+                            "type": "number",
+                            "description": "The percentage of container volumes to data volumes on resource pool nodes.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "types": {
+                            "type": [
+                              "list",
+                              "string"
+                            ],
+                            "description": "The storage types of the volume group.",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "volume_group": {
+                            "type": "string",
+                            "description": "The name of the volume group.",
+                            "required": true
+                          }
+                        },
+                        "block_types": {
+                          "lvm_config": {
+                            "block": {
+                              "attributes": {
+                                "lv_type": {
+                                  "type": "string",
+                                  "description": "The LVM write mode.",
+                                  "required": true
+                                },
+                                "path": {
+                                  "type": "string",
+                                  "description": "The volume mount path.",
+                                  "optional": true,
+                                  "computed": true
+                                }
+                              },
+                              "description": "The configuration of the LVM management."
+                            },
+                            "nesting_mode": "list",
+                            "max_items": 1
+                          }
+                        },
+                        "description": "The extend configurations of the volume groups."
+                      },
+                      "nesting_mode": "set"
+                    }
+                  },
+                  "description": "List of resource specifications in the resource pool."
+                },
+                "nesting_mode": "list",
+                "min_items": 1
+              },
+              "user_login": {
+                "block": {
+                  "attributes": {
+                    "key_pair_name": {
+                      "type": "string",
+                      "description": "The key pair name of the login user.",
+                      "optional": true,
+                      "computed": true,
+                      "forcenew": true
+                    },
+                    "password": {
+                      "type": "string",
+                      "description": "The password of the login user.",
+                      "optional": true,
+                      "forcenew": true,
+                      "sensitive": true
+                    }
+                  },
+                  "description": "The user login info of the resource pool."
+                },
+                "nesting_mode": "list",
+                "forcenew": true,
+                "max_items": 1
+              }
+            }
+          },
+          "product": {
+            "short": "ModelArts",
+            "name": "ModelArts",
+            "catalog": "AI",
+            "name_cn": "AI开发平台",
+            "catalog_cn": "人工智能"
+          }
+        }
+      }
+    }
+  }
+}

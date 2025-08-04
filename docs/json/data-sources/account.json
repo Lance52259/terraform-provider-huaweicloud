@@ -1,0 +1,39 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_account": {
+          "block": {
+            "attributes": {
+              "current_project_id": {
+                "type": "string",
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "computed": true
+              },
+              "user_id": {
+                "type": "string",
+                "computed": true
+              },
+              "username": {
+                "type": "string",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "Terraform",
+            "name": "Terraform",
+            "catalog": "Terraform"
+          }
+        }
+      }
+    }
+  }
+}

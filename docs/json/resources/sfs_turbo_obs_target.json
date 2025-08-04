@@ -1,0 +1,130 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_sfs_turbo_obs_target": {
+          "block": {
+            "attributes": {
+              "created_at": {
+                "type": "string",
+                "computed": true
+              },
+              "delete_data_in_file_system": {
+                "type": "bool",
+                "optional": true,
+                "forcenew": true
+              },
+              "file_system_path": {
+                "type": "string",
+                "required": true,
+                "forcenew": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "share_id": {
+                "type": "string",
+                "required": true,
+                "forcenew": true
+              },
+              "status": {
+                "type": "string",
+                "computed": true
+              }
+            },
+            "block_types": {
+              "obs": {
+                "block": {
+                  "attributes": {
+                    "bucket": {
+                      "type": "string",
+                      "required": true,
+                      "forcenew": true
+                    },
+                    "endpoint": {
+                      "type": "string",
+                      "required": true,
+                      "forcenew": true
+                    }
+                  },
+                  "block_types": {
+                    "attributes": {
+                      "block": {
+                        "attributes": {
+                          "dir_mode": {
+                            "type": "string",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "file_mode": {
+                            "type": "string",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "gid": {
+                            "type": "number",
+                            "optional": true,
+                            "computed": true
+                          },
+                          "uid": {
+                            "type": "number",
+                            "optional": true,
+                            "computed": true
+                          }
+                        }
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    },
+                    "policy": {
+                      "block": {
+                        "block_types": {
+                          "auto_export_policy": {
+                            "block": {
+                              "attributes": {
+                                "events": {
+                                  "type": [
+                                    "list",
+                                    "string"
+                                  ],
+                                  "optional": true,
+                                  "computed": true
+                                },
+                                "prefix": {
+                                  "type": "string",
+                                  "optional": true,
+                                  "computed": true
+                                },
+                                "suffix": {
+                                  "type": "string",
+                                  "optional": true,
+                                  "computed": true
+                                }
+                              }
+                            },
+                            "nesting_mode": "list",
+                            "max_items": 1
+                          }
+                        }
+                      },
+                      "nesting_mode": "list",
+                      "max_items": 1
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "min_items": 1,
+                "max_items": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
