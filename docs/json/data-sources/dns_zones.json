@@ -1,0 +1,122 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_dns_zones": {
+          "block": {
+            "attributes": {
+              "enterprise_project_id": {
+                "type": "string",
+                "description": "The enterprise project ID which the zone associated.",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The zone name.",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "router_id": {
+                "type": "string",
+                "description": "The ID of the VPC associated with the private zone.",
+                "optional": true
+              },
+              "search_mode": {
+                "type": "string",
+                "description": "The query criteria search mode.",
+                "optional": true
+              },
+              "sort_dir": {
+                "type": "string",
+                "description": "The sorting mode for the list of the zones.",
+                "optional": true
+              },
+              "sort_key": {
+                "type": "string",
+                "description": "The sorting filed for the list of the zones.",
+                "optional": true
+              },
+              "status": {
+                "type": "string",
+                "description": "The zone status.",
+                "optional": true
+              },
+              "tags": {
+                "type": "string",
+                "description": "The resource tag.",
+                "optional": true
+              },
+              "zone_id": {
+                "type": "string",
+                "description": "The ID of the zone.",
+                "optional": true
+              },
+              "zone_type": {
+                "type": "string",
+                "description": "The zone type. The value can be **public** or **private**.",
+                "required": true
+              },
+              "zones": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "created_at": "string",
+                      "description": "string",
+                      "email": "string",
+                      "enterprise_project_id": "string",
+                      "id": "string",
+                      "masters": [
+                        "list",
+                        "string"
+                      ],
+                      "name": "string",
+                      "pool_id": "string",
+                      "proxy_pattern": "string",
+                      "record_num": "number",
+                      "routers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "router_id": "string",
+                            "router_region": "string"
+                          }
+                        ]
+                      ],
+                      "status": "string",
+                      "tags": [
+                        "map",
+                        "string"
+                      ],
+                      "ttl": "number",
+                      "updated_at": "string",
+                      "zone_type": "string"
+                    }
+                  ]
+                ],
+                "description": "The list of zones.",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "DNS",
+            "name": "Domain Name Service",
+            "catalog": "Business Applications",
+            "name_cn": "云解析服务",
+            "catalog_cn": "企业应用"
+          }
+        }
+      }
+    }
+  }
+}

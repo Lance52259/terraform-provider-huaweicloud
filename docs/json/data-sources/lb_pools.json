@@ -1,0 +1,126 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_lb_pools": {
+          "block": {
+            "attributes": {
+              "description": {
+                "type": "string",
+                "optional": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "optional": true
+              },
+              "healthmonitor_id": {
+                "type": "string",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "lb_method": {
+                "type": "string",
+                "optional": true
+              },
+              "loadbalancer_id": {
+                "type": "string",
+                "optional": true
+              },
+              "member_address": {
+                "type": "string",
+                "optional": true
+              },
+              "member_device_id": {
+                "type": "string",
+                "optional": true
+              },
+              "name": {
+                "type": "string",
+                "optional": true
+              },
+              "pool_id": {
+                "type": "string",
+                "optional": true
+              },
+              "pools": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "description": "string",
+                      "healthmonitor_id": "string",
+                      "id": "string",
+                      "lb_method": "string",
+                      "listeners": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "loadbalancers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "members": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "name": "string",
+                      "persistence": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "cookie_name": "string",
+                            "timeout": "number",
+                            "type": "string"
+                          }
+                        ]
+                      ],
+                      "protection_reason": "string",
+                      "protection_status": "string",
+                      "protocol": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              },
+              "protocol": {
+                "type": "string",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "ELB",
+            "name": "Elastic Load Balance",
+            "catalog": "Networking",
+            "name_cn": "弹性负载均衡",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}

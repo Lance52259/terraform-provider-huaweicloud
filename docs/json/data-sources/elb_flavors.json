@@ -1,0 +1,108 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_elb_flavors": {
+          "block": {
+            "attributes": {
+              "bandwidth": {
+                "type": "number",
+                "optional": true
+              },
+              "category": {
+                "type": "number",
+                "optional": true
+              },
+              "cps": {
+                "type": "number",
+                "optional": true
+              },
+              "flavor_id": {
+                "type": "string",
+                "optional": true
+              },
+              "flavor_sold_out": {
+                "type": "string",
+                "optional": true
+              },
+              "flavors": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "bandwidth": "number",
+                      "category": "number",
+                      "cps": "number",
+                      "flavor_sold_out": "bool",
+                      "https_cps": "number",
+                      "id": "string",
+                      "lcu": "number",
+                      "max_connections": "number",
+                      "name": "string",
+                      "public_border_group": "string",
+                      "qps": "number",
+                      "shared": "bool",
+                      "type": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "computed": true
+              },
+              "list_all": {
+                "type": "string",
+                "optional": true
+              },
+              "max_connections": {
+                "type": "number",
+                "optional": true
+              },
+              "name": {
+                "type": "string",
+                "optional": true
+              },
+              "public_border_group": {
+                "type": "string",
+                "optional": true
+              },
+              "qps": {
+                "type": "number",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "shared": {
+                "type": "string",
+                "optional": true
+              },
+              "type": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          },
+          "product": {
+            "short": "ELB",
+            "name": "Elastic Load Balance",
+            "catalog": "Networking",
+            "name_cn": "弹性负载均衡",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}

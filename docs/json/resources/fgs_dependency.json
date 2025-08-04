@@ -1,0 +1,71 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_fgs_dependency": {
+          "block": {
+            "attributes": {
+              "description": {
+                "type": "string",
+                "description": "The description of the dependency package.",
+                "optional": true,
+                "computed": true
+              },
+              "etag": {
+                "type": "string",
+                "description": "The etag of the dependency package.",
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "link": {
+                "type": "string",
+                "description": "The OBS storage URL of the dependency package.",
+                "required": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the dependency package.",
+                "required": true
+              },
+              "owner": {
+                "type": "string",
+                "description": "The owner name of the dependency package.",
+                "computed": true
+              },
+              "region": {
+                "type": "string",
+                "description": "The region where the dependency package is located.",
+                "computed": true
+              },
+              "runtime": {
+                "type": "string",
+                "description": "The runtime of the dependency package.",
+                "required": true
+              },
+              "size": {
+                "type": "number",
+                "description": "The capacity of the dependency package.",
+                "computed": true
+              },
+              "version": {
+                "type": "number",
+                "description": "The version of the dependency package.",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "FunctionGraph",
+            "name": "FunctionGraph",
+            "catalog": "Compute",
+            "name_cn": "函数工作流",
+            "catalog_cn": "计算"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_dns_recordset": {
+          "block": {
+            "attributes": {
+              "description": {
+                "type": "string",
+                "description": "The description of the record set.",
+                "optional": true,
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "line_id": {
+                "type": "string",
+                "description": "The resolution line ID.",
+                "optional": true,
+                "computed": true,
+                "forcenew": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the record set.",
+                "required": true
+              },
+              "records": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "description": "The list of the records of the record set.",
+                "required": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "status": {
+                "type": "string",
+                "description": "The status of the record set.",
+                "optional": true,
+                "default": "ENABLE"
+              },
+              "tags": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "optional": true,
+                "computed": true
+              },
+              "ttl": {
+                "type": "number",
+                "description": "The time to live (TTL) of the record set (in seconds).",
+                "optional": true,
+                "default": 300
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of the record set.",
+                "required": true
+              },
+              "weight": {
+                "type": "number",
+                "description": "The weight of the record set.",
+                "optional": true,
+                "computed": true
+              },
+              "zone_id": {
+                "type": "string",
+                "description": "The ID of the zone to which the record set belongs.",
+                "required": true,
+                "forcenew": true
+              },
+              "zone_name": {
+                "type": "string",
+                "description": "The name of the zone to which the record set belongs.",
+                "computed": true
+              },
+              "zone_type": {
+                "type": "string",
+                "description": "The type of the zone to which the record set belongs.",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "DNS",
+            "name": "Domain Name Service",
+            "catalog": "Business Applications",
+            "name_cn": "云解析服务",
+            "catalog_cn": "企业应用"
+          }
+        }
+      }
+    }
+  }
+}
