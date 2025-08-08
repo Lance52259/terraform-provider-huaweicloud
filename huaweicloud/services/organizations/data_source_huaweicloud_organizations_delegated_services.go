@@ -22,6 +22,10 @@ func DataSourceOrganizationsDelegatedServices() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceDelegatedServices,
 		Schema: map[string]*schema.Schema{
+			"account_id": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
 			"delegated_services": {
 				Type:        schema.TypeList,
 				Elem:        organizationsDelegatedServiceSchema(),
