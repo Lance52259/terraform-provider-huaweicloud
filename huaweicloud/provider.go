@@ -1145,6 +1145,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_permission_set_provisionings":            identitycenter.DataSourceIdentitycenterPermissionSetProvisionings(),
 			"huaweicloud_identitycenter_system_policy_attachments":               identitycenter.DataSourceIdentitycenterSystemPolicyAttachments(),
 			"huaweicloud_identitycenter_system_identity_policy_attachments":      identitycenter.DataSourceSystemIdentityPolicyAttachments(),
+			"huaweicloud_identitycenter_account_assignments_for_principal":       identitycenter.DataSourceIdentityCenterAccountAssignmentsForPrincipal(),
 
 			"huaweicloud_iec_bandwidths":     iec.DataSourceBandWidths(),
 			"huaweicloud_iec_eips":           iec.DataSourceEips(),
