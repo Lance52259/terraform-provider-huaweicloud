@@ -1372,6 +1372,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_accounts":                              rgc.DataSourceAccounts(),
 			"huaweicloud_rgc_enabled_controls":                      rgc.DataSourceEnabledControls(),
 			"huaweicloud_rgc_account_controls":                      rgc.DataSourceAccountControls(),
+			"huaweicloud_rgc_account_compliance_status":             rgc.DataSourceAccountComplianceStatus(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
