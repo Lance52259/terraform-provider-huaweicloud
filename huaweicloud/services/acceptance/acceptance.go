@@ -803,6 +803,13 @@ func TestAccPreCheckRGCOrganization(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckRGCOrganizationalUnitID(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckRGCBlueprint(t *testing.T) {
 	if HW_RGC_BLUEPRINT_PRODUCT_ID == "" || HW_RGC_BLUEPRINT_PRODUCT_VERSION == "" {
 		t.Skip("HW_RGC_BLUEPRINT_PRODUCT_ID and HW_RGC_BLUEPRINT_PRODUCT_VERSION must be set for acceptance tests")
