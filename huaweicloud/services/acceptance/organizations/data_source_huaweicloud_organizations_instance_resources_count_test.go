@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceOrganizationsResourceInstancesCount_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_organizations_resource_instances.test"
+	dataSource := "data.huaweicloud_organizations_resource_instances_count.test"
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -24,12 +24,7 @@ func TestAccDataSourceOrganizationsResourceInstancesCount_basic(t *testing.T) {
 				Config: testDataSourceOrganizationsResourceInstancesCount_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.#"),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.0.resource_id"),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.0.resource_name"),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.0.tags.#"),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.0.tags.0.key"),
-					resource.TestCheckResourceAttrSet(dataSource, "resources.0.tags.0.value"),
+					resource.TestCheckResourceAttrSet(dataSource, "total_count"),
 					resource.TestCheckOutput("without_any_tag_filter_is_useful", "true"),
 					resource.TestCheckOutput("tags_filter_is_useful", "true"),
 					resource.TestCheckOutput("matches_filter_is_useful", "true"),
@@ -51,7 +46,7 @@ data "huaweicloud_organizations_resource_instances_count" "without_any_tag_filte
 }
 	
 output "without_any_tag_filter_is_useful" {
-  value = data.huaweicloud_organizations_resource_instances.tags_filter.total_count > 0 
+  value = data.huaweicloud_organizations_resource_instances_count.without_any_tag_filter.total_count > 0 
 }
 
 data "huaweicloud_organizations_resource_instances_count" "tags_filter" {
@@ -69,7 +64,7 @@ locals {
 }
 	
 output "tags_filter_is_useful" {
-  value = data.huaweicloud_organizations_resource_instances.tags_filter.total_count > 0 
+  value = data.huaweicloud_organizations_resource_instances_count.tags_filter.total_count > 0 
 }
 
 data "huaweicloud_organizations_resource_instances_count" "matches_filter" {
@@ -87,7 +82,7 @@ locals {
 }
 	
 output "matches_filter_is_useful" {
-  value = data.huaweicloud_organizations_resource_instances.tags_filter.total_count > 0 
+  value = data.huaweicloud_organizations_resource_instances_count.matches_filter.total_count > 0 
 }
 `
 }

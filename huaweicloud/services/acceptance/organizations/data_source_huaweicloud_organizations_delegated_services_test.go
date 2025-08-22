@@ -24,6 +24,7 @@ func TestAccDataSourceOrganizationsDelegatedServices_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "delegated_services.#"),
+					resource.TestCheckResourceAttrSet(dataSource, "delegated_services.0.service_principal"),
 				),
 			},
 		},
