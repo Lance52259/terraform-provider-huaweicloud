@@ -20,7 +20,7 @@ func TestAccDatasourceIdentityCenterApplicationTemplates_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDatasourceIdentityCenterApplicationTemplates_basic(),
+				Config: testAccDatasourceIdentityCenterApplicationTemplates_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "application_templates.0.application_type", ""),
@@ -43,12 +43,10 @@ func TestAccDatasourceIdentityCenterApplicationTemplates_basic(t *testing.T) {
 	})
 }
 
-func testAccDatasourceIdentityCenterApplicationTemplates_basic() string {
-	return `
+const testAccDatasourceIdentityCenterApplicationTemplates_basic = `
 data "huaweicloud_identitycenter_catalog_applications" "test"{}
-
+ 
 data "huaweicloud_identitycenter_application_templates" "test"{
   application_id = data.huaweicloud_identitycenter_catalog_applications.test.applications[0].application_id
 }
 `
-}

@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product IdentityCenter
-// ---------------------------------------------------------------
-
 package identitycenter
 
 import (
@@ -164,7 +159,7 @@ func resourceIdentityCenterApplicationTemplatesRead(_ context.Context, d *schema
 		path, &opt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center application templates.")
+		return diag.FromErr(err)
 	}
 
 	respBody, err := utils.FlattenResponse(resp)
