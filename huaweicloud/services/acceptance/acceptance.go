@@ -318,6 +318,11 @@ var (
 	HW_RGC_BLUEPRINT_PRODUCT_ID      = os.Getenv("HW_RGC_BLUEPRINT_PRODUCT_ID")
 	HW_RGC_BLUEPRINT_PRODUCT_VERSION = os.Getenv("HW_RGC_BLUEPRINT_PRODUCT_VERSION")
 	HW_RGC_ACCOUNT_ID                = os.Getenv("HW_RGC_ACCOUNT_ID")
+	HW_RGC_LOGGING_ACCOUNT_NAME      = os.Getenv("HW_RGC_LOGGING_ACCOUNT_NAME")
+	HW_RGC_AUDIT_ACCOUNT_NAME        = os.Getenv("HW_RGC_AUDIT_ACCOUNT_NAME")
+	HW_RGC_LOGGING_ACCOUNT_ID        = os.Getenv("HW_RGC_LOGGING_ACCOUNT_ID")
+	HW_RGC_AUDIT_ACCOUNT_ID          = os.Getenv("HW_RGC_AUDIT_ACCOUNT_ID")
+	HW_RGC_MANAGE_ACCOUNT_EMAIL      = os.Getenv("HW_RGC_MANAGE_ACCOUNT_EMAIL")
 
 	HW_SDRS_PROTECTION_INSTANCE_ID = os.Getenv("HW_SDRS_PROTECTION_INSTANCE_ID")
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
@@ -820,6 +825,21 @@ func TestAccPreCheckRGCBlueprint(t *testing.T) {
 func TestAccPreCheckAccountEnroll(t *testing.T) {
 	if HW_RGC_ACCOUNT_ID == "" || HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
 		t.Skip("HW_RGC_ACCOUNT_ID and HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCLandingZone(t *testing.T) {
+	if HW_RGC_LOGGING_ACCOUNT_NAME == "" || HW_RGC_AUDIT_ACCOUNT_NAME == "" {
+		t.Skip("HW_RGC_LOGGING_ACCOUNT_NAME and HW_RGC_LOGGING_ACCOUNT_NAME must be set for acceptance tests")
+	}
+
+	if HW_RGC_LOGGING_ACCOUNT_ID == "" || HW_RGC_AUDIT_ACCOUNT_ID == "" {
+		t.Skip("HW_RGC_LOGGING_ACCOUNT_ID and HW_RGC_AUDIT_ACCOUNT_ID must be set for acceptance tests")
+	}
+
+	if HW_RGC_MANAGE_ACCOUNT_EMAIL == "" {
+		t.Skip("HW_RGC_MANAGE_ACCOUNT_EMAIL must be set for acceptance tests")
 	}
 }
 
