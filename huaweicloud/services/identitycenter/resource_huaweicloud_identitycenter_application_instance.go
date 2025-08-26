@@ -19,6 +19,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+var identityCenterApplicationInstanceNonUpdateParams = []string{"instance_id", "name", "template_id"}
+
 // @API IdentityCenter POST /v1/instances/{instance_id}/application-instances
 // @API IdentityCenter GET /v1/instances/{instance_id}/application-instances/{application_instance_id}
 // @API IdentityCenter PUT /v1/instances/{instance_id}/application-instances/{application_instance_id}/display-data
@@ -40,25 +42,29 @@ func ResourceIdentityCenterApplicationInstance() *schema.Resource {
 			StateContext: resourceIdentityCenterApplicationInstanceImportState,
 		},
 
-		Description: "schema: Internal",
+		CustomizeDiff: config.FlexibleForceNew(identityCenterApplicationInstanceNonUpdateParams),
+
 		Schema: map[string]*schema.Schema{
 			"instance_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the ID of the IAM Identity Center instance.`,
 			},
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the name of the IAM Identity Center application instance.`,
 			},
 			"template_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the ID of the IAM Identity Center application template.`,
+			},
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
 			"description": {
 				Type:        schema.TypeString,
@@ -312,141 +318,25 @@ func resourceIdentityCenterApplicationInstanceCreate(ctx context.Context, d *sch
 	}
 	d.SetId(applicationInstanceId)
 
-	err, diagnostics, updateDisplayDataAbnormalFlag := updateDisplayData(d, client, updateDisplayDataHttpUrl, err)
-	if updateDisplayDataAbnormalFlag {
-		return diagnostics
-	}
+	if _, ok := d.GetOk("display_name"); ok {
+		if _, ok := d.GetOk("description"); ok {
+			updateDisplayDataPath := client.Endpoint + updateDisplayDataHttpUrl
+			updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{instance_id}", d.Get("instance_id").(string))
+			updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{application_instance_id}", d.Id())
 
-	err, diagnostics, importMetadataAbnormalFlag := importMetadata(d, client, importMetadataHttpUrl, err)
-	if importMetadataAbnormalFlag {
-		return diagnostics
-	}
+			updateDisplayDataOpt := golangsdk.RequestOpts{
+				KeepResponseBody: true,
+				JSONBody:         utils.RemoveNil(buildUpdateDisplayDataBodyParams(d)),
+			}
 
-	err, diagnostics, updateStatusAbnormalFlag := updateStatus(d, client, updateStatusHttpUrl, err)
-	if updateStatusAbnormalFlag {
-		return diagnostics
-	}
-
-	err, diagnostics, updateSecurityConfigAbnormalFlag := updateSecurityConfig(d, client, updateSecurityConfigHttpUrl, err)
-	if updateSecurityConfigAbnormalFlag {
-		return diagnostics
-	}
-
-	err, diagnostics, updateResponseConfigAbnormalFlag := updateResponseConfig(d, client, updateResponseConfigHttpUrl, err)
-	if updateResponseConfigAbnormalFlag {
-		return diagnostics
-	}
-
-	err, diagnostics, updateResponseSchemaConfigAbnormalFlag := updateResponseSchemaConfig(d, client, updateResponseSchemaConfigHttpUrl, err)
-	if updateResponseSchemaConfigAbnormalFlag {
-		return diagnostics
-	}
-
-	diagnostics, updateServiceProviderConfigAbnormalFlag := updateServiceProviderConfig(d, client, updateServiceProviderConfigHttpUrl, err)
-	if updateServiceProviderConfigAbnormalFlag {
-		return diagnostics
-	}
-
-	return resourceIdentityCenterApplicationInstanceRead(ctx, d, meta)
-}
-
-func updateServiceProviderConfig(d *schema.ResourceData, client *golangsdk.ServiceClient, updateServiceProviderConfigHttpUrl string, err error) (diag.Diagnostics, bool) {
-	if d.HasChange("service_provider_config") {
-		updateServiceProviderConfigPath := client.Endpoint + updateServiceProviderConfigHttpUrl
-		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{instance_id}", d.Get("instance_id").(string))
-		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{application_instance_id}", d.Id())
-
-		updateServiceProviderConfigOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateServiceProviderConfigBodyParams(d)),
-		}
-
-		_, err = client.Request("PUT", updateServiceProviderConfigPath, &updateServiceProviderConfigOpt)
-		if err != nil {
-			return diag.Errorf("error updating IdentityCenter application instance service provider configuration: %s", err), true
+			_, err = client.Request("PUT", updateDisplayDataPath, &updateDisplayDataOpt)
+			if err != nil {
+				return diag.Errorf("error updating IdentityCenter application instance display data: %s", err)
+			}
 		}
 	}
-	return nil, false
-}
 
-func updateResponseSchemaConfig(d *schema.ResourceData, client *golangsdk.ServiceClient, updateResponseSchemaConfigHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChange("response_schema_config") {
-		updateResponseSchemaConfigPath := client.Endpoint + updateResponseSchemaConfigHttpUrl
-		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{instance_id}", d.Get("instance_id").(string))
-		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{application_instance_id}", d.Id())
-
-		updateResponseSchemaConfigOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateResponseSchemaConfigBodyParams(d)),
-		}
-
-		_, err = client.Request("PUT", updateResponseSchemaConfigPath, &updateResponseSchemaConfigOpt)
-		if err != nil {
-			return nil, diag.Errorf("error updating IdentityCenter application instance response schema configuration: %s", err), true
-		}
-	}
-	return err, nil, false
-}
-
-func updateResponseConfig(d *schema.ResourceData, client *golangsdk.ServiceClient, updateResponseConfigHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChange("response_config") {
-		updateResponseConfigPath := client.Endpoint + updateResponseConfigHttpUrl
-		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{instance_id}", d.Get("instance_id").(string))
-		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{application_instance_id}", d.Id())
-
-		updateResponseConfigOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateResponseConfigBodyParams(d)),
-		}
-
-		_, err = client.Request("PUT", updateResponseConfigPath, &updateResponseConfigOpt)
-		if err != nil {
-			return nil, diag.Errorf("error updating IdentityCenter application instance response configuration: %s", err), true
-		}
-	}
-	return err, nil, false
-}
-
-func updateSecurityConfig(d *schema.ResourceData, client *golangsdk.ServiceClient, updateSecurityConfigHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChange("security_config") {
-		updateSecurityConfigPath := client.Endpoint + updateSecurityConfigHttpUrl
-		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{instance_id}", d.Get("instance_id").(string))
-		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{application_instance_id}", d.Id())
-
-		updateSecurityConfigOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateSecurityConfigBodyParams(d)),
-		}
-
-		_, err = client.Request("PUT", updateSecurityConfigPath, &updateSecurityConfigOpt)
-		if err != nil {
-			return nil, diag.Errorf("error updating IdentityCenter application instance security configuration: %s", err), true
-		}
-	}
-	return err, nil, false
-}
-
-func updateStatus(d *schema.ResourceData, client *golangsdk.ServiceClient, updateStatusHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChange("status") {
-		updateStatusPath := client.Endpoint + updateStatusHttpUrl
-		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{instance_id}", d.Get("instance_id").(string))
-		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{application_instance_id}", d.Id())
-
-		updateStatusOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateStatusBodyParams(d)),
-		}
-
-		_, err = client.Request("PUT", updateStatusPath, &updateStatusOpt)
-		if err != nil {
-			return nil, diag.Errorf("error updating IdentityCenter application instance status: %s", err), true
-		}
-	}
-	return err, nil, false
-}
-
-func importMetadata(d *schema.ResourceData, client *golangsdk.ServiceClient, importMetadataHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChange("metadata") {
+	if _, ok := d.GetOk("metadata"); ok {
 		importMetadataPath := client.Endpoint + importMetadataHttpUrl
 		importMetadataPath = strings.ReplaceAll(importMetadataPath, "{instance_id}", d.Get("instance_id").(string))
 		importMetadataPath = strings.ReplaceAll(importMetadataPath, "{application_instance_id}", d.Id())
@@ -458,29 +348,91 @@ func importMetadata(d *schema.ResourceData, client *golangsdk.ServiceClient, imp
 
 		_, err = client.Request("POST", importMetadataPath, &importMetadataOpt)
 		if err != nil {
-			return nil, diag.Errorf("error importing IdentityCenter application instance metadata: %s", err), true
+			return diag.Errorf("error importing IdentityCenter application instance metadata: %s", err)
 		}
 	}
-	return err, nil, false
-}
 
-func updateDisplayData(d *schema.ResourceData, client *golangsdk.ServiceClient, updateDisplayDataHttpUrl string, err error) (error, diag.Diagnostics, bool) {
-	if d.HasChanges("display_name", "description") {
-		updateDisplayDataPath := client.Endpoint + updateDisplayDataHttpUrl
-		updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{instance_id}", d.Get("instance_id").(string))
-		updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{application_instance_id}", d.Id())
+	if _, ok := d.GetOk("status"); ok {
+		updateStatusPath := client.Endpoint + updateStatusHttpUrl
+		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{instance_id}", d.Get("instance_id").(string))
+		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{application_instance_id}", d.Id())
 
-		updateDisplayDataOpt := golangsdk.RequestOpts{
+		updateStatusOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateDisplayDataBodyParams(d)),
+			JSONBody:         utils.RemoveNil(buildUpdateStatusBodyParams(d)),
 		}
 
-		_, err = client.Request("PUT", updateDisplayDataPath, &updateDisplayDataOpt)
+		_, err = client.Request("PUT", updateStatusPath, &updateStatusOpt)
 		if err != nil {
-			return nil, diag.Errorf("error updating IdentityCenter application instance display data: %s", err), true
+			return diag.Errorf("error updating IdentityCenter application instance status: %s", err)
 		}
 	}
-	return err, nil, false
+
+	if _, ok := d.GetOk("security_config"); ok {
+		updateSecurityConfigPath := client.Endpoint + updateSecurityConfigHttpUrl
+		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{application_instance_id}", d.Id())
+
+		updateSecurityConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateSecurityConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateSecurityConfigPath, &updateSecurityConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance security configuration: %s", err)
+		}
+	}
+
+	if _, ok := d.GetOk("response_config"); ok {
+		updateResponseConfigPath := client.Endpoint + updateResponseConfigHttpUrl
+		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{application_instance_id}", d.Id())
+
+		updateResponseConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateResponseConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateResponseConfigPath, &updateResponseConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance response configuration: %s", err)
+		}
+	}
+
+	if _, ok := d.GetOk("response_schema_config"); ok {
+		updateResponseSchemaConfigPath := client.Endpoint + updateResponseSchemaConfigHttpUrl
+		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{application_instance_id}", d.Id())
+
+		updateResponseSchemaConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateResponseSchemaConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateResponseSchemaConfigPath, &updateResponseSchemaConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance response schema configuration: %s", err)
+		}
+	}
+
+	if _, ok := d.GetOk("service_provider_config"); ok {
+		updateServiceProviderConfigPath := client.Endpoint + updateServiceProviderConfigHttpUrl
+		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{application_instance_id}", d.Id())
+
+		updateServiceProviderConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateServiceProviderConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateServiceProviderConfigPath, &updateServiceProviderConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance service provider configuration: %s", err)
+		}
+	}
+
+	return resourceIdentityCenterApplicationInstanceRead(ctx, d, meta)
 }
 
 func buildCreateApplicationInstanceBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -638,39 +590,116 @@ func resourceIdentityCenterApplicationInstanceUpdate(ctx context.Context, d *sch
 		return diag.Errorf("error creating IdentityCenter client: %s", err)
 	}
 
-	err, diagnostics, updateDisplayDataAbnormalFlag := updateDisplayData(d, client, updateDisplayDataHttpUrl, err)
-	if updateDisplayDataAbnormalFlag {
-		return diagnostics
+	if d.HasChanges("display_name", "description") {
+		updateDisplayDataPath := client.Endpoint + updateDisplayDataHttpUrl
+		updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{instance_id}", d.Get("instance_id").(string))
+		updateDisplayDataPath = strings.ReplaceAll(updateDisplayDataPath, "{application_instance_id}", d.Id())
+
+		updateDisplayDataOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateDisplayDataBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateDisplayDataPath, &updateDisplayDataOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance display data: %s", err)
+		}
 	}
 
-	err, diagnostics, importMetadataAbnormalFlag := importMetadata(d, client, importMetadataHttpUrl, err)
-	if importMetadataAbnormalFlag {
-		return diagnostics
+	if d.HasChange("metadata") {
+		importMetadataPath := client.Endpoint + importMetadataHttpUrl
+		importMetadataPath = strings.ReplaceAll(importMetadataPath, "{instance_id}", d.Get("instance_id").(string))
+		importMetadataPath = strings.ReplaceAll(importMetadataPath, "{application_instance_id}", d.Id())
+
+		importMetadataOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildImportMetadataBodyParams(d)),
+		}
+
+		_, err = client.Request("POST", importMetadataPath, &importMetadataOpt)
+		if err != nil {
+			return diag.Errorf("error importing IdentityCenter application instance metadata: %s", err)
+		}
 	}
 
-	err, diagnostics, updateStatusAbnormalFlag := updateStatus(d, client, updateStatusHttpUrl, err)
-	if updateStatusAbnormalFlag {
-		return diagnostics
+	if d.HasChange("status") {
+		updateStatusPath := client.Endpoint + updateStatusHttpUrl
+		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{instance_id}", d.Get("instance_id").(string))
+		updateStatusPath = strings.ReplaceAll(updateStatusPath, "{application_instance_id}", d.Id())
+
+		updateStatusOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateStatusBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateStatusPath, &updateStatusOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance status: %s", err)
+		}
 	}
 
-	err, diagnostics, updateSecurityConfigAbnormalFlag := updateSecurityConfig(d, client, updateSecurityConfigHttpUrl, err)
-	if updateSecurityConfigAbnormalFlag {
-		return diagnostics
+	if d.HasChange("security_config") {
+		updateSecurityConfigPath := client.Endpoint + updateSecurityConfigHttpUrl
+		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateSecurityConfigPath = strings.ReplaceAll(updateSecurityConfigPath, "{application_instance_id}", d.Id())
+
+		updateSecurityConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateSecurityConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateSecurityConfigPath, &updateSecurityConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance security configuration: %s", err)
+		}
 	}
 
-	err, diagnostics, updateResponseConfigAbnormalFlag := updateResponseConfig(d, client, updateResponseConfigHttpUrl, err)
-	if updateResponseConfigAbnormalFlag {
-		return diagnostics
+	if d.HasChange("response_config") {
+		updateResponseConfigPath := client.Endpoint + updateResponseConfigHttpUrl
+		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateResponseConfigPath = strings.ReplaceAll(updateResponseConfigPath, "{application_instance_id}", d.Id())
+
+		updateResponseConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateResponseConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateResponseConfigPath, &updateResponseConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance response configuration: %s", err)
+		}
 	}
 
-	err, diagnostics, updateResponseSchemaConfigAbnormalFlag := updateResponseSchemaConfig(d, client, updateResponseSchemaConfigHttpUrl, err)
-	if updateResponseSchemaConfigAbnormalFlag {
-		return diagnostics
+	if d.HasChange("response_schema_config") {
+		updateResponseSchemaConfigPath := client.Endpoint + updateResponseSchemaConfigHttpUrl
+		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateResponseSchemaConfigPath = strings.ReplaceAll(updateResponseSchemaConfigPath, "{application_instance_id}", d.Id())
+
+		updateResponseSchemaConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateResponseSchemaConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateResponseSchemaConfigPath, &updateResponseSchemaConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance response schema configuration: %s", err)
+		}
 	}
 
-	diagnostics, updateServiceProviderConfigAbnormalFlag := updateServiceProviderConfig(d, client, updateServiceProviderConfigHttpUrl, err)
-	if updateServiceProviderConfigAbnormalFlag {
-		return diagnostics
+	if d.HasChange("service_provider_config") {
+		updateServiceProviderConfigPath := client.Endpoint + updateServiceProviderConfigHttpUrl
+		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{instance_id}", d.Get("instance_id").(string))
+		updateServiceProviderConfigPath = strings.ReplaceAll(updateServiceProviderConfigPath, "{application_instance_id}", d.Id())
+
+		updateServiceProviderConfigOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody:         utils.RemoveNil(buildUpdateServiceProviderConfigBodyParams(d)),
+		}
+
+		_, err = client.Request("PUT", updateServiceProviderConfigPath, &updateServiceProviderConfigOpt)
+		if err != nil {
+			return diag.Errorf("error updating IdentityCenter application instance service provider configuration: %s", err)
+		}
 	}
 
 	return resourceIdentityCenterApplicationInstanceRead(ctx, d, meta)
