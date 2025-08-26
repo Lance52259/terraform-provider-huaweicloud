@@ -18,7 +18,7 @@ variable "template_id" {}
 variable "instance_id" {}
 
 resource "huaweicloud_identitycenter_application_instance" "test"{
-  name = var.name
+  name        = var.name
   template_id = var.template_id
   instance_id = var.instance_id
 }
