@@ -1145,6 +1145,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_permission_set_provisionings":            identitycenter.DataSourceIdentitycenterPermissionSetProvisionings(),
 			"huaweicloud_identitycenter_system_policy_attachments":               identitycenter.DataSourceIdentitycenterSystemPolicyAttachments(),
 			"huaweicloud_identitycenter_system_identity_policy_attachments":      identitycenter.DataSourceSystemIdentityPolicyAttachments(),
+			"huaweicloud_identitycenter_application_templates":                   identitycenter.DataSourceIdentityCenterApplicationTemplates(),
 			"huaweicloud_identitycenter_catalog_applications":                    identitycenter.DataSourceIdentityCenterCatalogApplications(),
 
 			"huaweicloud_iec_bandwidths":     iec.DataSourceBandWidths(),
@@ -1297,6 +1298,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_ram_resource_share_associations":           ram.DataSourceShareAssociations(),
 			"huaweicloud_ram_resource_share_associated_permissions": ram.DataSourceAssociatedPermissions(),
 			"huaweicloud_ram_resource_shares":                       ram.DataSourceRAMShares(),
+
+			"huaweicloud_rgc_home_region": rgc.DataSourceHomeRegion(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
