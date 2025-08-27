@@ -18,7 +18,7 @@ variable "instance_id" {}
 
 resource "huaweicloud_identitycenter_application_certificate" "test"{
   application_instance_id = var.application_instance_id
-  instance_id =  var.instance_id
+  instance_id = var.instance_id
 }
 ```
 
@@ -26,11 +26,9 @@ resource "huaweicloud_identitycenter_application_certificate" "test"{
 
 The following arguments are supported:
 
-* `instance_id` - (Required, String, ForceNew) Specifies the ID of the IAM Identity Center instance.
-  Changing this parameter will create a new resource.
+* `instance_id` - (Required, String, NonUpdatable) Specifies the ID of the IAM Identity Center instance.
 
-* `application_instance_id` - (Required, String, ForceNew) Specifies the ID of the application instance.
-  Changing this parameter will create a new resource.
+* `application_instance_id` - (Required, String, NonUpdatable) Specifies the ID of the application instance.
 
 * `application_certificate_status` - (Optional, String) Whether if you need to create an active certificate. Value options:
   + **active**
@@ -71,8 +69,8 @@ $ terraform import huaweicloud_identitycenter_application_certificate.test <inst
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include: `application_certificate_status`. It is generally
-recommended running `terraform plan` after importing an IdentityCenter user. You can then decide if changes should be
-applied to the IdentityCenter user, or the resource definition should be updated to align with the instance. Also, you
+recommended running `terraform plan` after importing an IdentityCenter application certificate. You can then decide if changes should be
+applied to the IdentityCenter application certificate, or the resource definition should be updated to align with the application certificate. Also, you
 can ignore changes as below.
 
 ```hcl

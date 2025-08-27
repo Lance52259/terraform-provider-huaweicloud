@@ -8,6 +8,7 @@ package identitycenter
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -20,6 +21,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var identityCenterApplicationCertificateNonUpdateParams = []string{"instance_id", "application_instance_id"}
 
 // @API IdentityCenter POST /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates
 // @API IdentityCenter POST /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}
@@ -36,17 +39,22 @@ func ResourceIdentityCenterApplicationCertificate() *schema.Resource {
 			StateContext: resourceIdentityCenterApplicationCertificateImport,
 		},
 
-		Description: "schema: Internal",
+		CustomizeDiff: config.FlexibleForceNew(identityCenterApplicationCertificateNonUpdateParams),
+
 		Schema: map[string]*schema.Schema{
 			"instance_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"application_instance_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
+			},
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
 			"application_certificate_status": {
 				Type:     schema.TypeString,
