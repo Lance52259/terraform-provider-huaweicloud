@@ -128,7 +128,6 @@ func dataSourceIdentityCenterCatalogApplicationsRead(_ context.Context, d *schem
 	d.SetId(dataSourceId)
 
 	mErr := multierror.Append(nil,
-		d.Set("region", region),
 		d.Set("applications", flattenCatalogApplications(applications)),
 	)
 	return diag.FromErr(mErr.ErrorOrNil())
