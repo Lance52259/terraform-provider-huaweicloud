@@ -1382,6 +1382,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_core_account":                          rgc.DataSourceCoreAccounts(),
 			"huaweicloud_rgc_config_rule_compliances":               rgc.DataSourceConfigRuleCompliances(),
 			"huaweicloud_rgc_external_config_rule_compliances":      rgc.DataSourceExternalConfigRuleCompliances(),
+			"huaweicloud_rgc_controls":                              rgc.DataSourceControls(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
