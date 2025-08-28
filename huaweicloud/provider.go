@@ -1389,6 +1389,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_controls":                              rgc.DataSourceControls(),
 			"huaweicloud_rgc_control_violations":                    rgc.DataSourceControlViolations(),
 			"huaweicloud_rgc_control_detail":                        rgc.DataSourceControlDetail(),
+			"huaweicloud_rgc_drift_details":                         rgc.DataSourceDriftDetails(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
