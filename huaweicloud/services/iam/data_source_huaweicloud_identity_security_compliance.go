@@ -78,7 +78,7 @@ func showSecurityComplianceByOption(iamV3Client *iamv3.IamClient, optionStr stri
 	} else if optionStr == "password_regex_description" {
 		option = iamModel.GetKeystoneShowSecurityComplianceByOptionRequestOptionEnum().PASSWORD_REGEX_DESCRIPTION
 	} else {
-		return diag.Errorf("%s option is not supportted", optionStr)
+		return diag.Errorf("%s option is not supported", optionStr)
 	}
 	request := &iamModel.KeystoneShowSecurityComplianceByOptionRequest{DomainId: cfg.DomainID, Option: option}
 	response, err := iamV3Client.KeystoneShowSecurityComplianceByOption(request)
