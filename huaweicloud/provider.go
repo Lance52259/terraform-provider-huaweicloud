@@ -1134,8 +1134,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_users":             iam.DataSourceIdentityUsers(),
 			"huaweicloud_identity_agencies":          iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":         iam.DataSourceIamIdentityProviders(),
-			"huaweicloud_identity_token":             iam.DataSourceIdentityToken(),
-			"huaweicloud_identity_credentials":       iam.DataSourceIdentityCredentials(),
 			"huaweicloud_identity_permission_detail": iam.DataSourceIdentityRole(),
 
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
@@ -2370,7 +2368,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_user_token":            iam.ResourceIdentityUserToken(),
 			"huaweicloud_identity_policy":                iam.ResourceIdentityPolicy(),
 			"huaweicloud_identity_policy_agency_attach":  iam.ResourceIdentityPolicyAgencyAttach(),
-			"huaweicloud_identity_security_token":        iam.ResourceIdentitySecurityTokens(),
 
 			"huaweicloud_identitycenter_user":                                   identitycenter.ResourceIdentityCenterUser(),
 			"huaweicloud_identitycenter_group":                                  identitycenter.ResourceIdentityCenterGroup(),
