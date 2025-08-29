@@ -21,9 +21,8 @@ func getMetaStudioResourceFunc(cfg *config.Config, state *terraform.ResourceStat
 func TestAccResourceMetaStudio_basic(t *testing.T) {
 	var (
 		resourceName = "huaweicloud_metastudio_instance.test"
-		// name         = acceptance.RandomAccResourceName()
-		instance interface{}
-		rc       = acceptance.InitResourceCheck(
+		instance     interface{}
+		rc           = acceptance.InitResourceCheck(
 			resourceName,
 			&instance,
 			getMetaStudioResourceFunc,
@@ -50,9 +49,9 @@ func TestAccResourceMetaStudio_basic(t *testing.T) {
 func testResourceMetaStudio_base() string {
 	return `
 resource "huaweicloud_metastudio_instance" "test" {
-  period_type = 2
-  period_num = 1
-  is_auto_renew = 0
+  period_type        = 2
+  period_num         = 1
+  is_auto_renew      = 0
   resource_spec_code = "hws.resource.type.metastudio.modeling.avatarlive.channel"
 }
 `

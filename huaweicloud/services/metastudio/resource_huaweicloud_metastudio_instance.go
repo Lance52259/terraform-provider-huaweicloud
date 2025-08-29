@@ -21,17 +21,6 @@ var nonUpdatableParams = []string{
 	"period_num",
 	"is_auto_renew",
 	"resource_spec_code",
-	"order_id",
-	"resource_expire_time",
-	"business_type",
-	"sub_resource_type",
-	"is_sub_resource",
-	"charging_mode",
-	"amount",
-	"usage",
-	"status",
-	"unit",
-	"upgrade_data.*.bind_domain_num",
 }
 
 func ResourceMetaStudio() *schema.Resource {
@@ -71,7 +60,6 @@ func ResourceMetaStudio() *schema.Resource {
 				Type:         schema.TypeInt,
 				Optional:     true,
 				ValidateFunc: validation.IntBetween(0, 1),
-				Default:      0,
 				Description:  `Specifies whether to auto-renew the vault when it expires.`,
 			},
 			"resource_spec_code": {
