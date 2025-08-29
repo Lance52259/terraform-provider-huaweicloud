@@ -10,9 +10,9 @@ import (
 
 func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 	dataSourceName := "data.huaweicloud_identity_role.role_1"
-	dataSourceName2 := "huaweicloud_identity_permission_detail.test"
+
 	dc := acceptance.InitDataSourceCheck(dataSourceName)
-	dc2 := acceptance.InitDataSourceCheck(dataSourceName2)
+
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
@@ -41,7 +41,7 @@ func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 			{
 				Config: testAccIdentityRoleDataSourceByRoleId,
 				Check: resource.ComposeTestCheckFunc(
-					dc2.CheckResourceExists(),
+					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSourceName, "name", "kms_adm"),
 					resource.TestCheckResourceAttr(dataSourceName, "display_name", "KMS Administrator"),
 					resource.TestCheckResourceAttr(dataSourceName, "role_id", "0af84c1502f447fa9c2fa18083fbb87e"),
@@ -63,7 +63,7 @@ data "huaweicloud_identity_role" "role_1" {
 }
 `
 const testAccIdentityRoleDataSourceByRoleId = `
-data "huaweicloud_identity_permission_detail" "test" {
+data "huaweicloud_identity_role" "role_1" {
 role_id =  "0af84c1502f447fa9c2fa18083fbb87e"
 }
 `

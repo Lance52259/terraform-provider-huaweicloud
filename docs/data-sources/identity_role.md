@@ -110,8 +110,7 @@ data "huaweicloud_identity_role" "role_1" {
 * `name` - (Optional, String) Specifies the name of the role for internal use.
   It's required if `display_name` is not specified.
 
-* `role_id` - (Optional, String) Specifies the role ID to query the details of the specified permission. This parameter
-  allows you to distinguish between listing permissions and querying specific permission details.
+* `role_id` - (Optional, String) Specifies the role ID to query the details of the specified role.
 
 
 ## Attribute Reference
