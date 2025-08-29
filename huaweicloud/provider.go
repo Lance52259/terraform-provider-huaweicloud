@@ -94,7 +94,6 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/live"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/lts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/meeting"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/metastudio"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/modelarts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mpc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mrs"
@@ -1136,6 +1135,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_agencies":            iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":           iam.DataSourceIamIdentityProviders(),
 			"huaweicloud_identity_regions":             iam.DataSourceIdentityRegions(),
+			"huaweicloud_identity_domain_quota":        iam.DataSourceIdentityDomainQuota(),
+			"huaweicloud_identity_project_quota":       iam.DataSourceIdentityProjectQuota(),
 			"huaweicloud_identity_user_token_info":     iam.DataSourceIdentityUserTokenInfo(),
 			"huaweicloud_identity_security_compliance": iam.DataSourceIdentitySecurityCompliance(),
 
