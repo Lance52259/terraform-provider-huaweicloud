@@ -101,6 +101,10 @@ data "huaweicloud_identity_role" "kms_adm" {
 * `name` - (Optional, String) Specifies the name of the role for internal use.
   It's required if `display_name` is not specified.
 
+* `role_id` - (Optional, String) Specifies the role ID to query the details of the specified permission. This parameter
+  allows you to distinguish between listing permissions and querying specific permission details.
+
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -110,3 +114,20 @@ In addition to all arguments above, the following attributes are exported:
 * `catalog` - The service catalog of the policy.
 * `type` - The display mode of the policy.
 * `policy` - The content of the policy.
+
+* `role` - An array of available permissions. The structure is documented below
+
+* `id` - The permission ID.
+* `display_name` - The permission display name.
+* `description` - The description of the permission.
+* `description_cn` - The description of the permission in Chinese.
+* `catalog` - The service catalog of the permission.
+* `policy` - The content of the permission.
+* `links` - The links of the permission.
+* `domain_id` - The permission domain ID.
+* `type` - AX represents display at the account level.
+  XA represents display at the project level.
+  AA represents display at both the account and project levels.
+  XX represents no display at either the account or project levels.
+  Custom policies can only be displayed in AX or XA modes and cannot be displayed in both account and project levels
+  (AA) or in neither (XX).

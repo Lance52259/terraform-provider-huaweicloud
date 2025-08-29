@@ -15,6 +15,7 @@ import (
 )
 
 // @API IAM GET /v3/roles
+// @API IAM get	/v3/roles/{role_id}
 func DataSourceIdentityRole() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityRoleRead,
@@ -24,13 +25,18 @@ func DataSourceIdentityRole() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
-				AtLeastOneOf: []string{"name", "display_name"},
+				AtLeastOneOf: []string{"name", "display_name", "role_id"},
 			},
 			"display_name": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Computed:     true,
-				AtLeastOneOf: []string{"name", "display_name"},
+				AtLeastOneOf: []string{"name", "display_name", "role_id"},
+			},
+			"role_id": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				AtLeastOneOf: []string{"name", "display_name", "role_id"},
 			},
 
 			"description": {
@@ -59,6 +65,15 @@ func dataSourceIdentityRoleRead(_ context.Context, d *schema.ResourceData, meta 
 	identityClient, err := cfg.IdentityV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
+	}
+	roleId := d.Get("role_id").(string)
+	if roleId != "" {
+		role, err := roles.Get(identityClient, roleId).Extract()
+		if err != nil {
+			return diag.Errorf("error fetching role details: %s", err)
+		}
+		d.SetId(role.ID)
+		return dataSourceIdentityRoleAttributes(d, role)
 	}
 
 	listOpts := roles.ListOpts{
