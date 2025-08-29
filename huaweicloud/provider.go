@@ -3037,6 +3037,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_cdn_domain_v1":               cdn.ResourceCdnDomain(),
 			"huaweicloud_scm_certificate":             ccm.ResourceCertificateImport(),
 
+			"huaweicloud_metastudio_instance": metastudio.ResourceMetaStudio(),
+
 			// Deprecated
 			"huaweicloud_apig_vpc_channel":               deprecated.ResourceApigVpcChannelV2(),
 			"huaweicloud_blockstorage_volume_v2":         deprecated.ResourceBlockStorageVolumeV2(),
@@ -3116,8 +3118,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_iotda_batchtask_file": deprecated.ResourceBatchTaskFile(),
 
 			"huaweicloud_images_image": deprecated.ResourceImsImage(),
-
-			"huaweicloud_metastudio_instance": metastudio.ResourceMetaStudio(),
 		},
 	}
 

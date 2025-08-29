@@ -49,12 +49,6 @@ func TestAccResourceMetaStudio_basic(t *testing.T) {
 
 func testResourceMetaStudio_base() string {
 	return `
-provider "huaweicloud" {
-  endpoints = {
-    "bss" = "cbc-cn.cn-north-7.myhuaweicloud.com"
-  }
-}
-
 resource "huaweicloud_metastudio_instance" "test" {
   period_type = 2
   period_num = 1

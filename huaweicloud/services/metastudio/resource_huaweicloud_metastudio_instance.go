@@ -16,103 +16,116 @@ import (
 	"time"
 )
 
+var nonUpdatableParams = []string{
+	"period_type",
+	"period_num",
+	"is_auto_renew",
+	"resource_spec_code",
+	"order_id",
+	"resource_expire_time",
+	"business_type",
+	"sub_resource_type",
+	"is_sub_resource",
+	"charging_mode",
+	"amount",
+	"usage",
+	"status",
+	"unit",
+	"upgrade_data.*.bind_domain_num",
+}
+
 func ResourceMetaStudio() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceMetaStudioCreate,
 		ReadContext:   resourceMetaStudioRead,
 		UpdateContext: resourceMetaStudioUpdate,
 		DeleteContext: resourceMetaStudioDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(40 * time.Minute),
+			Delete: schema.DefaultTimeout(10 * time.Minute),
+		},
+
+		CustomizeDiff: config.FlexibleForceNew(nonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
+			"region": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+			},
 			"period_type": {
 				Type:         schema.TypeInt,
 				Required:     true,
-				ForceNew:     true,
 				ValidateFunc: validation.IntInSlice([]int{2, 3, 6}),
 				Description:  `Specifies the charging period unit`,
 			},
 			"period_num": {
 				Type:         schema.TypeInt,
 				Required:     true,
-				ForceNew:     true,
 				ValidateFunc: validation.IntBetween(1, 2147483647),
 				Description:  `Specifies the number of periods to purchase.`,
 			},
 			"is_auto_renew": {
 				Type:         schema.TypeInt,
 				Optional:     true,
-				ForceNew:     true,
 				ValidateFunc: validation.IntBetween(0, 1),
 				Default:      0,
 				Description:  `Specifies whether to auto-renew the vault when it expires.`,
 			},
 			"resource_spec_code": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Required:    true,
 				Description: `Specifies the resource specification code`,
 			},
-			"region": {
-				Type:     schema.TypeString,
-				Computed: true,
-				ForceNew: true,
-			},
 			"order_id": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The order ID of resource`,
 			},
 			"resource_expire_time": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The resource expire time`,
 			},
 			"business_type": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The business type of resource`,
 			},
 			"sub_resource_type": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The sub-resource type of resource`,
 			},
 			"is_sub_resource": {
 				Type:        schema.TypeBool,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `Indicates whether it is a sub-resource. A sub-resource describes the quantity and unit of a subsidiary resource.`,
 			},
 			"charging_mode": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The billing mode`,
 			},
 			"amount": {
 				Type:        schema.TypeFloat,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `Total amount`,
 			},
 			"usage": {
 				Type:        schema.TypeFloat,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `Usage amount`,
 			},
 			"status": {
 				Type:        schema.TypeInt,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `Resource status. 0: Normal, 1: Frozen`,
 			},
 			"unit": {
 				Type:        schema.TypeString,
-				ForceNew:    true,
 				Computed:    true,
 				Description: `The unit of amount`,
 			},
@@ -131,7 +144,7 @@ func resourceMetaStudioCreate(ctx context.Context, d *schema.ResourceData, meta 
 		cfg    = meta.(*config.Config)
 		region = cfg.GetRegion(d)
 	)
-	client, err := cfg.MetaStudioClient(region)
+	client, err := cfg.NewServiceClient("metastudio", region)
 	if err != nil {
 		return diag.Errorf("error creating MetaStudio client: %s", err)
 	}
@@ -231,7 +244,7 @@ func resourceMetaStudioRead(_ context.Context, d *schema.ResourceData, meta inte
 		cfg    = meta.(*config.Config)
 		region = cfg.GetRegion(d)
 	)
-	client, err := cfg.MetaStudioClient(region)
+	client, err := cfg.NewServiceClient("metastudio", region)
 	if err != nil {
 		return diag.Errorf("error creating MetaStudio client: %s", err)
 	}
@@ -286,7 +299,7 @@ func resourceMetaStudioDelete(ctx context.Context, d *schema.ResourceData, meta 
 		cfg    = meta.(*config.Config)
 		region = cfg.GetRegion(d)
 	)
-	client, err := cfg.MetaStudioClient(region)
+	client, err := cfg.NewServiceClient("metastudio", region)
 	if err != nil {
 		return diag.Errorf("error creating Workspace APP client: %s", err)
 	}
