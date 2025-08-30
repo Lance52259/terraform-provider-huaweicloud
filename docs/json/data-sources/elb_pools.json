@@ -1,0 +1,214 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_elb_pools": {
+          "block": {
+            "attributes": {
+              "any_port_enable": {
+                "type": "string",
+                "optional": true
+              },
+              "connection_drain": {
+                "type": "string",
+                "optional": true
+              },
+              "description": {
+                "type": "string",
+                "description": "Specifies the description of the ELB pool.",
+                "optional": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "optional": true
+              },
+              "healthmonitor_id": {
+                "type": "string",
+                "description": "Specifies the health monitor ID of the ELB pool.",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "ip_version": {
+                "type": "string",
+                "optional": true
+              },
+              "lb_method": {
+                "type": "string",
+                "description": "Specifies the method of the ELB pool.",
+                "optional": true
+              },
+              "listener_id": {
+                "type": "string",
+                "description": "Specifies the listener ID of the ELB pool.",
+                "optional": true
+              },
+              "loadbalancer_id": {
+                "type": "string",
+                "description": "Specifies the loadbalancer ID of the ELB pool.",
+                "optional": true
+              },
+              "member_address": {
+                "type": "string",
+                "optional": true
+              },
+              "member_deletion_protection_enable": {
+                "type": "string",
+                "optional": true
+              },
+              "member_device_id": {
+                "type": "string",
+                "optional": true
+              },
+              "member_instance_id": {
+                "type": "string",
+                "optional": true
+              },
+              "name": {
+                "type": "string",
+                "description": "Specifies the name of the ELB pool.",
+                "optional": true
+              },
+              "pool_health": {
+                "type": "string",
+                "optional": true
+              },
+              "pool_id": {
+                "type": "string",
+                "description": "Specifies the ID of the ELB pool.",
+                "optional": true
+              },
+              "pools": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "any_port_enable": "bool",
+                      "connection_drain_enabled": "bool",
+                      "connection_drain_timeout": "number",
+                      "created_at": "string",
+                      "description": "string",
+                      "enterprise_project_id": "string",
+                      "healthmonitor_id": "string",
+                      "id": "string",
+                      "ip_version": "string",
+                      "lb_method": "string",
+                      "listeners": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "loadbalancers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "member_deletion_protection_enable": "bool",
+                      "members": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "minimum_healthy_member_count": "number",
+                      "name": "string",
+                      "persistence": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "cookie_name": "string",
+                            "timeout": "number",
+                            "type": "string"
+                          }
+                        ]
+                      ],
+                      "protection_reason": "string",
+                      "protection_status": "string",
+                      "protocol": "string",
+                      "public_border_group": "string",
+                      "quic_cid_hash_strategy": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "len": "number",
+                            "offset": "number"
+                          }
+                        ]
+                      ],
+                      "slow_start_duration": "number",
+                      "slow_start_enabled": "bool",
+                      "type": "string",
+                      "updated_at": "string",
+                      "vpc_id": "string"
+                    }
+                  ]
+                ],
+                "description": "Pool list. For details, see Data structure of the Pool field.",
+                "computed": true
+              },
+              "protection_status": {
+                "type": "string",
+                "description": "Specifies the protection status for update.",
+                "optional": true
+              },
+              "protocol": {
+                "type": "string",
+                "description": "Specifies the protocol of the ELB pool.",
+                "optional": true
+              },
+              "public_border_group": {
+                "type": "string",
+                "optional": true
+              },
+              "quic_cid_len": {
+                "type": "number",
+                "optional": true
+              },
+              "quic_cid_offset": {
+                "type": "number",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "type": {
+                "type": "string",
+                "description": "Specifies the type of the backend server group.",
+                "optional": true
+              },
+              "vpc_id": {
+                "type": "string",
+                "description": "Specifies the ID of the VPC where the backend server group works.",
+                "optional": true
+              }
+            }
+          },
+          "product": {
+            "short": "ELB",
+            "name": "Elastic Load Balance",
+            "catalog": "Networking",
+            "name_cn": "弹性负载均衡",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}

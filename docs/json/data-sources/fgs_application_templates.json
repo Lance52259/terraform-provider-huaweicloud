@@ -1,0 +1,58 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_fgs_application_templates": {
+          "block": {
+            "attributes": {
+              "category": {
+                "type": "string",
+                "description": "The category used to query the application templates.",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "region": {
+                "type": "string",
+                "description": "The region where the application templates are located.",
+                "computed": true
+              },
+              "runtime": {
+                "type": "string",
+                "description": "The runtime name used to query the application templates.",
+                "optional": true
+              },
+              "templates": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "category": "string",
+                      "description": "string",
+                      "id": "string",
+                      "name": "string",
+                      "runtime": "string",
+                      "type": "string"
+                    }
+                  ]
+                ],
+                "description": "All application templates that match the filter parameters.",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "FunctionGraph",
+            "name": "FunctionGraph",
+            "catalog": "Compute",
+            "name_cn": "函数工作流",
+            "catalog_cn": "计算"
+          }
+        }
+      }
+    }
+  }
+}

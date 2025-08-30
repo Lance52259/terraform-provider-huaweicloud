@@ -1,0 +1,296 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_elb_l7policies": {
+          "block": {
+            "attributes": {
+              "action": {
+                "type": "string",
+                "optional": true
+              },
+              "description": {
+                "type": "string",
+                "optional": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "l7policies": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "action": "string",
+                      "created_at": "string",
+                      "description": "string",
+                      "enterprise_project_id": "string",
+                      "fixed_response_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "content_type": "string",
+                            "insert_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string",
+                                        "value": "string",
+                                        "value_type": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "message_body": "string",
+                            "remove_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "status_code": "string",
+                            "traffic_limit_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "burst": "number",
+                                  "per_source_ip_qps": "number",
+                                  "qps": "number"
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ],
+                      "id": "string",
+                      "listener_id": "string",
+                      "name": "string",
+                      "priority": "number",
+                      "provisioning_status": "string",
+                      "redirect_listener_id": "string",
+                      "redirect_pool_id": "string",
+                      "redirect_pools_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "pool_id": "string",
+                            "weight": "number"
+                          }
+                        ]
+                      ],
+                      "redirect_pools_extend_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "insert_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string",
+                                        "value": "string",
+                                        "value_type": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "remove_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "rewrite_url_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "host": "string",
+                                  "path": "string",
+                                  "query": "string"
+                                }
+                              ]
+                            ],
+                            "rewrite_url_enabled": "bool",
+                            "traffic_limit_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "burst": "number",
+                                  "per_source_ip_qps": "number",
+                                  "qps": "number"
+                                }
+                              ]
+                            ]
+                          }
+                        ]
+                      ],
+                      "redirect_pools_sticky_session_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "enable": "bool",
+                            "timeout": "number"
+                          }
+                        ]
+                      ],
+                      "redirect_url_config": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "host": "string",
+                            "insert_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string",
+                                        "value": "string",
+                                        "value_type": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "path": "string",
+                            "port": "string",
+                            "protocol": "string",
+                            "query": "string",
+                            "remove_headers_config": [
+                              "list",
+                              [
+                                "object",
+                                {
+                                  "configs": [
+                                    "list",
+                                    [
+                                      "object",
+                                      {
+                                        "key": "string"
+                                      }
+                                    ]
+                                  ]
+                                }
+                              ]
+                            ],
+                            "status_code": "string"
+                          }
+                        ]
+                      ],
+                      "rules": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "updated_at": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              },
+              "l7policy_id": {
+                "type": "string",
+                "optional": true
+              },
+              "listener_id": {
+                "type": "string",
+                "optional": true
+              },
+              "name": {
+                "type": "string",
+                "optional": true
+              },
+              "priority": {
+                "type": "number",
+                "optional": true
+              },
+              "provisioning_status": {
+                "type": "string",
+                "optional": true
+              },
+              "redirect_listener_id": {
+                "type": "string",
+                "optional": true
+              },
+              "redirect_pool_id": {
+                "type": "string",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "ELB",
+            "name": "Elastic Load Balance",
+            "catalog": "Networking",
+            "name_cn": "弹性负载均衡",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}

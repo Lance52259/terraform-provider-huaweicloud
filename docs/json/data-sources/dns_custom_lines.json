@@ -1,0 +1,72 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_dns_custom_lines": {
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "ip": {
+                "type": "string",
+                "description": "The IP address used to query custom line which is in the IP address range.",
+                "optional": true
+              },
+              "line_id": {
+                "type": "string",
+                "description": "The ID of the custom line. Fuzzy search is supported.",
+                "optional": true
+              },
+              "lines": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "created_at": "string",
+                      "description": "string",
+                      "id": "string",
+                      "ip_segments": [
+                        "list",
+                        "string"
+                      ],
+                      "name": "string",
+                      "status": "string",
+                      "updated_at": "string"
+                    }
+                  ]
+                ],
+                "description": "All custom lines that match the filter parameters.",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the custom line. Fuzzy search is supported.",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "description": "The region in which to query the resource. If omitted, the provider-level region will be used.",
+                "computed": true
+              },
+              "status": {
+                "type": "string",
+                "description": "The status of the custom line.",
+                "optional": true
+              }
+            }
+          },
+          "product": {
+            "short": "DNS",
+            "name": "Domain Name Service",
+            "catalog": "Business Applications",
+            "name_cn": "云解析服务",
+            "catalog_cn": "企业应用"
+          }
+        }
+      }
+    }
+  }
+}

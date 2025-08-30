@@ -1,0 +1,130 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_lb_listeners": {
+          "block": {
+            "attributes": {
+              "client_ca_tls_container_ref": {
+                "type": "string",
+                "optional": true
+              },
+              "default_pool_id": {
+                "type": "string",
+                "optional": true
+              },
+              "default_tls_container_ref": {
+                "type": "string",
+                "optional": true
+              },
+              "description": {
+                "type": "string",
+                "optional": true
+              },
+              "enterprise_project_id": {
+                "type": "string",
+                "optional": true
+              },
+              "http2_enable": {
+                "type": "string",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "listener_id": {
+                "type": "string",
+                "optional": true
+              },
+              "listeners": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "client_ca_tls_container_ref": "string",
+                      "connection_limit": "number",
+                      "created_at": "string",
+                      "default_pool_id": "string",
+                      "default_tls_container_ref": "string",
+                      "description": "string",
+                      "http2_enable": "bool",
+                      "id": "string",
+                      "insert_headers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "x_forwarded_elb_ip": "string",
+                            "x_forwarded_host": "string"
+                          }
+                        ]
+                      ],
+                      "loadbalancers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "id": "string"
+                          }
+                        ]
+                      ],
+                      "name": "string",
+                      "protection_reason": "string",
+                      "protection_status": "string",
+                      "protocol": "string",
+                      "protocol_port": "number",
+                      "sni_container_refs": [
+                        "list",
+                        "string"
+                      ],
+                      "tags": [
+                        "map",
+                        "string"
+                      ],
+                      "tls_ciphers_policy": "string",
+                      "updated_at": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              },
+              "loadbalancer_id": {
+                "type": "string",
+                "optional": true
+              },
+              "name": {
+                "type": "string",
+                "optional": true
+              },
+              "protocol": {
+                "type": "string",
+                "optional": true
+              },
+              "protocol_port": {
+                "type": "string",
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "tls_ciphers_policy": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          },
+          "product": {
+            "short": "ELB",
+            "name": "Elastic Load Balance",
+            "catalog": "Networking",
+            "name_cn": "弹性负载均衡",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}
