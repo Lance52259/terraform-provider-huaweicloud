@@ -18,10 +18,10 @@ variable "application_instance_id" {}
 variable "principal_id" {}
 
 resource "huaweicloud_identitycenter_application_assignment" "test"{
-  instance_id       = var.instance_id
+  instance_id = var.instance_id
   application_instance_id = var.application_instance_id
-  principal_id      = var.principal_id
-  principal_type    = "USER"
+  principal_id = var.principal_id
+  principal_type = "USER"
 }
 ```
 
@@ -29,23 +29,15 @@ resource "huaweicloud_identitycenter_application_assignment" "test"{
 
 The following arguments are supported:
 
-* `instance_id` - (Required, String, ForceNew) Specifies the ID of the Identity Center instance.
+* `instance_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center instance.
 
-  Changing this parameter will create a new resource.
+* `application_instance_id` - (Required, String, NonUpdatable) Specifies the ID of the application instance.
 
-* `application_instance_id` - (Required, String, ForceNew) Specifies the ID of the application instance.
-
-  Changing this parameter will create a new resource.
-
-* `principal_id` - (Required, String, ForceNew) Specifies the ID of the user or user group that belongs to IAM
+* `principal_id` - (Required, String, NonUpdatable) Specifies the ID of the user or user group that belongs to IAM
   Identity Center.
 
-  Changing this parameter will create a new resource.
-
-* `principal_type` - (Required, String, ForceNew) Specifies the type of the user or user group.
+* `principal_type` - (Required, String, NonUpdatable) Specifies the type of the user or user group.
   Value options: **USER**, **GROUP**.
-
-  Changing this parameter will create a new resource.
 
 ## Attribute Reference
 

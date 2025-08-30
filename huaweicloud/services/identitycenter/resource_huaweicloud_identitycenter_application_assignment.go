@@ -1,13 +1,9 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product IdentityCenter
-// ---------------------------------------------------------------
-
 package identitycenter
 
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -20,6 +16,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var identityCenterApplicationAssignmentNonUpdateParams = []string{"instance_id", "application_instance_id", "principal_id", "principal_type"}
 
 // @API IdentityCenter POST /v1/instances/{instance_id}/applications/{application_instance_id}/assignments/create
 // @API IdentityCenter GET /v1/instances/{instance_id}/applications/{application_instance_id}/assignments
@@ -34,27 +32,30 @@ func ResourceIdentityCenterApplicationAssignment() *schema.Resource {
 			StateContext: resourceIdentityCenterApplicationAssignmentImport,
 		},
 
-		Description: "schema: Internal",
+		CustomizeDiff: config.FlexibleForceNew(identityCenterApplicationAssignmentNonUpdateParams),
+
 		Schema: map[string]*schema.Schema{
 			"instance_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"application_instance_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"principal_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"principal_type": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
+			},
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
 			"application_urn": {
 				Type:     schema.TypeString,
