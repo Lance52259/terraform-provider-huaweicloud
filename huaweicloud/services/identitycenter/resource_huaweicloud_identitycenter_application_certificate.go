@@ -137,7 +137,7 @@ func resourceIdentityCenterApplicationCertificateCreate(ctx context.Context, d *
 	}
 	d.SetId(certificateId)
 
-	if d.HasChange("application_certificate_status") {
+	if _, ok := d.GetOk("application_certificate_status"); ok {
 		if d.Get("application_certificate_status").(string) == "active" {
 			updateApplicationInstanceActiveCertificatePath := client.Endpoint + updateApplicationInstanceActiveCertificateHttpUrl
 			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{instance_id}",
