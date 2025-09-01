@@ -137,23 +137,21 @@ func resourceIdentityCenterApplicationCertificateCreate(ctx context.Context, d *
 	}
 	d.SetId(certificateId)
 
-	if _, ok := d.GetOk("application_certificate_status"); ok {
-		if d.Get("application_certificate_status").(string) == "active" {
-			updateApplicationInstanceActiveCertificatePath := client.Endpoint + updateApplicationInstanceActiveCertificateHttpUrl
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{instance_id}",
-				fmt.Sprintf("%v", d.Get("instance_id")))
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{application_instance_id}",
-				fmt.Sprintf("%v", d.Get("application_instance_id")))
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{certificate_id}", d.Id())
+	if status, ok := d.GetOk("application_certificate_status"); ok && status == "active" {
+		updateApplicationInstanceActiveCertificatePath := client.Endpoint + updateApplicationInstanceActiveCertificateHttpUrl
+		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{instance_id}",
+			fmt.Sprintf("%v", d.Get("instance_id")))
+		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{application_instance_id}",
+			fmt.Sprintf("%v", d.Get("application_instance_id")))
+		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{certificate_id}", d.Id())
 
-			updateApplicationInstanceActiveCertificateOpt := golangsdk.RequestOpts{
-				KeepResponseBody: true,
-			}
-			_, err = client.Request("PUT", updateApplicationInstanceActiveCertificatePath,
-				&updateApplicationInstanceActiveCertificateOpt)
-			if err != nil {
-				return diag.Errorf("error updating Identity Center application certificate status: %s", err)
-			}
+		updateApplicationInstanceActiveCertificateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		_, err = client.Request("PUT", updateApplicationInstanceActiveCertificatePath,
+			&updateApplicationInstanceActiveCertificateOpt)
+		if err != nil {
+			return diag.Errorf("error updating Identity Center application certificate status: %s", err)
 		}
 	}
 
