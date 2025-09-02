@@ -1,9 +1,9 @@
 ---
 subcategory: "Organizations"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_organizations_accounts"
+page_title: "HuaweiCloud: huaweicloud_organizations_delegated_services"
 description: |-
-  Use this data source to get the list of accounts in an organization.
+  Use this data source to get the list of delegated services.
 ---
 
 # huaweicloud_organizations_delegated_services
