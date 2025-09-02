@@ -6,21 +6,26 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
 	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @IAM GET /v3.0/OS-CREDENTIAL/credentials
-func DataSourceIdentityCredentials() *schema.Resource {
+
+func DataSourceIdentityAccessKey() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceIdentityCredentialsRead,
+		ReadContext: dataSourceIdentityAccessKeyRead,
 		Schema: map[string]*schema.Schema{
 			"user_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"access_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
 			"credentials": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -46,6 +51,12 @@ func DataSourceIdentityCredentials() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"last_use_time": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Computed:    true,
+							Description: "field is only present when you are certified by access_key",
+						},
 					},
 				},
 			},
@@ -53,30 +64,43 @@ func DataSourceIdentityCredentials() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityCredentialsRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	cfg := m.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamClient, err := cfg.HcIamV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	userId := d.Get("user_id").(string)
-	request := &iamModel.ListPermanentAccessKeysRequest{
-		UserId: &userId,
-	}
-	response, err := iamV3Client.ListPermanentAccessKeys(request)
-	if err != nil {
-		return diag.Errorf("iamV3Client response error : %s", err)
-	}
 	id, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
 	d.SetId(id)
-	mErr := multierror.Append(
-		nil,
-		d.Set("credentials", flattenKey(response)),
-	)
+
+	userId := d.Get("user_id").(string)
+	if userId == "" {
+		userId = cfg.UserID
+	}
+	access_key := d.Get("access_key").(string)
+	if access_key != "" {
+		request := &iamModel.ShowPermanentAccessKeyRequest{
+			AccessKey: access_key,
+		}
+		response, err := iamClient.ShowPermanentAccessKey(request)
+		if err != nil {
+			return diag.Errorf("iamV3Client response error : %s", err)
+		}
+		mErr := multierror.Append(nil, d.Set("credentials", flattenAccessKey(response)))
+		return diag.FromErr(mErr.ErrorOrNil())
+	}
+	request := &iamModel.ListPermanentAccessKeysRequest{
+		UserId: &userId,
+	}
+	response, err := iamClient.ListPermanentAccessKeys(request)
+	if err != nil {
+		return diag.Errorf("iamV3Client response error : %s", err)
+	}
+	mErr := multierror.Append(nil, d.Set("credentials", flattenKey(response)))
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
@@ -96,6 +120,25 @@ func flattenKey(response *iamModel.ListPermanentAccessKeysResponse) []map[string
 			"create_time": v.CreateTime,
 			"description": v.Description,
 		}
+	}
+	return res
+}
+
+func flattenAccessKey(response *iamModel.ShowPermanentAccessKeyResponse) []map[string]interface{} {
+	keyRaw := utils.PathSearch("credential", response, nil)
+	if keyRaw == nil {
+		return make([]map[string]interface{}, 0)
+	}
+	key := keyRaw.(*iamModel.ShowCredential)
+
+	res := make([]map[string]interface{}, 1)
+	res[0] = map[string]interface{}{
+		"user_id":       key.UserId,
+		"access":        key.Access,
+		"status":        key.Status,
+		"create_time":   key.CreateTime,
+		"description":   key.Description,
+		"last_use_time": key.LastUseTime,
 	}
 	return res
 }
