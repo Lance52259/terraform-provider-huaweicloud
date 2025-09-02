@@ -1711,6 +1711,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_organizations_tag_policy_services":      organizations.DataSourceOrganizationsTagPolicyServices(),
 			"huaweicloud_organizations_resource_tags":            organizations.DataSourceOrganizationsTags(),
 			"huaweicloud_organizations_resource_instances":       organizations.DataSourceOrganizationsResourceInstances(),
+			"huaweicloud_organizations_delegated_services":       organizations.DataSourceOrganizationsDelegatedServices(),
 			"huaweicloud_organizations_quotas":                   organizations.DataSourceOrganizationsQuotas(),
 			"huaweicloud_organizations_create_account_status":    organizations.DataSourceOrganizationsCreateAccountStatus(),
 			"huaweicloud_organizations_close_account_status":     organizations.DataSourceOrganizationsCloseAccountStatus(),
