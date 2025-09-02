@@ -1262,6 +1262,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_nat_private_transit_ip_tags":  nat.DataSourceNatPrivateTransitIpTags(),
 			"huaweicloud_nat_private_transit_ips":      nat.DataSourcePrivateTransitIps(),
 			"huaweicloud_nat_snat_rules":               nat.DataSourceSnatRules(),
+			"huaweicloud_nat_gateway_specs":            nat.DataSourceNatGatewaySpecs(),
+			"huaweicloud_nat_private_gateway_specs":    nat.DataSourceNatPrivateGatewaySpecs(),
 			"huaweicloud_nat_gateways_by_tags":         nat.DataSourceNatGatewaysByTags(),
 			"huaweicloud_nat_private_gateways_by_tags": nat.DataSourceNatPrivateGatewaysByTags(),
 
