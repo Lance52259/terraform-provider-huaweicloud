@@ -94,7 +94,6 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/live"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/lts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/meeting"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/metastudio"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/modelarts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mpc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mrs"
@@ -1135,6 +1134,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_users":               iam.DataSourceIdentityUsers(),
 			"huaweicloud_identity_agencies":            iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":           iam.DataSourceIamIdentityProviders(),
+			"huaweicloud_identity_provider_protocols":  iam.DataSourceIamIdentityProviderProtocols(),
 			"huaweicloud_identity_regions":             iam.DataSourceIdentityRegions(),
 			"huaweicloud_identity_domain_quota":        iam.DataSourceIdentityDomainQuota(),
 			"huaweicloud_identity_project_quota":       iam.DataSourceIdentityProjectQuota(),
@@ -2376,6 +2376,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_user":                         iam.ResourceIdentityUser(),
 			"huaweicloud_identity_user_role_assignment":         iam.ResourceIdentityUserRoleAssignment(),
 			"huaweicloud_identity_provider":                     iam.ResourceIdentityProvider(),
+			"huaweicloud_identity_provider_protocol":            iam.ResourceIdentityProviderProtocol(),
 			"huaweicloud_identity_password_policy":              iam.ResourceIdentityPasswordPolicy(),
 			"huaweicloud_identity_protection_policy":            iam.ResourceIdentityProtectionPolicy(),
 			"huaweicloud_identity_login_policy":                 iam.ResourceIdentityLoginPolicy(),
