@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -90,8 +89,7 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 		if err != nil {
 			return diag.Errorf("iamV3Client response error : %s", err)
 		}
-		mErr := multierror.Append(nil, d.Set("credentials", flattenAccessKey(response)))
-		return diag.FromErr(mErr.ErrorOrNil())
+		return diag.FromErr(d.Set("credentials", flattenAccessKey(response)))
 	}
 	request := &iamModel.ListPermanentAccessKeysRequest{
 		UserId: &userId,
@@ -100,8 +98,7 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.Errorf("iamV3Client response error : %s", err)
 	}
-	mErr := multierror.Append(nil, d.Set("credentials", flattenKey(response)))
-	return diag.FromErr(mErr.ErrorOrNil())
+	return diag.FromErr(d.Set("credentials", flattenKey(response)))
 }
 
 func flattenKey(response *iamModel.ListPermanentAccessKeysResponse) []map[string]interface{} {

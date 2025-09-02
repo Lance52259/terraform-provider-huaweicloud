@@ -9,6 +9,8 @@ description: ""
 
 Query all permanent access key and specified access key data source within Huaweicloud IAM service.
 
+-> **NOTE:** You just have user privileges in your HuaweiCloud cloud to use this resource.
+
 ## Example Usage
 
 ```hcl
@@ -75,6 +77,7 @@ data "huaweicloud_identity_access_key" "test3" {
 * `access_key` - (Optional, String) access_key associated with the identity user.
 
 ## Attribute Reference
+* `credentials` -  The credentials carrying user information.
 
 * `user_id` -  The IAM user ID to which the access_key belongs.
 
