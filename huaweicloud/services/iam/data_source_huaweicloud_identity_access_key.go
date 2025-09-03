@@ -7,24 +7,24 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @IAM GET /v3.0/OS-CREDENTIAL/credentials
-
+// @IAM GET /v3.0/OS-CREDENTIAL/credentials/{access_key}
 func DataSourceIdentityAccessKey() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityAccessKeyRead,
 		Schema: map[string]*schema.Schema{
 			"user_id": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"access_key"},
 			},
 			"access_key": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"user_id"},
 			},
-
 			"credentials": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -76,10 +76,6 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	}
 	d.SetId(id)
 
-	userId := d.Get("user_id").(string)
-	if userId == "" {
-		userId = cfg.UserID
-	}
 	access_key := d.Get("access_key").(string)
 	if access_key != "" {
 		request := &iamModel.ShowPermanentAccessKeyRequest{
@@ -89,7 +85,11 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 		if err != nil {
 			return diag.Errorf("iamV3Client response error : %s", err)
 		}
-		return diag.FromErr(d.Set("credentials", flattenAccessKey(response)))
+		return diag.FromErr(d.Set("credentials", flattenShowAccessKeyResponse(response)))
+	}
+	userId := d.Get("user_id").(string)
+	if userId == "" {
+		userId = cfg.UserID
 	}
 	request := &iamModel.ListPermanentAccessKeysRequest{
 		UserId: &userId,
@@ -98,44 +98,32 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.Errorf("iamV3Client response error : %s", err)
 	}
-	return diag.FromErr(d.Set("credentials", flattenKey(response)))
+	return diag.FromErr(d.Set("credentials", flattenListAccessKeyResponse(response)))
 }
 
-func flattenKey(response *iamModel.ListPermanentAccessKeysResponse) []map[string]interface{} {
-	keyRaw := utils.PathSearch("credentials", response, nil)
-	if keyRaw == nil {
-		return make([]map[string]interface{}, 0)
-	}
-	key := keyRaw.(*[]iamModel.Credentials)
-
-	res := make([]map[string]interface{}, len(*key))
-	for i, v := range *key {
+func flattenListAccessKeyResponse(response *iamModel.ListPermanentAccessKeysResponse) []map[string]interface{} {
+	res := make([]map[string]interface{}, len(*response.Credentials))
+	for i, credential := range *response.Credentials {
 		res[i] = map[string]interface{}{
-			"user_id":     v.UserId,
-			"access":      v.Access,
-			"status":      v.Status,
-			"create_time": v.CreateTime,
-			"description": v.Description,
+			"user_id":     credential.UserId,
+			"access":      credential.Access,
+			"status":      credential.Status,
+			"create_time": credential.CreateTime,
+			"description": credential.Description,
 		}
 	}
 	return res
 }
 
-func flattenAccessKey(response *iamModel.ShowPermanentAccessKeyResponse) []map[string]interface{} {
-	keyRaw := utils.PathSearch("credential", response, nil)
-	if keyRaw == nil {
-		return make([]map[string]interface{}, 0)
-	}
-	key := keyRaw.(*iamModel.ShowCredential)
-
+func flattenShowAccessKeyResponse(response *iamModel.ShowPermanentAccessKeyResponse) []map[string]interface{} {
 	res := make([]map[string]interface{}, 1)
 	res[0] = map[string]interface{}{
-		"user_id":       key.UserId,
-		"access":        key.Access,
-		"status":        key.Status,
-		"create_time":   key.CreateTime,
-		"description":   key.Description,
-		"last_use_time": key.LastUseTime,
+		"user_id":       response.Credential.UserId,
+		"access":        response.Credential.Access,
+		"status":        response.Credential.Status,
+		"create_time":   response.Credential.CreateTime,
+		"description":   response.Credential.Description,
+		"last_use_time": response.Credential.LastUseTime,
 	}
 	return res
 }

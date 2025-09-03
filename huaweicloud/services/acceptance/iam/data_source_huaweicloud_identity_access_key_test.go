@@ -28,16 +28,16 @@ func TestAccIdentityAccessKeyDataSource_basic(t *testing.T) {
 				Config: AccIdentityAccessKeyDataSourceByAccessKey_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSource, "credential.#", "1"),
-					resource.TestCheckResourceAttr(dataSource, "credential.0.status", "active"),
+					resource.TestCheckResourceAttr(dataSource, "credentials.#", "1"),
+					resource.TestCheckResourceAttr(dataSource, "credentials.0.status", "active"),
 				),
 			},
 			{
-				Config: AccIdentityAccessKeyDataSourceWithoutParams_basic,
+				Config: testAccIdentityAccessKeyDataSourceWithoutParams_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSource, "credentials.#", "1"),
-					resource.TestCheckResourceAttr(dataSource, "credential.0.status", "active"),
+					resource.TestCheckResourceAttr(dataSource, "credentials.0.status", "active"),
 				),
 			},
 		},
@@ -46,19 +46,14 @@ func TestAccIdentityAccessKeyDataSource_basic(t *testing.T) {
 
 const AccIdentityAccessKeyDataSource_basic = `
 resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "chenyanC0212"
+  name        = "my_test_huaweicloud"
+  password    = "password@123!"
   enabled     = true
   description = "tested by terraform"
 }
-
-
 resource "huaweicloud_identity_access_key" "key_1" {
   user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
 }
-
 data "huaweicloud_identity_access_key" "test" {
   user_id = huaweicloud_identity_access_key.key_1.user_id
 }
@@ -66,39 +61,20 @@ data "huaweicloud_identity_access_key" "test" {
 
 const AccIdentityAccessKeyDataSourceByAccessKey_basic = `
 resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "chenyanC0212"
+  name        = "my_test_huaweicloud"
+  password    = "password@123!"
   enabled     = true
   description = "tested by terraform"
 }
-
-
 resource "huaweicloud_identity_access_key" "key_1" {
-  user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
+  user_id  = huaweicloud_identity_user.test_user.id
 }
-
 data "huaweicloud_identity_access_key" "test" {
   access_key = huaweicloud_identity_access_key.key_1.id
 }
 `
 
-const AccIdentityAccessKeyDataSourceWithoutParams_basic = `
-resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "chenyanC0212"
-  enabled     = true
-  description = "tested by terraform"
-}
-
-
-resource "huaweicloud_identity_access_key" "key_1" {
-  user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
-}
-
+const testAccIdentityAccessKeyDataSourceWithoutParams_basic = `
 data "huaweicloud_identity_access_key" "test" {
 }
 `

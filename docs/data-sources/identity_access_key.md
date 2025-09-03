@@ -66,7 +66,7 @@ resource "huaweicloud_identity_access_key" "key_1" {
 }
 
 data "huaweicloud_identity_access_key" "test3" {
-
+  
 }
 ```
 
