@@ -15,18 +15,14 @@ Query all permanent access key and specified access key data source within Huawe
 
 ```hcl
 resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "password@1223!"
+  name        = "my_test_huaweicloud"
+  password    = "password@123!"
   enabled     = true
   description = "tested by terraform"
 }
-
 resource "huaweicloud_identity_access_key" "key_1" {
   user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
 }
-
 data "huaweicloud_identity_access_key" "test" {
   user_id = huaweicloud_identity_access_key.key_1.user_id
 }
@@ -34,39 +30,20 @@ data "huaweicloud_identity_access_key" "test" {
 ```
 ```hcl
 resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "password@1223!"
+  name        = "my_test_huaweicloud"
+  password    = "password@123!"
   enabled     = true
   description = "tested by terraform"
 }
-
 resource "huaweicloud_identity_access_key" "key_1" {
-  user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
+  user_id  = huaweicloud_identity_user.test_user.id
 }
-
-data "huaweicloud_identity_access_key" "test2" {
+data "huaweicloud_identity_access_key" "test" {
   access_key = huaweicloud_identity_access_key.key_1.id
-
 }
 ```
 ```hcl
-resource "huaweicloud_identity_user" "test_user" {
-  name        = "test_huaweicloud"
-  password    = "password@1223!"
-  enabled     = true
-  description = "tested by terraform"
-}
-
-resource "huaweicloud_identity_access_key" "key_1" {
-  user_id     = huaweicloud_identity_user.test_user.id
-  description = "access key by terraform"
-  secret_file = "./credentials.csv"
-}
-
 data "huaweicloud_identity_access_key" "test3" {
-  
 }
 ```
 
