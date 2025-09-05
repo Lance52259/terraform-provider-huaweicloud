@@ -9,7 +9,7 @@ description: ""
 
 Verify the validity of the token data source within Huaweicloud
 
--> **NOTE:** You *must* have admin privileges to use this data source.
+-> **NOTE:** You just have user privileges to use this data source.
 
 ## Example Usage
 
@@ -25,13 +25,13 @@ resource "huaweicloud_identity_user_token" "test" {
 }
 
 data "huaweicloud_identity_token" "test" {
-  token = huaweicloud_identity_user_token.test.token
+  x_subject_token = huaweicloud_identity_user_token.test.token
 }
 ```
 
 ## Argument Reference
 
-* `x_subject_token` - (required, string) The token to be verified
+* `x_subject_token` - (Required, String) The token to be verified
 
 * `nocatalog` - (Optional, String) If set, the response will not include the **catalog** field. Any non-empty string will be treated as **true**.
 

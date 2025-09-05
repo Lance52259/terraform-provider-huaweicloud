@@ -29,7 +29,6 @@ func DataSourceIdentityToken() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"expires_at": {
-
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -183,14 +182,9 @@ func dataSourceIdentityTokenRead(_ context.Context, d *schema.ResourceData, meta
 	request := &iamModel.KeystoneValidateTokenRequest{
 		XSubjectToken: xSubjectToken,
 	}
-
-	noCatalog := d.Get("no_catalog")
-	noCatalogStr := ""
-	if noCatalog != nil {
-		noCatalogStr = noCatalog.(string)
-		if noCatalogStr != "" {
-			request.Nocatalog = &noCatalogStr
-		}
+	noCatalog := d.Get("no_catalog").(string)
+	if noCatalog != "" {
+		request.Nocatalog = &noCatalog
 	}
 	response, err := iamV3Client.KeystoneValidateToken(request)
 	if err != nil {
@@ -201,13 +195,12 @@ func dataSourceIdentityTokenRead(_ context.Context, d *schema.ResourceData, meta
 		"expires_at": response.Token.ExpiresAt,
 		"issued_at":  response.Token.IssuedAt,
 		"methods":    response.Token.Methods,
-		//"catalog":    flattenCatalog(response.Token.Catalog),
-		"domain":  flattenDomain(response.Token.Domain),
-		"project": flattenProject(response.Token.Project),
-		"roles":   flattenRoles(response.Token.Roles),
-		"user":    flattenUser(response.Token.User),
+		"domain":     flattenDomain(response.Token.Domain),
+		"project":    flattenProject(response.Token.Project),
+		"roles":      flattenRoles(response.Token.Roles),
+		"user":       flattenUser(response.Token.User),
 	}
-	if noCatalogStr == "" {
+	if noCatalog == "" {
 		result[0]["catalog"] = flattenCatalog(response.Token.Catalog)
 	}
 	id, _ := uuid.GenerateUUID()
