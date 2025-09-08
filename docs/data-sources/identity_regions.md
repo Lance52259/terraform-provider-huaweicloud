@@ -26,16 +26,18 @@ data "huaweicloud_identity_regions" "test2" {
 
 ## Attribute Reference
 
-* `regions` - The region info list.
+* `regions` - Indicates the region info list.
+  The [regions](#IdentityRegions_Regions) structure is documented below.
 
+<a name="IdentityRegions_Regions"></a>
 The `regions` block contains:
 
-* `id` - Region Id.
+* `id` - Indicates the Region id.
 
-* `type` - Region Type.
+* `type` - Indicates the Region Type.
 
-* `description` - Region Description.
+* `description` - Indicates the Region Description.
 
-* `link` - Resource link.
+* `link` - Indicates the Resource link.
 
-* `locales` - The Map of Region Name.
+* `locales` - Indicates the Map of Region Name.

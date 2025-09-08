@@ -34,9 +34,12 @@ func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
 					resource.TestCheckResourceAttr(dataSourceName, "regions.0.type", "public"),
 					resource.TestCheckResourceAttr(dataSourceName, "regions.0.description", ""),
 					resource.TestMatchResourceAttr(dataSourceName, "regions.0.link", regexp.MustCompile("https://iam.*.myhuaweicloud.com/v3/regions/cn-north-4")),
-					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.%", "2"),
+					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.%", "5"),
 					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.zh-cn", "华北-北京四"),
 					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.en-us", "CN North-Beijing4"),
+					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.pt-br", ""),
+					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.es-us", ""),
+					resource.TestCheckResourceAttr(dataSourceName, "regions.0.locales.es-es", ""),
 				),
 			},
 			{

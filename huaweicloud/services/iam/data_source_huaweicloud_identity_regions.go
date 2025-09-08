@@ -2,13 +2,15 @@ package iam
 
 import (
 	"context"
+	"strings"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	iamv3 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // DataSourceIdentityRegions
@@ -65,29 +67,35 @@ func DataSourceIdentityRegions() *schema.Resource {
 
 func DataSourceIdentityRegionsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	regionId := d.Get("region_id").(string)
 	if regionId == "" {
-		return listRegions(iamV3Client, d)
+		return listRegions(iamClient, d)
 	} else {
-		return showRegion(iamV3Client, regionId, d)
+		return showRegion(iamClient, regionId, d)
 	}
 }
 
-func listRegions(iamV3Client *iamv3.IamClient, d *schema.ResourceData) diag.Diagnostics {
-	request := &iamModel.KeystoneListRegionsRequest{}
-	response, err := iamV3Client.KeystoneListRegions(request)
+func listRegions(iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	listRegionsPath := iamClient.Endpoint + "v3/regions"
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamClient.Request("GET", listRegionsPath, &options)
 	if err != nil {
-		return diag.Errorf("KeystoneListRegions error : %s", err)
+		return common.CheckDeletedDiag(d, err, "error retrieving IAM regions: %s")
+	}
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	regions := make([]map[string]interface{}, len(*response.Regions))
-	for i, region := range *response.Regions {
-		regions[i] = flattenRegion(region)
+	regionsBody := utils.PathSearch("regions", respBody, nil).([]interface{})
+	regions := make([]interface{}, 0, len(regionsBody))
+	for _, region := range regionsBody {
+		regions = append(regions, flattenRegion(region))
 	}
 	if err = d.Set("regions", regions); err != nil {
 		return diag.Errorf("error setting regions fields: %s", err)
@@ -95,41 +103,44 @@ func listRegions(iamV3Client *iamv3.IamClient, d *schema.ResourceData) diag.Diag
 	return nil
 }
 
-func showRegion(iamV3Client *iamv3.IamClient, regionId string, d *schema.ResourceData) diag.Diagnostics {
-	request := &iamModel.KeystoneShowRegionRequest{RegionId: regionId}
-	response, err := iamV3Client.KeystoneShowRegion(request)
+func showRegion(iamClient *golangsdk.ServiceClient, regionId string, d *schema.ResourceData) diag.Diagnostics {
+	showRegionPath := iamClient.Endpoint + "v3/regions/{region_id}"
+	showRegionPath = strings.ReplaceAll(showRegionPath, "{region_id}", regionId)
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamClient.Request("GET", showRegionPath, &options)
 	if err != nil {
-		return diag.Errorf("showRegion error : %s", err)
+		return common.CheckDeletedDiag(d, err, "error retrieving IAM region: %s")
+	}
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	regions := make([]map[string]interface{}, 1)
-	regions[0] = flattenRegion(*response.Region)
+	regionBody := utils.PathSearch("region", respBody, nil)
+	regions := append(make([]interface{}, 0, 1), flattenRegion(regionBody))
 	if err = d.Set("regions", regions); err != nil {
 		return diag.Errorf("error setting regions fields: %s", err)
 	}
 	return nil
 }
 
-func flattenRegion(regionModel iamModel.Region) map[string]interface{} {
+func flattenRegion(regionModel interface{}) map[string]interface{} {
+	if regionModel == nil {
+		return nil
+	}
 	region := make(map[string]interface{})
-	region["id"] = regionModel.Id
-	region["type"] = regionModel.Type
-	region["description"] = regionModel.Description
-	region["link"] = regionModel.Links.Self
+	region["id"] = utils.PathSearch("id", regionModel, nil)
+	region["type"] = utils.PathSearch("type", regionModel, nil)
+	region["description"] = utils.PathSearch("description", regionModel, nil)
+	region["link"] = utils.PathSearch("links.self", regionModel, nil)
 
-	locales := make(map[string]string)
-	locales["zh-cn"] = regionModel.Locales.ZhCn
-	locales["en-us"] = regionModel.Locales.EnUs
-	if regionModel.Locales.PtBr != nil {
-		locales["pt-br"] = *regionModel.Locales.PtBr
-	}
-	if regionModel.Locales.EsUs != nil {
-		locales["es-us"] = *regionModel.Locales.EsUs
-	}
-	if regionModel.Locales.EsEs != nil {
-		locales["es-es"] = *regionModel.Locales.EsEs
-	}
+	locales := make(map[string]interface{})
+	locales["zh-cn"] = utils.PathSearch("locales.\"zh-cn\"", regionModel, nil)
+	locales["en-us"] = utils.PathSearch("locales.\"en-us\"", regionModel, nil)
+	locales["pt-br"] = utils.PathSearch("locales.\"pt-br\"", regionModel, nil)
+	locales["es-us"] = utils.PathSearch("locales.\"es-us\"", regionModel, nil)
+	locales["es-es"] = utils.PathSearch("locales.\"es-es\"", regionModel, nil)
 	region["locales"] = locales
 	return region
 }
