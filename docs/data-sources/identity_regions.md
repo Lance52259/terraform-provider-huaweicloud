@@ -2,7 +2,7 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_regions"
-description: ""
+description: "Use this data source to query the region list within HuaweiCloud."
 ---
 
 # huaweicloud_identity_regions

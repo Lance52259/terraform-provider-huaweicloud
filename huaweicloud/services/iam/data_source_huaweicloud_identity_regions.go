@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -84,7 +83,7 @@ func listRegions(iamClient *golangsdk.ServiceClient, d *schema.ResourceData) dia
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
 	response, err := iamClient.Request("GET", listRegionsPath, &options)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving IAM regions: %s")
+		return diag.Errorf("error listRegions: %s", err)
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
@@ -109,7 +108,7 @@ func showRegion(iamClient *golangsdk.ServiceClient, regionId string, d *schema.R
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
 	response, err := iamClient.Request("GET", showRegionPath, &options)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving IAM region: %s")
+		return diag.Errorf("error showRegion: %s", err)
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
@@ -135,12 +134,13 @@ func flattenRegion(regionModel interface{}) map[string]interface{} {
 	region["description"] = utils.PathSearch("description", regionModel, nil)
 	region["link"] = utils.PathSearch("links.self", regionModel, nil)
 
-	locales := make(map[string]interface{})
-	locales["zh-cn"] = utils.PathSearch("locales.\"zh-cn\"", regionModel, nil)
-	locales["en-us"] = utils.PathSearch("locales.\"en-us\"", regionModel, nil)
-	locales["pt-br"] = utils.PathSearch("locales.\"pt-br\"", regionModel, nil)
-	locales["es-us"] = utils.PathSearch("locales.\"es-us\"", regionModel, nil)
-	locales["es-es"] = utils.PathSearch("locales.\"es-es\"", regionModel, nil)
+	locales := map[string]string{
+		"zh-cn": utils.PathSearch("locales.\"zh-cn\"", regionModel, "").(string),
+		"en-us": utils.PathSearch("locales.\"en-us\"", regionModel, "").(string),
+		"pt-br": utils.PathSearch("locales.\"pt-br\"", regionModel, "").(string),
+		"es-us": utils.PathSearch("locales.\"es-us\"", regionModel, "").(string),
+		"es-es": utils.PathSearch("locales.\"es-es\"", regionModel, "").(string),
+	}
 	region["locales"] = locales
 	return region
 }
