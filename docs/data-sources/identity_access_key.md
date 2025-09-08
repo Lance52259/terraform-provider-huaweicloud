@@ -9,8 +9,6 @@ description: ""
 
 Query all permanent access key and specified access key data source within Huaweicloud IAM service.
 
--> **NOTE:** You just have user privileges in your HuaweiCloud cloud to use this resource.
-
 ## Example Usage
 
 ```hcl
