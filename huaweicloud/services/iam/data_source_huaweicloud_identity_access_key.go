@@ -80,13 +80,13 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	accessKey := d.Get("access_key").(string)
 	if accessKey != "" {
 		getAccessKeyPath = getAccessKeyPath + "/" + accessKey
-		return flattenListAccessKeyResponse(getAccessKeyPath, iamClient, d)
+		return ListAccessKey(getAccessKeyPath, iamClient, d)
 	}
 	userId := d.Get("user_id").(string)
-	return flattenShowAccessKeyResponse(userId, getAccessKeyPath, iamClient, d)
+	return ShowAccessKey(userId, getAccessKeyPath, iamClient, d)
 }
 
-func flattenListAccessKeyResponse(path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+func ListAccessKey(path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
 	options := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
@@ -115,7 +115,7 @@ func flattenListAccessKeyResponse(path string, iamClient *golangsdk.ServiceClien
 	return nil
 }
 
-func flattenShowAccessKeyResponse(userId string, path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+func ShowAccessKey(userId string, path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
 	options := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
