@@ -1135,6 +1135,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_users":       iam.DataSourceIdentityUsers(),
 			"huaweicloud_identity_agencies":    iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":   iam.DataSourceIamIdentityProviders(),
+			"huaweicloud_identity_regions":     iam.DataSourceIdentityRegions(),
 			"huaweicloud_identity_access_key":  iam.DataSourceIdentityAccessKey(),
 
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
@@ -1263,6 +1264,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_nat_private_transit_ip_tags":  nat.DataSourceNatPrivateTransitIpTags(),
 			"huaweicloud_nat_private_transit_ips":      nat.DataSourcePrivateTransitIps(),
 			"huaweicloud_nat_snat_rules":               nat.DataSourceSnatRules(),
+			"huaweicloud_nat_gateway_specs":            nat.DataSourceNatGatewaySpecs(),
+			"huaweicloud_nat_private_gateway_specs":    nat.DataSourceNatPrivateGatewaySpecs(),
 			"huaweicloud_nat_gateways_by_tags":         nat.DataSourceNatGatewaysByTags(),
 			"huaweicloud_nat_private_gateways_by_tags": nat.DataSourceNatPrivateGatewaysByTags(),
 
@@ -1710,6 +1713,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_organizations_tag_policy_services":      organizations.DataSourceOrganizationsTagPolicyServices(),
 			"huaweicloud_organizations_resource_tags":            organizations.DataSourceOrganizationsTags(),
 			"huaweicloud_organizations_resource_instances":       organizations.DataSourceOrganizationsResourceInstances(),
+			"huaweicloud_organizations_delegated_services":       organizations.DataSourceOrganizationsDelegatedServices(),
 			"huaweicloud_organizations_quotas":                   organizations.DataSourceOrganizationsQuotas(),
 			"huaweicloud_organizations_create_account_status":    organizations.DataSourceOrganizationsCreateAccountStatus(),
 			"huaweicloud_organizations_close_account_status":     organizations.DataSourceOrganizationsCloseAccountStatus(),
