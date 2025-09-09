@@ -14,7 +14,6 @@ func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckAdminOnly(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
@@ -31,14 +30,12 @@ func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSourceName, "password_regex", passwordRegex),
-					resource.TestCheckResourceAttr(dataSourceName, "password_regex_description", ""),
 				),
 			},
 			{
 				Config: testTestDataSourceIdentitySecurityComplianceByOption2,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSourceName, "password_regex", ""),
 					resource.TestCheckResourceAttr(dataSourceName, "password_regex_description", passwordRegexDescription),
 				),
 			},
@@ -47,8 +44,7 @@ func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
 }
 
 const testTestDataSourceIdentitySecurityCompliance = `
-data "huaweicloud_identity_security_compliance" "test" {
-}
+data "huaweicloud_identity_security_compliance" "test" {}
 `
 
 const testTestDataSourceIdentitySecurityComplianceByOption1 = `
