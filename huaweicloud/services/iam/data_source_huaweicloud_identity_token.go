@@ -2,11 +2,12 @@ package iam
 
 import (
 	"context"
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API GET /v3/auth/tokens
@@ -14,6 +15,7 @@ func DataSourceIdentityToken() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityTokenRead,
 
+		Description: "schema: Internal",
 		Schema: map[string]*schema.Schema{
 			"x_subject_token": {
 				Type:     schema.TypeString,
@@ -171,139 +173,163 @@ func DataSourceIdentityToken() *schema.Resource {
 
 func dataSourceIdentityTokenRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	var (
+		getIdentityTokenHttpUrl = "v3/auth/tokens"
+		product                 = "iam"
+	)
+	client, err := cfg.NewServiceClient(product, cfg.GetRegion(d))
 	if err != nil {
-		return diag.Errorf("error creating IAM client: %s", err)
+		return diag.Errorf("error creating Identity Token client: %s", err)
 	}
-	xSubjectToken := d.Get("x_subject_token").(string)
-	if xSubjectToken == "" {
-		return diag.Errorf("missing required parameters x_subject_token")
-	}
-	request := &iamModel.KeystoneValidateTokenRequest{
-		XSubjectToken: xSubjectToken,
+	getIdentityTokenBasePath := client.Endpoint + getIdentityTokenHttpUrl
+	getIdentityTokenOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"X-Subject-Token": d.Get("x_subject_token").(string),
+		},
 	}
 	noCatalog := d.Get("no_catalog").(string)
 	if noCatalog != "" {
-		request.Nocatalog = &noCatalog
+		getIdentityTokenOpt.JSONBody = map[string]interface{}{
+			"nocatalog": &noCatalog,
+		}
 	}
-	response, err := iamV3Client.KeystoneValidateToken(request)
+	response, err := client.Request("GET", getIdentityTokenBasePath, &getIdentityTokenOpt)
 	if err != nil {
-		return diag.Errorf("KeystoneValidateToken error : %s", err)
+		return diag.Errorf("error get identity token: %s", err)
 	}
-	result := make([]map[string]interface{}, 1)
-	result[0] = map[string]interface{}{
-		"expires_at": response.Token.ExpiresAt,
-		"issued_at":  response.Token.IssuedAt,
-		"methods":    response.Token.Methods,
-		"domain":     flattenDomain(response.Token.Domain),
-		"project":    flattenProject(response.Token.Project),
-		"roles":      flattenRoles(response.Token.Roles),
-		"user":       flattenUser(response.Token.User),
-	}
-	if noCatalog == "" {
-		result[0]["catalog"] = flattenCatalog(response.Token.Catalog)
+	RespBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	return diag.FromErr(d.Set("token", result))
+	tokenModel := utils.PathSearch("token", RespBody, nil)
+	token := append(make([]interface{}, 0, 1), flattenResponse(tokenModel, noCatalog))
+	if err = d.Set("token", token); err != nil {
+		return diag.Errorf("error setting token fields: %s", err)
+	}
+	return nil
 }
 
-func flattenCatalog(catalogs []iamModel.TokenCatalog) []map[string]interface{} {
-	res := make([]map[string]interface{}, len(catalogs))
-	for i, catalog := range catalogs {
+func flattenResponse(tokenModel interface{}, noCatalog string) map[string]interface{} {
+	if tokenModel == nil {
+		return nil
+	}
+	token := make(map[string]interface{})
+	token["expires_at"] = utils.PathSearch("expires_at", tokenModel, nil)
+	token["issued_at"] = utils.PathSearch("issued_at", tokenModel, nil)
+	token["methods"] = utils.PathSearch("methods", tokenModel, nil)
+	token["domain"] = flattenDomain(utils.PathSearch("domain", tokenModel, nil))
+	token["project"] = flattenProject(utils.PathSearch("project", tokenModel, nil))
+	token["roles"] = flattenRoles(utils.PathSearch("roles", tokenModel, nil))
+	token["user"] = flattenUser(utils.PathSearch("user", tokenModel, nil))
+	if noCatalog == "" {
+		token["catalog"] = flattenCatalog(utils.PathSearch("catalog", tokenModel, nil))
+	}
+	return token
+
+}
+
+func flattenCatalog(catalogs interface{}) []map[string]interface{} {
+	catalogsArr := catalogs.([]interface{})
+	res := make([]map[string]interface{}, len(catalogsArr))
+	for i, catalog := range catalogsArr {
 		res[i] = map[string]interface{}{
-			"endpoints": flattenEndpoints(catalog.Endpoints),
-			"id":        catalog.Id,
-			"name":      catalog.Name,
-			"type":      catalog.Type,
+			"endpoints": flattenEndpoints(utils.PathSearch("endpoints", catalog, nil)),
+			"id":        utils.PathSearch("id", catalog, nil).(string),
+			"name":      utils.PathSearch("name", catalog, nil).(string),
+			"type":      utils.PathSearch("type", catalog, nil).(string),
 		}
 	}
 	return res
 }
 
-func flattenEndpoints(endpoints []iamModel.TokenCatalogEndpoint) []map[string]interface{} {
-	res := make([]map[string]interface{}, len(endpoints))
-	for i, endpoint := range endpoints {
+func flattenEndpoints(endpoints interface{}) []map[string]interface{} {
+	endpointsArr := endpoints.([]interface{})
+	res := make([]map[string]interface{}, len(endpointsArr))
+	for i, endpoint := range endpointsArr {
 		res[i] = map[string]interface{}{
-			"id":        endpoint.Id,
-			"interface": endpoint.Interface,
-			"region":    endpoint.Region,
-			"region_id": endpoint.RegionId,
-			"url":       endpoint.Url,
+			"id":        utils.PathSearch("id", endpoint, nil).(string),
+			"interface": utils.PathSearch("interface", endpoint, nil).(string),
+			"region":    utils.PathSearch("region", endpoint, nil).(string),
+			"region_id": utils.PathSearch("region_id", endpoint, nil).(string),
+			"url":       utils.PathSearch("url", endpoint, nil).(string),
 		}
 	}
 	return res
 }
 
-func flattenDomain(domain *iamModel.TokenDomainResult) map[string]interface{} {
+func flattenDomain(domain interface{}) map[string]interface{} {
 	if domain == nil {
 		return nil
 	}
 	res := map[string]interface{}{
-		"id":   domain.Id,
-		"name": domain.Name,
+		"id":   utils.PathSearch("id", domain, nil).(string),
+		"name": utils.PathSearch("name", domain, nil).(string),
 	}
 	return res
 }
 
-func flattenProject(projects *iamModel.TokenProjectResult) []map[string]interface{} {
+func flattenProject(projects interface{}) []map[string]interface{} {
 	if projects == nil {
 		return nil
 	}
 	res := []map[string]interface{}{
 		{
-			"domain": flattenProjectDomain(projects.Domain),
-			"id":     projects.Id,
-			"name":   projects.Name,
+			"domain": flattenProjectDomain(utils.PathSearch("domain", projects, nil)),
+			"id":     utils.PathSearch("id", projects, nil).(string),
+			"name":   utils.PathSearch("name", projects, nil).(string),
 		},
 	}
 	return res
 }
 
-func flattenProjectDomain(domain *iamModel.TokenProjectDomainResult) map[string]interface{} {
+func flattenProjectDomain(domain interface{}) map[string]interface{} {
 	if domain == nil {
 		return nil
 	}
 	res := map[string]interface{}{
-		"id":   domain.Id,
-		"name": domain.Name,
+		"id":   utils.PathSearch("id", domain, nil).(string),
+		"name": utils.PathSearch("name", domain, nil).(string),
 	}
 	return res
 }
 
-func flattenRoles(roles []iamModel.TokenRole) []map[string]interface{} {
-	res := make([]map[string]interface{}, len(roles))
-	for i, role := range roles {
+func flattenRoles(roles interface{}) []map[string]interface{} {
+	rolesArr := roles.([]interface{})
+	res := make([]map[string]interface{}, len(rolesArr))
+	for i, role := range rolesArr {
 		res[i] = map[string]interface{}{
-			"id":   role.Id,
-			"name": role.Name,
+			"id":   utils.PathSearch("id", role, nil).(string),
+			"name": utils.PathSearch("name", role, nil).(string),
 		}
 	}
 	return res
 }
 
-func flattenUser(user *iamModel.TokenUserResult) []map[string]interface{} {
+func flattenUser(user interface{}) []map[string]interface{} {
 	if user == nil {
 		return nil
 	}
 	res := []map[string]interface{}{
 		{
-			"domain":              flattenUserDomain(user.Domain),
-			"id":                  user.Id,
-			"name":                user.Name,
-			"password_expires_at": user.PasswordExpiresAt,
+			"domain":              flattenUserDomain(utils.PathSearch("domain", user, nil)),
+			"id":                  utils.PathSearch("id", user, nil).(string),
+			"name":                utils.PathSearch("name", user, nil).(string),
+			"password_expires_at": utils.PathSearch("password_expires_at", user, nil).(string),
 		},
 	}
 	return res
 }
 
-func flattenUserDomain(domain *iamModel.TokenUserDomainResult) map[string]interface{} {
+func flattenUserDomain(domain interface{}) map[string]interface{} {
 	if domain == nil {
 		return nil
 	}
 	res := map[string]interface{}{
-		"id":   domain.Id,
-		"name": domain.Name,
+		"id":   utils.PathSearch("id", domain, nil).(string),
+		"name": utils.PathSearch("name", domain, nil).(string),
 	}
 	return res
 }
