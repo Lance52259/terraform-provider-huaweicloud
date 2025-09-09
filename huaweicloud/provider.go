@@ -94,6 +94,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/live"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/lts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/meeting"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/metastudio"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/modelarts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mpc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mrs"
@@ -1134,6 +1135,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_users":       iam.DataSourceIdentityUsers(),
 			"huaweicloud_identity_agencies":    iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":   iam.DataSourceIamIdentityProviders(),
+			"huaweicloud_identity_regions":     iam.DataSourceIdentityRegions(),
 
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
 			"huaweicloud_identitycenter_groups":                                  identitycenter.DataSourceIdentityCenterGroups(),
@@ -1145,6 +1147,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_permission_set_provisionings":            identitycenter.DataSourceIdentitycenterPermissionSetProvisionings(),
 			"huaweicloud_identitycenter_system_policy_attachments":               identitycenter.DataSourceIdentitycenterSystemPolicyAttachments(),
 			"huaweicloud_identitycenter_system_identity_policy_attachments":      identitycenter.DataSourceSystemIdentityPolicyAttachments(),
+			"huaweicloud_identitycenter_application_templates":                   identitycenter.DataSourceIdentityCenterApplicationTemplates(),
+			"huaweicloud_identitycenter_catalog_applications":                    identitycenter.DataSourceIdentityCenterCatalogApplications(),
 
 			"huaweicloud_iec_bandwidths":     iec.DataSourceBandWidths(),
 			"huaweicloud_iec_eips":           iec.DataSourceEips(),
@@ -1248,17 +1252,21 @@ func Provider() *schema.Provider {
 			"huaweicloud_elb_quota_details":                       elb.DataSourceElbQuotaDetails(),
 			"huaweicloud_elb_asynchronous_tasks":                  elb.DataSourceElbAsynchronousTasks(),
 
-			"huaweicloud_nat_gateway":                 nat.DataSourcePublicGateway(),
-			"huaweicloud_nat_gateway_tags":            nat.DataSourceNatGatewayTags(),
-			"huaweicloud_nat_gateways":                nat.DataSourcePublicGateways(),
-			"huaweicloud_nat_dnat_rules":              nat.DataSourceDnatRules(),
-			"huaweicloud_nat_private_dnat_rules":      nat.DataSourcePrivateDnatRules(),
-			"huaweicloud_nat_private_gateway_tags":    nat.DataSourceNatPrivateGatewayTags(),
-			"huaweicloud_nat_private_gateways":        nat.DataSourcePrivateGateways(),
-			"huaweicloud_nat_private_snat_rules":      nat.DataSourcePrivateSnatRules(),
-			"huaweicloud_nat_private_transit_ip_tags": nat.DataSourceNatPrivateTransitIpTags(),
-			"huaweicloud_nat_private_transit_ips":     nat.DataSourcePrivateTransitIps(),
-			"huaweicloud_nat_snat_rules":              nat.DataSourceSnatRules(),
+			"huaweicloud_nat_gateway":                  nat.DataSourcePublicGateway(),
+			"huaweicloud_nat_gateway_tags":             nat.DataSourceNatGatewayTags(),
+			"huaweicloud_nat_gateways":                 nat.DataSourcePublicGateways(),
+			"huaweicloud_nat_dnat_rules":               nat.DataSourceDnatRules(),
+			"huaweicloud_nat_private_dnat_rules":       nat.DataSourcePrivateDnatRules(),
+			"huaweicloud_nat_private_gateway_tags":     nat.DataSourceNatPrivateGatewayTags(),
+			"huaweicloud_nat_private_gateways":         nat.DataSourcePrivateGateways(),
+			"huaweicloud_nat_private_snat_rules":       nat.DataSourcePrivateSnatRules(),
+			"huaweicloud_nat_private_transit_ip_tags":  nat.DataSourceNatPrivateTransitIpTags(),
+			"huaweicloud_nat_private_transit_ips":      nat.DataSourcePrivateTransitIps(),
+			"huaweicloud_nat_snat_rules":               nat.DataSourceSnatRules(),
+			"huaweicloud_nat_gateway_specs":            nat.DataSourceNatGatewaySpecs(),
+			"huaweicloud_nat_private_gateway_specs":    nat.DataSourceNatPrivateGatewaySpecs(),
+			"huaweicloud_nat_gateways_by_tags":         nat.DataSourceNatGatewaysByTags(),
+			"huaweicloud_nat_private_gateways_by_tags": nat.DataSourceNatPrivateGatewaysByTags(),
 
 			"huaweicloud_networking_port":              vpc.DataSourceNetworkingPortV2(),
 			"huaweicloud_networking_secgroup":          vpc.DataSourceNetworkingSecGroup(),
@@ -1531,6 +1539,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_vpcep_service_connections": vpcep.DataSourceVPCEPServiceConnections(),
 			"huaweicloud_vpcep_service_permissions": vpcep.DataSourceVPCEPServicePermissions(),
 			"huaweicloud_vpcep_service_summary":     vpcep.DataSourceVpcepServiceSummary(),
+			"huaweicloud_vpcep_tags":                vpcep.DataSourceVpcepTags(),
 
 			"huaweicloud_vpn_access_policies":                vpn.DataSourceVpnAccessPolicies(),
 			"huaweicloud_vpn_gateway_availability_zones":     vpn.DataSourceVpnGatewayAZs(),
@@ -1703,6 +1712,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_organizations_tag_policy_services":      organizations.DataSourceOrganizationsTagPolicyServices(),
 			"huaweicloud_organizations_resource_tags":            organizations.DataSourceOrganizationsTags(),
 			"huaweicloud_organizations_resource_instances":       organizations.DataSourceOrganizationsResourceInstances(),
+			"huaweicloud_organizations_delegated_services":       organizations.DataSourceOrganizationsDelegatedServices(),
 			"huaweicloud_organizations_quotas":                   organizations.DataSourceOrganizationsQuotas(),
 			"huaweicloud_organizations_create_account_status":    organizations.DataSourceOrganizationsCreateAccountStatus(),
 			"huaweicloud_organizations_close_account_status":     organizations.DataSourceOrganizationsCloseAccountStatus(),
@@ -2379,6 +2389,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_custom_role_attachment":                 identitycenter.ResourceCustomRoleAttachment(),
 			"huaweicloud_identitycenter_access_control_attribute_configuration": identitycenter.ResourceAccessControlAttributeConfiguration(),
 			"huaweicloud_identitycenter_provision_permission_set":               identitycenter.ResourceProvisionPermissionSet(),
+			"huaweicloud_identitycenter_application_instance":                   identitycenter.ResourceIdentityCenterApplicationInstance(),
 
 			"huaweicloud_iec_eip":                 iec.ResourceEip(),
 			"huaweicloud_iec_keypair":             iec.ResourceKeypair(),
@@ -3031,6 +3042,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_fgs_function_v2":             fgs.ResourceFgsFunction(),
 			"huaweicloud_cdn_domain_v1":               cdn.ResourceCdnDomain(),
 			"huaweicloud_scm_certificate":             ccm.ResourceCertificateImport(),
+
+			"huaweicloud_metastudio_instance": metastudio.ResourceMetaStudio(),
 
 			// Deprecated
 			"huaweicloud_apig_vpc_channel":               deprecated.ResourceApigVpcChannelV2(),
