@@ -36,16 +36,16 @@ data "huaweicloud_identity_token" "test" {
 ## Attribute Reference
 
 * `token` - Indicates obtained token information
-  The [token](#IdentityToken_token) structure is documented below.
+  The [token](#IdentityToken_Token) structure is documented below.
 
-<a name="IdentityToken_token"></a>
+<a name="IdentityToken_Token"></a>
 The `token` block contains:
 
 * `catalog` - Indicates service catalog information, including the services and endpoints the user has access to. This field will not be returned if **nocatalog** parameter is set.
   The [catalog](#IdentityToken_Catalog) structure is documented below.
 
 * `domain` - Indicates the domain information of the IAM user if the scope is set to domain.
-  The [domain](#IdentityToken_domain) structure is documented below.
+  The [domain](#IdentityToken_Domain) structure is documented below.
 
 * `expires_at` - Indicates the time when the token will expire. The value is a UTC time in the YYYY-MM-DDTHH:mm:ss.ssssssZ format.
 
@@ -54,13 +54,13 @@ The `token` block contains:
 * `methods` - Indicates the methods used to obtain the token, such as **password**, **token**, etc.
 
 * `project` - Indicates the project information of the IAM user if the scope is set to **project**.
-  The [project](#IdentityToken_project) structure is documented below.
+  The [project](#IdentityToken_Project) structure is documented below.
 
 * `roles` - Indicates the roles and permissions associated with the token.
-  The [roles](#IdentityToken_roles) structure is documented below.
+  The [roles](#IdentityToken_Roles) structure is documented below.
 
 * `user` -Indicates the detailed information of the IAM user associated with the token.
-  The [user](#IdentityToken_user) structure is documented below.
+  The [user](#IdentityToken_User) structure is documented below.
 
 
 <a name="IdentityToken_Catalog"></a>
@@ -89,14 +89,14 @@ The `endpoint` block contains:
 
   * `url` - Indicates the url of endpoint.
 
-<a name="IdentityToken_domain"></a>
+<a name="IdentityToken_Domain"></a>
 The `domain` block contains:
 
 * `id` - Indicates the ID of domain
 
 * `name` - Indicates the name of domain
 
-<a name="IdentityToken_project"></a>
+<a name="IdentityToken_Project"></a>
 The `project` block contains:
 
 * `domain` - Indicates the information of domain.
@@ -113,14 +113,14 @@ The `domain` block contains:
 
 * `name` - Indicates the name of domain
 
-<a name="IdentityToken_roles"></a>
+<a name="IdentityToken_Roles"></a>
 The `roles` block contains:
 
 * `id` - Indicates the ID of domain
 
 * `name` - Indicates the name of domain
 
-<a name="IdentityToken_user"></a>
+<a name="IdentityToken_User"></a>
 The `user` block contains:
 
 * `domain` - Indicates the information of domain.
