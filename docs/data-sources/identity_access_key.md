@@ -2,7 +2,7 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_access_key"
-description: ""
+description: "Query all permanent access key and specified access key data source within Huaweicloud IAM service."
 ---
 
 # huaweicloud_identity_access_key
