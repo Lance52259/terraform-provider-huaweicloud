@@ -2,7 +2,7 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_role"
-description: ""
+description: "Use this data source to get details of the specified IAM **system-defined** role or policy."
 ---
 
 # huaweicloud_identity_role
