@@ -47,22 +47,26 @@ data "huaweicloud_identity_access_key" "test3" {
 
 ## Argument Reference
 
-* `user_id` - (Optional, String) The IAM user ID associated with the access_key.
+* `user_id` - (Optional, String) Specifies the IAM user ID associated with the access_key.
 
-* `access_key` - (Optional, String) access_key associated with the identity user.
+* `access_key` - (Optional, String) Specifies access_key associated with the identity user.
 
 ## Attribute Reference
 * `credentials` -  The credentials carrying user information.
+  The [credentials](#IdentityAccessKey_credentials) structure is documented below.
 
-* `user_id` -  The IAM user ID to which the access_key belongs.
+<a name="IdentityAccessKey_credentials"></a>
+The `credentials` block contains:
 
-* `access` - The Access Key (AK) that was queried.
+* `user_id` -  Indicates the IAM user ID to which the access_key belongs.
 
-* `status` - The status of the access_key. Valid values: **active**, The access_key is enabled. **inactive**: The access_key is disabled.
+* `access` - Indicates the Access Key (AK) that was queried.
 
-* `create_time` - The creation time of the access_key. The value is a UTC time in the YYYY-MM-DDTHH:mm:ss.ssssssZ format.
+* `status` - Indicates the status of the access_key. Valid values: **active**, The access_key is enabled. **inactive**: The access_key is disabled.
 
-* `description` - The description of the access_key.
+* `create_time` - Indicates the creation time of the access_key. The value is a UTC time in the YYYY-MM-DDTHH:mm:ss.ssssssZ format.
 
-* `last_use_time` - The field is only present when you are certified by access_key
+* `description` - Indicates the description of the access_key.
+
+* `last_use_time` - Indicates the field is only present when you are certified by access_key
 

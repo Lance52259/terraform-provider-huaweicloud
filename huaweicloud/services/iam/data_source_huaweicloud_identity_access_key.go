@@ -2,11 +2,12 @@ package iam
 
 import (
 	"context"
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @IAM GET /v3.0/OS-CREDENTIAL/credentials
@@ -63,9 +64,9 @@ func DataSourceIdentityAccessKey() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	cfg := m.(*config.Config)
-	iamClient, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
@@ -75,55 +76,75 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
 	d.SetId(id)
-
-	access_key := d.Get("access_key").(string)
-	if access_key != "" {
-		request := &iamModel.ShowPermanentAccessKeyRequest{
-			AccessKey: access_key,
-		}
-		response, err := iamClient.ShowPermanentAccessKey(request)
-		if err != nil {
-			return diag.Errorf("iamV3Client response error : %s", err)
-		}
-		return diag.FromErr(d.Set("credentials", flattenShowAccessKeyResponse(response)))
+	getAccessKeyPath := iamClient.Endpoint + "v3.0/OS-CREDENTIAL/credentials"
+	accessKey := d.Get("access_key").(string)
+	if accessKey != "" {
+		getAccessKeyPath = getAccessKeyPath + "/" + accessKey
+		return flattenListAccessKeyResponse(getAccessKeyPath, iamClient, d)
 	}
 	userId := d.Get("user_id").(string)
-	if userId == "" {
-		userId = cfg.UserID
+	return flattenShowAccessKeyResponse(userId, getAccessKeyPath, iamClient, d)
+}
+
+func flattenListAccessKeyResponse(path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	options := golangsdk.RequestOpts{
+		KeepResponseBody: true,
 	}
-	request := &iamModel.ListPermanentAccessKeysRequest{
-		UserId: &userId,
-	}
-	response, err := iamClient.ListPermanentAccessKeys(request)
+	response, err := iamClient.Request("GET", path, &options)
 	if err != nil {
 		return diag.Errorf("iamV3Client response error : %s", err)
 	}
-	return diag.FromErr(d.Set("credentials", flattenListAccessKeyResponse(response)))
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	id, _ := uuid.GenerateUUID()
+	d.SetId(id)
+	credentialsModel := utils.PathSearch("credential", respBody, nil)
+	res := make(map[string]interface{})
+	res["user_id"] = utils.PathSearch("user_id", credentialsModel, nil)
+	res["access"] = utils.PathSearch("access", credentialsModel, nil)
+	res["status"] = utils.PathSearch("status", credentialsModel, nil)
+	res["create_time"] = utils.PathSearch("create_time", credentialsModel, nil)
+	res["description"] = utils.PathSearch("description", credentialsModel, nil)
+	res["last_use_time"] = utils.PathSearch("last_use_time", credentialsModel, nil)
+	credential := append(make([]interface{}, 0, 1), res)
+	if err = d.Set("credentials", credential); err != nil {
+		return diag.Errorf("error setting credentials fields: %s", err)
+	}
+	return nil
 }
 
-func flattenListAccessKeyResponse(response *iamModel.ListPermanentAccessKeysResponse) []map[string]interface{} {
-	res := make([]map[string]interface{}, len(*response.Credentials))
-	for i, credential := range *response.Credentials {
-		res[i] = map[string]interface{}{
-			"user_id":     credential.UserId,
-			"access":      credential.Access,
-			"status":      credential.Status,
-			"create_time": credential.CreateTime,
-			"description": credential.Description,
+func flattenShowAccessKeyResponse(userId string, path string, iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	options := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	if userId != "" {
+		path = path + "?user_id=" + userId
+	}
+	response, err := iamClient.Request("GET", path, &options)
+	if err != nil {
+		return diag.Errorf("iamV3Client response error : %s", err)
+	}
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	id, _ := uuid.GenerateUUID()
+	d.SetId(id)
+	credentialsModel := utils.PathSearch("credentials", respBody, nil).([]interface{})
+	credentials := make([]map[string]interface{}, len(credentialsModel))
+	for i, credential := range credentialsModel {
+		credentials[i] = map[string]interface{}{
+			"user_id":     utils.PathSearch("user_id", credential, nil),
+			"access":      utils.PathSearch("access", credential, nil),
+			"status":      utils.PathSearch("status", credential, nil),
+			"create_time": utils.PathSearch("create_time", credential, nil),
+			"description": utils.PathSearch("description", credential, nil),
 		}
 	}
-	return res
-}
-
-func flattenShowAccessKeyResponse(response *iamModel.ShowPermanentAccessKeyResponse) []map[string]interface{} {
-	res := make([]map[string]interface{}, 1)
-	res[0] = map[string]interface{}{
-		"user_id":       response.Credential.UserId,
-		"access":        response.Credential.Access,
-		"status":        response.Credential.Status,
-		"create_time":   response.Credential.CreateTime,
-		"description":   response.Credential.Description,
-		"last_use_time": response.Credential.LastUseTime,
+	if err = d.Set("credentials", credentials); err != nil {
+		return diag.Errorf("error setting credentials fields: %s", err)
 	}
-	return res
+	return nil
 }
