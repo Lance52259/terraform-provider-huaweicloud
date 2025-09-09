@@ -190,9 +190,7 @@ func dataSourceIdentityTokenRead(_ context.Context, d *schema.ResourceData, meta
 	}
 	noCatalog := d.Get("no_catalog").(string)
 	if noCatalog != "" {
-		getIdentityTokenOpt.JSONBody = map[string]interface{}{
-			"nocatalog": &noCatalog,
-		}
+		getIdentityTokenBasePath = getIdentityTokenBasePath + "?nocatalog=" + noCatalog
 	}
 	response, err := client.Request("GET", getIdentityTokenBasePath, &getIdentityTokenOpt)
 	if err != nil {
