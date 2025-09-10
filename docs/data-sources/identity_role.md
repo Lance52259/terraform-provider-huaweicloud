@@ -117,8 +117,8 @@ data "huaweicloud_identity_role" "role_1" {
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The data source ID in UUID format.
-* `description` - The description of the policy.
-* `catalog` - The service catalog of the policy.
-* `type` - The display mode of the policy.
-* `policy` - The content of the policy.
+* `id` - Indicates the data source ID in UUID format.
+* `description` - Indicates the description of the policy.
+* `catalog` - Indicates the service catalog of the policy.
+* `type` - Indicates the display mode of the policy.
+* `policy` - Indicates the content of the policy.

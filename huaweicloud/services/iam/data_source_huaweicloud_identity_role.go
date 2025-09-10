@@ -15,7 +15,7 @@ import (
 )
 
 // @API IAM GET /v3/roles
-// @API IAM get	/v3/roles/{role_id}
+// @API IAM GET	/v3/roles/{role_id}
 func DataSourceIdentityRole() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityRoleRead,
@@ -34,9 +34,9 @@ func DataSourceIdentityRole() *schema.Resource {
 				AtLeastOneOf: []string{"name", "display_name", "role_id"},
 			},
 			"role_id": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				AtLeastOneOf: []string{"name", "display_name", "role_id"},
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"name", "display_name"},
 			},
 
 			"description": {
@@ -75,7 +75,6 @@ func dataSourceIdentityRoleRead(_ context.Context, d *schema.ResourceData, meta 
 		d.SetId(role.ID)
 		return dataSourceIdentityRoleAttributes(d, role)
 	}
-
 	listOpts := roles.ListOpts{
 		Name:        d.Get("name").(string),
 		DisplayName: d.Get("display_name").(string),
