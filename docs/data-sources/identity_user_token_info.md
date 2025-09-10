@@ -1,13 +1,13 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identity_token"
-description: "Verify the validity of the token data source within Huaweicloud"
+page_title: "HuaweiCloud: huaweicloud_identity_user_token_info"
+description: "Use this data-source to get information of an IAM user token within HuaweiCloud."
 ---
 
-# huaweicloud_identity_token
+# huaweicloud_identity_user_token_info
 
-Verify the validity of the token data source within Huaweicloud
+Use this data-source to get information of an IAM user token within HuaweiCloud.
 
 ## Example Usage
 
@@ -22,24 +22,22 @@ resource "huaweicloud_identity_user_token" "test" {
   password     = var.password
 }
 
-data "huaweicloud_identity_token" "test" {
+data "huaweicloud_identity_user_token_info" "test" {
   x_subject_token = huaweicloud_identity_user_token.test.token
 }
 ```
 
 ## Argument Reference
 
-* `x_subject_token` - (Required, String) Specifies the token to be verified.
+* `token` - (Required, String) Specifies the token to be verified.
 
-* `nocatalog` - (Optional, String)  Specifies any non-empty string will be treated as **true**. If set, the response will not include the **catalog** field. Specifies any non-empty string will be treated as **true**.
+* `nocatalog` - (Optional, String) Specifies whether to include the catalog field in the response. The value can be:
+  * **true**: not include; 
+  * **false**: include;
+
+  Defaults to **false**.
 
 ## Attribute Reference
-
-* `token` - Indicates obtained token information
-  The [token](#IdentityToken_Token) structure is documented below.
-
-<a name="IdentityToken_Token"></a>
-The `token` block contains:
 
 * `catalog` - Indicates service catalog information, including the services and endpoints the user has access to. This field will not be returned if **nocatalog** parameter is set.
   The [catalog](#IdentityToken_Catalog) structure is documented below.

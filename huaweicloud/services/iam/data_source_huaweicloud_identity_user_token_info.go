@@ -11,9 +11,9 @@ import (
 )
 
 // @API GET /v3/auth/tokens
-func DataSourceIdentityToken() *schema.Resource {
+func DataSourceIdentityUserTokenInfo() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceIdentityTokenRead,
+		ReadContext: dataSourceIdentityUserTokenInfoRead,
 
 		Description: "schema: Internal",
 		Schema: map[string]*schema.Schema{
@@ -171,7 +171,7 @@ func DataSourceIdentityToken() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityTokenRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceIdentityUserTokenInfoRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	var (
 		getIdentityTokenHttpUrl = "v3/auth/tokens"

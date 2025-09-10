@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-func TestAccIdentityToken_basic(t *testing.T) {
+func TestAccIdentityUserTokenInfo_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_identity_token.test"
 	userName := acceptance.RandomAccResourceName()
 	initPassword := acceptance.RandomPassword()
 
-	config := testAccIdentityToken_basic(userName, initPassword)
+	config := testAccIdentityUserTokenInfo_basic(userName, initPassword)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -31,7 +31,7 @@ func TestAccIdentityToken_basic(t *testing.T) {
 	})
 }
 
-func testAccIdentityToken_basic(userName, initPassword string) string {
+func testAccIdentityUserTokenInfo_basic(userName, initPassword string) string {
 	return fmt.Sprintf(`
 %[1]s
 
@@ -41,7 +41,7 @@ resource "huaweicloud_identity_user_token" "test" {
   password     = "%[3]s"
 }
 # 获取Token
-data "huaweicloud_identity_token" "test" {
+data "huaweicloud_identity_user_token_info" "test" {
   x_subject_token = huaweicloud_identity_user_token.test.token
 }
 
