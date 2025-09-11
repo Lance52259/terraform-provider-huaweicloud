@@ -24,6 +24,7 @@ resource "huaweicloud_identity_user_token" "test" {
 
 data "huaweicloud_identity_user_token_info" "test" {
   token = huaweicloud_identity_user_token.test.token
+  no_catalog = "false"
 }
 ```
 
@@ -39,7 +40,7 @@ data "huaweicloud_identity_user_token_info" "test" {
 
 ## Attribute Reference
 
-* `catalog` - Indicates service catalog information, including the services and endpoints the user has access to. This field will not be returned if **nocatalog** parameter is set.
+* `catalog` - service catalog information, including the services and endpoints the user has access to. This field will not be returned if **nocatalog** parameter is set to **true**.
   The [catalog](#IdentityToken_Catalog) structure is documented below.
 
 * `domain` - Indicates the domain information of the IAM user if the scope is set to domain.

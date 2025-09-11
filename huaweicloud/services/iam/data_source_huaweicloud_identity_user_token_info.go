@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -23,8 +24,9 @@ func DataSourceIdentityUserTokenInfo() *schema.Resource {
 				Required: true,
 			},
 			"no_catalog": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
 			},
 			"expires_at": {
 				Type:     schema.TypeString,
@@ -182,7 +184,7 @@ func dataSourceIdentityUserTokenInfoRead(_ context.Context, d *schema.ResourceDa
 		},
 	}
 	noCatalog := d.Get("no_catalog").(string)
-	if noCatalog != "" {
+	if noCatalog == "true" {
 		getIdentityTokenBasePath = getIdentityTokenBasePath + "?nocatalog=" + noCatalog
 	}
 	response, err := client.Request("GET", getIdentityTokenBasePath, &getIdentityTokenOpt)
@@ -215,7 +217,7 @@ func flattenResponse(tokenModel interface{}, noCatalog string, d *schema.Resourc
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.FromErr(err)
 	}
-	if noCatalog == "" {
+	if noCatalog != "true" {
 		if e := d.Set("catalog", flattenCatalog(utils.PathSearch("catalog", tokenModel, nil))); e != nil {
 			return diag.Errorf("error setting token fields catalog: %s", e)
 		}

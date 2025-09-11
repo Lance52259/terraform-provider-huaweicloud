@@ -41,9 +41,9 @@ resource "huaweicloud_identity_user_token" "test" {
   user_name    = huaweicloud_identity_user.user_1.name
   password     = "%[3]s"
 }
-# 获取Token
 data "huaweicloud_identity_user_token_info" "test" {
   token = huaweicloud_identity_user_token.test.token
+  no_catalog = "false"
 }
 
 `, testAccIdentityUser_basic(userName, initPassword), acceptance.HW_DOMAIN_NAME, initPassword)
