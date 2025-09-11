@@ -2,12 +2,14 @@ package iam
 
 import (
 	"context"
+	"strings"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // DataSourceIdentityProjectQuota
@@ -61,37 +63,26 @@ func DataSourceIdentityProjectQuota() *schema.Resource {
 
 func DataSourceIdentityProjectQuotaRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-	request := &iamModel.ShowProjectQuotaRequest{ProjectId: d.Get("project_id").(string)}
-	response, err := iamV3Client.ShowProjectQuota(request)
+	showProjectQuotaPath := iamClient.Endpoint + "v3.0/OS-QUOTA/projects/{project_id}"
+	showProjectQuotaPath = strings.ReplaceAll(showProjectQuotaPath, "{project_id}", d.Get("project_id").(string))
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamClient.Request("GET", showProjectQuotaPath, &options)
 	if err != nil {
 		return diag.Errorf("ShowProjectQuota error : %s", err)
 	}
-	id, err := uuid.GenerateUUID()
+	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
-		return diag.Errorf("unable to generate ID: %s", err)
+		return diag.FromErr(err)
 	}
+	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	result := flattenProjectQuotaResources(response.Quotas.Resources)
-	return diag.FromErr(d.Set("resources", result))
-}
-
-func flattenProjectQuotaResources(resources *[]iamModel.Resources) []map[string]interface{} {
-	if len(*resources) < 1 {
-		return nil
+	resources := utils.PathSearch("quotas.resources", respBody, nil)
+	if err = d.Set("resources", resources); err != nil {
+		return diag.Errorf("error setting regions fields: %s", err)
 	}
-	result := make([]map[string]interface{}, len(*resources))
-	for i, resource := range *resources {
-		result[i] = map[string]interface{}{
-			"type":  "project",
-			"max":   resource.Max,
-			"min":   resource.Min,
-			"quota": resource.Quota,
-			"used":  resource.Used,
-		}
-	}
-	return result
+	return nil
 }

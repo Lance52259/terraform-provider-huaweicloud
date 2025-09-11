@@ -2,13 +2,15 @@ package iam
 
 import (
 	"context"
+	"strings"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // DataSourceIdentityDomainQuota
@@ -68,65 +70,30 @@ func DataSourceIdentityDomainQuota() *schema.Resource {
 
 func DataSourceIdentityDomainQuotaRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-	requestType := convertStringToType(d.Get("type").(string))
-	request := &iamModel.ShowDomainQuotaRequest{DomainId: cfg.DomainID, Type: &requestType}
-	response, err := iamV3Client.ShowDomainQuota(request)
-	if err != nil {
-		return diag.Errorf("ShowDomainQuota error : %s", err)
+	showDomainQuotaPath := iamClient.Endpoint + "v3.0/OS-QUOTA/domains/{domain_id}"
+	showDomainQuotaPath = strings.ReplaceAll(showDomainQuotaPath, "{domain_id}", cfg.DomainID)
+	typeStr := d.Get("type").(string)
+	if typeStr != "" {
+		showDomainQuotaPath = showDomainQuotaPath + "?type=" + typeStr
 	}
-	id, err := uuid.GenerateUUID()
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamClient.Request("GET", showDomainQuotaPath, &options)
 	if err != nil {
-		return diag.Errorf("unable to generate ID: %s", err)
+		return diag.Errorf("error showDomainQuota: %s", err)
 	}
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	result := flattenDomainQuotaResources(response.Quotas.Resources)
-	return diag.FromErr(d.Set("resources", result))
-}
-
-func convertStringToType(typeStr string) iamModel.ShowDomainQuotaRequestType {
-	switch typeStr {
-	case "user":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().USER
-	case "group":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().GROUP
-	case "idp":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().IDP
-	case "agency":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().AGENCY
-	case "policy":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().POLICY
-	case "assigment_group_mp":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().ASSIGMENT_GROUP_MP
-	case "assigment_agency_mp":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().ASSIGMENT_AGENCY_MP
-	case "assigment_group_ep":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().ASSIGMENT_GROUP_EP
-	case "assigment_user_ep":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().ASSIGMENT_USER_EP
-	case "mapping":
-		return iamModel.GetShowDomainQuotaRequestTypeEnum().MAPPING
-	default:
-		return iamModel.ShowDomainQuotaRequestType{}
+	resources := utils.PathSearch("quotas.resources", respBody, nil)
+	if err = d.Set("resources", resources); err != nil {
+		return diag.Errorf("error setting regions fields: %s", err)
 	}
-}
-
-func flattenDomainQuotaResources(resources *[]iamModel.Resources) []map[string]interface{} {
-	if len(*resources) < 1 {
-		return nil
-	}
-	result := make([]map[string]interface{}, len(*resources))
-	for i, resource := range *resources {
-		result[i] = map[string]interface{}{
-			"type":  resource.Type,
-			"max":   resource.Max,
-			"min":   resource.Min,
-			"quota": resource.Quota,
-			"used":  resource.Used,
-		}
-	}
-	return result
+	return nil
 }

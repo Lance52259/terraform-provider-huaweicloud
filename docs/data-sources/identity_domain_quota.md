@@ -2,20 +2,17 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_domain_quota"
-description: ""
+description: "Use this data source to get domain(account) quota."
 ---
 
 # huaweicloud_identity_domain_quota
 
 Use this data source to get domain(account) quota.
 
--> **NOTE:** You *must* have IAM read privileges to use this data source.
-
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identity_domain_quota" "test" {
-}
+data "huaweicloud_identity_domain_quota" "test" {}
 
 data "huaweicloud_identity_domain_quota" "test" {
   type = "user"
@@ -29,14 +26,18 @@ data "huaweicloud_identity_domain_quota" "test" {
 
 ## Attribute Reference
 
+* `resources` - Indicates the resource info list.
+  The [resources](#IdentityDomainQuota_Resources) structure is documented below.
+
+<a name="IdentityDomainQuota_Resources"></a>
 The `resources` block contains:
 
-* `type` - The type of resource
+* `type` - Indicates the type of resource
 
-* `max` - Maximum Quota
+* `max` - Indicates the maximum Quota
 
-* `min` - Minimum Quota
+* `min` - Indicates the minimum Quota
 
-* `quota` - Current quota
+* `quota` - Indicates the current quota
 
-* `used` - Used quota
+* `used` - Indicates the used quota

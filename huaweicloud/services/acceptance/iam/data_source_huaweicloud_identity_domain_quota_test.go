@@ -39,8 +39,7 @@ func TestAccIdentityDomainQuotaDataSource(t *testing.T) {
 }
 
 const testAccIdentityDomainQuotaDataSource = `
-data "huaweicloud_identity_domain_quota" "test" {
-}
+data "huaweicloud_identity_domain_quota" "test" {}
 `
 
 const testAccIdentityDomainQuotaDataSourceWithType = `
