@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"github.com/chnsz/golangsdk"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -17,7 +18,7 @@ func DataSourceIdentityUserTokenInfo() *schema.Resource {
 
 		Description: "schema: Internal",
 		Schema: map[string]*schema.Schema{
-			"x_subject_token": {
+			"token": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -25,72 +26,79 @@ func DataSourceIdentityUserTokenInfo() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"token": {
+			"expires_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"issued_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"methods": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"catalog": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"expires_at": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"issued_at": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"methods": {
-							Type:     schema.TypeList,
-							Computed: true,
-							Elem:     &schema.Schema{Type: schema.TypeString},
-						},
-						"catalog": {
+						"endpoints": {
 							Type:     schema.TypeList,
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
-									"endpoints": {
-										Type:     schema.TypeList,
-										Computed: true,
-										Elem: &schema.Resource{
-											Schema: map[string]*schema.Schema{
-												"id": {
-													Type:     schema.TypeString,
-													Computed: true,
-												},
-												"interface": {
-													Type:     schema.TypeString,
-													Computed: true,
-												},
-												"region": {
-													Type:     schema.TypeString,
-													Computed: true,
-												},
-												"region_id": {
-													Type:     schema.TypeString,
-													Computed: true,
-												},
-												"url": {
-													Type:     schema.TypeString,
-													Computed: true,
-												},
-											},
-										},
-									},
 									"id": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"name": {
+									"interface": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
-									"type": {
+									"region": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"region_id": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"url": {
 										Type:     schema.TypeString,
 										Computed: true,
 									},
 								},
 							},
 						},
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"domain": {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"project": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
 						"domain": {
 							Type:     schema.TypeMap,
 							Computed: true,
@@ -98,71 +106,56 @@ func DataSourceIdentityUserTokenInfo() *schema.Resource {
 								Type: schema.TypeString,
 							},
 						},
-						"project": {
-							Type:     schema.TypeList,
+						"id": {
+							Type:     schema.TypeString,
 							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"domain": {
-										Type:     schema.TypeMap,
-										Computed: true,
-										Elem: &schema.Schema{
-											Type: schema.TypeString,
-										},
-									},
-									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"name": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-								},
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"roles": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"user": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"domain": {
+							Type:     schema.TypeMap,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
 							},
 						},
-						"roles": {
-							Type:     schema.TypeList,
+						"id": {
+							Type:     schema.TypeString,
 							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"name": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-								},
-							},
 						},
-						"user": {
-							Type:     schema.TypeList,
+						"name": {
+							Type:     schema.TypeString,
 							Computed: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"domain": {
-										Type:     schema.TypeMap,
-										Computed: true,
-										Elem: &schema.Schema{
-											Type: schema.TypeString,
-										},
-									},
-									"id": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"name": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-									"password_expires_at": {
-										Type:     schema.TypeString,
-										Computed: true,
-									},
-								},
-							},
+						},
+						"password_expires_at": {
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
@@ -185,7 +178,7 @@ func dataSourceIdentityUserTokenInfoRead(_ context.Context, d *schema.ResourceDa
 	getIdentityTokenOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		MoreHeaders: map[string]string{
-			"X-Subject-Token": d.Get("x_subject_token").(string),
+			"X-Subject-Token": d.Get("token").(string),
 		},
 	}
 	noCatalog := d.Get("no_catalog").(string)
@@ -203,29 +196,31 @@ func dataSourceIdentityUserTokenInfoRead(_ context.Context, d *schema.ResourceDa
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	tokenModel := utils.PathSearch("token", RespBody, nil)
-	token := append(make([]interface{}, 0, 1), flattenResponse(tokenModel, noCatalog))
-	if err = d.Set("token", token); err != nil {
-		return diag.Errorf("error setting token fields: %s", err)
-	}
-	return nil
+	return flattenResponse(tokenModel, noCatalog, d)
 }
 
-func flattenResponse(tokenModel interface{}, noCatalog string) map[string]interface{} {
+func flattenResponse(tokenModel interface{}, noCatalog string, d *schema.ResourceData) diag.Diagnostics {
 	if tokenModel == nil {
 		return nil
 	}
-	token := make(map[string]interface{})
-	token["expires_at"] = utils.PathSearch("expires_at", tokenModel, nil)
-	token["issued_at"] = utils.PathSearch("issued_at", tokenModel, nil)
-	token["methods"] = utils.PathSearch("methods", tokenModel, nil)
-	token["domain"] = flattenDomain(utils.PathSearch("domain", tokenModel, nil))
-	token["project"] = flattenProject(utils.PathSearch("project", tokenModel, nil))
-	token["roles"] = flattenRoles(utils.PathSearch("roles", tokenModel, nil))
-	token["user"] = flattenUser(utils.PathSearch("user", tokenModel, nil))
-	if noCatalog == "" {
-		token["catalog"] = flattenCatalog(utils.PathSearch("catalog", tokenModel, nil))
+	mErr := multierror.Append(nil,
+		d.Set("expires_at", utils.PathSearch("expires_at", tokenModel, nil)),
+		d.Set("issued_at", utils.PathSearch("issued_at", tokenModel, nil)),
+		d.Set("methods", utils.PathSearch("methods", tokenModel, nil)),
+		d.Set("domain", flattenDomain(utils.PathSearch("domain", tokenModel, nil))),
+		d.Set("project", flattenProject(utils.PathSearch("project", tokenModel, nil))),
+		d.Set("roles", flattenRoles(utils.PathSearch("roles", tokenModel, nil))),
+		d.Set("user", flattenUser(utils.PathSearch("user", tokenModel, nil))),
+	)
+	if err := mErr.ErrorOrNil(); err != nil {
+		return diag.FromErr(err)
 	}
-	return token
+	if noCatalog == "" {
+		if e := d.Set("catalog", flattenCatalog(utils.PathSearch("catalog", tokenModel, nil))); e != nil {
+			return diag.Errorf("error setting token fields catalog: %s", e)
+		}
+	}
+	return nil
 
 }
 

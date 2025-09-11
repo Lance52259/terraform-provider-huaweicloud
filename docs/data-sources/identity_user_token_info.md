@@ -23,7 +23,7 @@ resource "huaweicloud_identity_user_token" "test" {
 }
 
 data "huaweicloud_identity_user_token_info" "test" {
-  x_subject_token = huaweicloud_identity_user_token.test.token
+  token = huaweicloud_identity_user_token.test.token
 }
 ```
 

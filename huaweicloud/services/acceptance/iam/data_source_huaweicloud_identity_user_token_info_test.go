@@ -8,7 +8,7 @@ import (
 )
 
 func TestAccIdentityUserTokenInfo_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_identity_token.test"
+	dataSource := "data.huaweicloud_identity_user_token_info.test"
 	userName := acceptance.RandomAccResourceName()
 	initPassword := acceptance.RandomPassword()
 
@@ -24,7 +24,8 @@ func TestAccIdentityUserTokenInfo_basic(t *testing.T) {
 			{
 				Config: config,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "token.#", "1"),
+					resource.TestCheckResourceAttr(dataSource, "methods.0", "password"),
+					resource.TestCheckResourceAttr(dataSource, "user.#", "1"),
 				),
 			},
 		},
@@ -42,7 +43,7 @@ resource "huaweicloud_identity_user_token" "test" {
 }
 # 获取Token
 data "huaweicloud_identity_user_token_info" "test" {
-  x_subject_token = huaweicloud_identity_user_token.test.token
+  token = huaweicloud_identity_user_token.test.token
 }
 
 `, testAccIdentityUser_basic(userName, initPassword), acceptance.HW_DOMAIN_NAME, initPassword)
