@@ -2,13 +2,12 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocols"
-description: |-
-  Use this data source to get the list of IAM identity provider protocols.
+description: "Use this data source to get the list of IAM identity provider protocols."
 ---
 
 # huaweicloud_identity_provider_protocols
 
-Use this data source to get the list of IAM identity provider protocols.
+Use this data source to query the list of IAM identity provider protocols within HuaweiCloud.
 
 ## Example Usage
 
@@ -34,20 +33,22 @@ The following arguments are supported:
 
 ## Attribute Reference
 
-In addition to all arguments above, the following attributes are exported:
+* `protocols` - Indicates the protocol Information List.
+  The [protocols](#IdentityProtocols_Protocols) structure is documented below.
 
-* `protocols` - Protocol Information List.
-
-The `protocols` block supports:
+<a name="IdentityProtocols_Protocols"></a>
+The `protocols` block contains:
 
 * `id` - The protocol id.
 
-* `mapping_id` - The mapping id of the protocol.
+* `mapping_id` - Indicates the mapping id of the protocol.
 
-* `links` - The links of protocol.
+* `links` - Indicates the links of protocol.
+  The [protocols](#IdentityProtocols_Links) structure is documented below.
 
-The `links` block supports:
+<a name="IdentityProtocols_Links"></a>
+The `links` block contains:
 
-* `self` - The protocol resource link.
+* `self` - Indicates the protocol resource link.
 
-* `identity_provider` - The identity provider resource link.
+* `identity_provider` - Indicates the identity provider resource link.

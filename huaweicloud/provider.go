@@ -94,6 +94,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/live"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/lts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/meeting"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/metastudio"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/modelarts"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mpc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/mrs"

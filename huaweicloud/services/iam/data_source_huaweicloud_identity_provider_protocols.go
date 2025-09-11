@@ -2,14 +2,15 @@ package iam
 
 import (
 	"context"
+	"strings"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	iamv3 "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // DataSourceIamIdentityProviderProtocols
@@ -76,7 +77,7 @@ func DataSourceIamIdentityProviderProtocols() *schema.Resource {
 
 func dataSourceIdentityProviderProtocolsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamV3Client, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
@@ -88,51 +89,63 @@ func dataSourceIdentityProviderProtocolsRead(_ context.Context, d *schema.Resour
 	}
 }
 
-func listProviderProtocols(iamV3Client *iamv3.IamClient, d *schema.ResourceData) diag.Diagnostics {
-	request := &iamModel.KeystoneListProtocolsRequest{IdpId: d.Get("provider_id").(string)}
-	response, err := iamV3Client.KeystoneListProtocols(request)
+func listProviderProtocols(iamV3Client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	protocolPath := iamV3Client.Endpoint + "v3/OS-FEDERATION/identity_providers/{idp_id}/protocols"
+	protocolPath = strings.ReplaceAll(protocolPath, "{idp_id}", d.Get("provider_id").(string))
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamV3Client.Request("GET", protocolPath, &options)
 	if err != nil {
-		return diag.Errorf("KeystoneListProtocols error : %s", err)
+		return diag.Errorf("ListProtocol error : %s", err)
 	}
-	result := make([]map[string]interface{}, len(*response.Protocols))
-	for i, protocol := range *response.Protocols {
-		result[i] = map[string]interface{}{
-			"id":         protocol.Id,
-			"mapping_id": protocol.MappingId,
-		}
-		links := make([]map[string]interface{}, 1)
-		links[0] = map[string]interface{}{
-			"self":              protocol.Links.Self,
-			"identity_provider": protocol.Links.IdentityProvider,
-		}
-		result[i]["links"] = links
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	return diag.FromErr(d.Set("protocols", result))
+	protocolsBody := utils.PathSearch("protocols", respBody, nil).([]interface{})
+	protocols := make([]interface{}, 0, len(protocolsBody))
+	for _, protocol := range protocolsBody {
+		protocols = append(protocols, flattenProtocol(protocol))
+	}
+	if err = d.Set("protocols", protocols); err != nil {
+		return diag.Errorf("error setting protocols fields: %s", err)
+	}
+	return nil
 }
 
-func showProviderProtocol(iamV3Client *iamv3.IamClient, d *schema.ResourceData) diag.Diagnostics {
-	request := &iamModel.KeystoneShowProtocolRequest{
-		IdpId:      d.Get("provider_id").(string),
-		ProtocolId: d.Get("protocol_id").(string),
-	}
-	response, err := iamV3Client.KeystoneShowProtocol(request)
+func showProviderProtocol(iamV3Client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	protocolPath := getProtocolPath(iamV3Client.Endpoint, d.Get("provider_id").(string), d.Get("protocol_id").(string))
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamV3Client.Request("GET", protocolPath, &options)
 	if err != nil {
-		return diag.Errorf("KeystoneShowProtocol error : %s", err)
+		return diag.Errorf("ShowProtocol error : %s", err)
 	}
-	result := make([]map[string]interface{}, 1)
-	result[0] = map[string]interface{}{
-		"id":         response.Protocol.Id,
-		"mapping_id": response.Protocol.MappingId,
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
-	links := make([]map[string]interface{}, 1)
-	links[0] = map[string]interface{}{
-		"self":              response.Protocol.Links.Self,
-		"identity_provider": response.Protocol.Links.IdentityProvider,
-	}
-	result[0]["links"] = links
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	return diag.FromErr(d.Set("protocols", result))
+	protocolBody := utils.PathSearch("protocol", respBody, nil)
+	protocols := append(make([]interface{}, 0, 1), flattenProtocol(protocolBody))
+	if err = d.Set("protocols", protocols); err != nil {
+		return diag.Errorf("error setting protocols fields: %s", err)
+	}
+	return nil
+}
+
+func flattenProtocol(protocolModel interface{}) map[string]interface{} {
+	if protocolModel == nil {
+		return nil
+	}
+	protocol := make(map[string]interface{})
+	protocol["id"] = utils.PathSearch("id", protocolModel, nil)
+	protocol["mapping_id"] = utils.PathSearch("mapping_id", protocolModel, nil)
+	links := append(make([]interface{}, 0, 1), map[string]string{
+		"self":              utils.PathSearch("links.self", protocolModel, nil).(string),
+		"identity_provider": utils.PathSearch("links.identity_provider", protocolModel, nil).(string),
+	})
+	protocol["links"] = links
+	return protocol
 }

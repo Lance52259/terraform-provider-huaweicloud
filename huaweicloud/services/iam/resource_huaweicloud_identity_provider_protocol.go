@@ -6,13 +6,14 @@ import (
 	"log"
 	"strings"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	iamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // ResourceIdentityProviderProtocol
@@ -73,30 +74,25 @@ func ResourceIdentityProviderProtocol() *schema.Resource {
 
 func resourceIdentityProviderProtocolCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	iamV3Client, err := cfg.HcIamV3Client(cfg.GetRegion(d))
+	iamV3Client, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	idpId := d.Get("provider_id").(string)
 	protocolId := d.Get("protocol_id").(string)
 	mappingId := d.Get("mapping_id").(string)
-	request := &iamModel.KeystoneCreateProtocolRequest{
-		IdpId:      idpId,
-		ProtocolId: protocolId,
-		Body:       &iamModel.KeystoneCreateProtocolRequestBody{},
-	}
-	if mappingId != "" {
-		request.Body.Protocol = &iamModel.ProtocolOption{MappingId: &mappingId}
-	}
-	_, err = iamV3Client.KeystoneCreateProtocol(request)
+
+	protocolPath := getProtocolPath(iamV3Client.Endpoint, idpId, protocolId)
+	options := getProtocolRequestOptsWithBody(mappingId)
+	_, err = iamV3Client.Request("PUT", protocolPath, &options)
 	conflictMsg := "Conflict occurred attempting to store federation_protocol"
 	if err != nil {
-		if strings.Contains(err.Error(), "409") && strings.Contains(err.Error(), conflictMsg) {
+		if strings.Contains(err.Error(), "got 409") && strings.Contains(err.Error(), conflictMsg) {
 			log.Printf("Protocl `%s` of identity provider `%s` has already existed. Now Update it with mapping `%s`",
 				idpId, protocolId, mappingId)
 			return resourceIdentityProviderProtocolUpdate(ctx, d, meta)
 		}
-		return diag.Errorf("KeystoneCreateProtocol error : %s", err)
+		return diag.Errorf("CreateProtocol error : %s", err)
 	}
 	d.SetId(fmt.Sprintf("%s:%s", idpId, protocolId))
 	return resourceIdentityProviderProtocolRead(ctx, d, meta)
@@ -104,27 +100,27 @@ func resourceIdentityProviderProtocolCreate(ctx context.Context, d *schema.Resou
 
 func resourceIdentityProviderProtocolRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
-	iamV3Client, err := conf.HcIamV3Client(conf.GetRegion(d))
+	iamV3Client, err := conf.IAMV3Client(conf.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-	request := &iamModel.KeystoneShowProtocolRequest{
-		IdpId:      d.Get("provider_id").(string),
-		ProtocolId: d.Get("protocol_id").(string),
-	}
-	response, err := iamV3Client.KeystoneShowProtocol(request)
+	protocolPath := getProtocolPath(iamV3Client.Endpoint, d.Get("provider_id").(string), d.Get("protocol_id").(string))
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	response, err := iamV3Client.Request("GET", protocolPath, &options)
 	if err != nil {
-		return diag.Errorf("KeystoneShowProtocol error : %s", err)
+		return diag.Errorf("ShowProtocol error : %s", err)
 	}
-
-	links := make([]map[string]interface{}, 1)
-	links[0] = map[string]interface{}{
-		"self":              response.Protocol.Links.Self,
-		"identity_provider": response.Protocol.Links.IdentityProvider,
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return diag.FromErr(err)
 	}
+	links := append(make([]interface{}, 0, 1), map[string]interface{}{
+		"self":              utils.PathSearch("protocol.links.self", respBody, nil),
+		"identity_provider": utils.PathSearch("protocol.links.identity_provider", respBody, nil),
+	})
 	mErr := multierror.Append(nil,
-		d.Set("protocol_id", response.Protocol.Id),
-		d.Set("mapping_id", response.Protocol.MappingId),
+		d.Set("protocol_id", utils.PathSearch("protocol.id", respBody, nil)),
+		d.Set("mapping_id", utils.PathSearch("protocol.mapping_id", respBody, nil)),
 		d.Set("links", links),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
@@ -135,24 +131,18 @@ func resourceIdentityProviderProtocolRead(_ context.Context, d *schema.ResourceD
 
 func resourceIdentityProviderProtocolUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
-	iamV3Client, err := conf.HcIamV3Client(conf.GetRegion(d))
+	iamV3Client, err := conf.IAMV3Client(conf.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	idpId := d.Get("provider_id").(string)
 	protocolId := d.Get("protocol_id").(string)
 	mappingId := d.Get("mapping_id").(string)
-	request := &iamModel.KeystoneUpdateProtocolRequest{
-		IdpId:      idpId,
-		ProtocolId: protocolId,
-		Body:       &iamModel.KeystoneUpdateProtocolRequestBody{},
-	}
-	if mappingId != "" {
-		request.Body.Protocol = &iamModel.ProtocolOption{MappingId: &mappingId}
-	}
-	_, err = iamV3Client.KeystoneUpdateProtocol(request)
+	protocolPath := getProtocolPath(iamV3Client.Endpoint, idpId, protocolId)
+	options := getProtocolRequestOptsWithBody(mappingId)
+	_, err = iamV3Client.Request("PATCH", protocolPath, &options)
 	if err != nil {
-		return diag.Errorf("KeystoneUpdateProtocol error : %s", err)
+		return diag.Errorf("UpdateProtocol error : %s", err)
 	}
 	d.SetId(fmt.Sprintf("%s:%s", idpId, protocolId))
 	return resourceIdentityProviderProtocolRead(ctx, d, meta)
@@ -160,15 +150,13 @@ func resourceIdentityProviderProtocolUpdate(ctx context.Context, d *schema.Resou
 
 func resourceIdentityProviderProtocolDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
-	iamV3Client, err := conf.HcIamV3Client(conf.GetRegion(d))
+	iamV3Client, err := conf.IAMV3Client(conf.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-	request := &iamModel.KeystoneDeleteProtocolRequest{
-		IdpId:      d.Get("provider_id").(string),
-		ProtocolId: d.Get("protocol_id").(string),
-	}
-	_, err = iamV3Client.KeystoneDeleteProtocol(request)
+	protocolPath := getProtocolPath(iamV3Client.Endpoint, d.Get("provider_id").(string), d.Get("protocol_id").(string))
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	_, err = iamV3Client.Request("DELETE", protocolPath, &options)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error deleting identity provider protocol")
 	}
@@ -189,4 +177,26 @@ func resourceIdentityProviderProtocolImportState(
 		return nil, fmt.Errorf("failed to set value to state when import identity provider protocol, %s", err)
 	}
 	return []*schema.ResourceData{d}, nil
+}
+
+func getProtocolPath(endpoint string, idpId string, protocolId string) string {
+	protocolPath := endpoint + "v3/OS-FEDERATION/identity_providers/{idp_id}/protocols/{protocol_id}"
+	protocolPath = strings.ReplaceAll(protocolPath, "{idp_id}", idpId)
+	protocolPath = strings.ReplaceAll(protocolPath, "{protocol_id}", protocolId)
+	return protocolPath
+}
+
+func getProtocolRequestOptsWithBody(mappingId string) golangsdk.RequestOpts {
+	options := golangsdk.RequestOpts{KeepResponseBody: true}
+	if mappingId != "" {
+		options.JSONBody = map[string]interface{}{
+			"protocol": map[string]string{
+				"mapping_id": mappingId},
+		}
+	} else {
+		options.JSONBody = map[string]interface{}{
+			"protocol": map[string]string{},
+		}
+	}
+	return options
 }

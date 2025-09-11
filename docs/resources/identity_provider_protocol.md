@@ -2,7 +2,7 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocol"
-description: ""
+description: "Manage the protocol of identity provider within HuaweiCloud IAM service."
 ---
 
 # huaweicloud_identity_provider_protocol
@@ -11,7 +11,7 @@ Manage the protocol of identity provider within HuaweiCloud IAM service.
 
 When you create identity provider through console or terraform resource `huaweicloud_identity_provider`, it will create 
 a default protocol with a default mapping. If the mapping of the existed protocol is different from the mapping you 
-specified, it will try to update the protocol when using `huaweicloud_identity_provider_protocol`.
+specified in `huaweicloud_identity_provider_protocol`, it will try to update the protocol.
 
 ## Example Usage
 
@@ -35,20 +35,20 @@ The following arguments are supported:
 
 ## Attribute Reference
 
-In addition to all arguments above, the following attributes are exported:
+* `links` - Indicates the links of protocol.
+  The [protocols](#IdentityProtocols_Links) structure is documented below.
 
-* `links` - The links of protocol.
+<a name="IdentityProtocols_Links"></a>
+The `links` block contains:
 
-The `links` block supports:
+* `self` - Indicates the resource link.
 
-* `self` - The resource link.
-
-* `identity_provider` - The identity provider resource link.
+* `identity_provider` - Indicates the identity provider resource link.
 
 ## Import
 
-Identity provider protocol is imported using the `{provider_id}:{protocol_id}`. For example, if you have provider_id `provider_test` and protocol `saml`, you should use `provider_test:saml` to import.
+Identity provider protocol can be imported using the `<provider_id>:<protocol_id>`. For example, if you have provider_id `provider_test` and protocol `saml`, you should use `provider_test:saml` to import.
 
 ```bash
-$ terraform import huaweicloud_identity_provider_protocol.protocol example_com_provider_saml
+$ terraform import huaweicloud_identity_provider_protocol.protocol <provider_id>:<protocol_id>
 ```
