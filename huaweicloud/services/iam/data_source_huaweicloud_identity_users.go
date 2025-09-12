@@ -18,9 +18,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API IAM GET /v3/users
-// @API IAM GET /v3/users/{user_id}/groups
 // DataSourceIdentityUsers is the impl of data/huaweicloud_identity_users
+// @API IAM GET /v3/users
+// @API IAM GET /v3/users/{user_id}
+// @API IAM GET /v3/users/{user_id}/groups
 func DataSourceIdentityUsers() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityUsersRead,
@@ -35,6 +36,12 @@ func DataSourceIdentityUsers() *schema.Resource {
 				Optional: true,
 				Default:  true,
 			},
+			"user_id": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"name", "enabled"},
+			},
+
 			"users": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -83,21 +90,29 @@ func dataSourceIdentityUsersRead(_ context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating IAM v3 client: %s", err)
 	}
 
-	listOpts := users.ListOpts{
-		Name:    d.Get("name").(string),
-		Enabled: utils.Bool(d.Get("enabled").(bool)),
+	var result []map[string]interface{}
+	var ids []string
+	if userId := d.Get("user_id").(string); userId != "" {
+		user, err := users.Get(client, userId).Extract()
+		if err != nil {
+			return diag.Errorf("error retrieving IAM user: %v", err)
+		}
+		result, ids = flattenIAMUserList(client, append(make([]users.User, 0, 1), *user))
+	} else {
+		listOpts := users.ListOpts{
+			Name:    d.Get("name").(string),
+			Enabled: utils.Bool(d.Get("enabled").(bool)),
+		}
+		pages, err := users.List(client, listOpts).AllPages()
+		if err != nil {
+			return diag.Errorf("error retrieving IAM user list: %v", err)
+		}
+		userList, err := users.ExtractUsers(pages)
+		if err != nil {
+			return diag.Errorf("error extracting IAM user objects: %v", err)
+		}
+		result, ids = flattenIAMUserList(client, userList)
 	}
-	pages, err := users.List(client, listOpts).AllPages()
-	if err != nil {
-		return diag.Errorf("error retrieving IAM user list: %v", err)
-	}
-	userList, err := users.ExtractUsers(pages)
-	if err != nil {
-		return diag.Errorf("error extracting IAM user objects: %v", err)
-	}
-
-	result, ids := flattenIAMUserList(client, userList)
-
 	d.SetId(hashcode.Strings(ids))
 	return diag.FromErr(d.Set("users", result))
 }
