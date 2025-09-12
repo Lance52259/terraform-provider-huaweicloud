@@ -2,7 +2,7 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_projects"
-description: ""
+description: "Use this data source to query the IAM project list within HuaweiCloud."
 ---
 
 # huaweicloud_identity_projects
@@ -29,11 +29,21 @@ data "huaweicloud_identity_projects" "test" {
 }
 ```
 
+### Obtain project information by project id
+
+```hcl
+data "huaweicloud_identity_projects" "test" {
+  project_id = "Your project id"
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
 
 * `name` - (Optional, String) Specifies the IAM project name to query.
+
+* `project_id` - (Optional, String) Specifies the IAM project id to query. This parameter conflicts with `name`.
 
 ## Attribute Reference
 

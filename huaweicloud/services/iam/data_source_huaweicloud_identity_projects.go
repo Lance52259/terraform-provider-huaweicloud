@@ -12,7 +12,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
 )
 
+// DataSourceIdentityProjects
 // @API IAM GET /v3/projects
+// @API IAM GET /v3/projects/{project_id}
 func DataSourceIdentityProjects() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityProjectsRead,
@@ -22,6 +24,12 @@ func DataSourceIdentityProjects() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"project_id": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"name"},
+			},
+
 			"projects": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -71,20 +79,28 @@ func dataSourceIdentityProjectsRead(_ context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating IAM v3 client: %s", err)
 	}
 
-	listOpts := projects.ListOpts{
-		Name: d.Get("name").(string),
+	var result []map[string]interface{}
+	var ids []string
+	if projectId := d.Get("project_id").(string); projectId != "" {
+		project, err := projects.Get(client, projectId).Extract()
+		if err != nil {
+			return diag.Errorf("error retrieving IAM project: %v", err)
+		}
+		result, ids = flattenProjectList(append(make([]projects.Project, 0, 1), *project))
+	} else {
+		listOpts := projects.ListOpts{
+			Name: d.Get("name").(string),
+		}
+		pages, err := projects.List(client, listOpts).AllPages()
+		if err != nil {
+			return diag.Errorf("error retrieving IAM project list: %v", err)
+		}
+		projectList, err := projects.ExtractProjects(pages)
+		if err != nil {
+			return diag.Errorf("error fetching IAM project objects: %v", err)
+		}
+		result, ids = flattenProjectList(projectList)
 	}
-	pages, err := projects.List(client, listOpts).AllPages()
-	if err != nil {
-		return diag.Errorf("error retrieving IAM project list: %v", err)
-	}
-	projectList, err := projects.ExtractProjects(pages)
-	if err != nil {
-		return diag.Errorf("error fetching IAM project objects: %v", err)
-	}
-
-	result, ids := flattenProjectList(projectList)
-
 	d.SetId(hashcode.Strings(ids))
 	return diag.FromErr(d.Set("projects", result))
 }
