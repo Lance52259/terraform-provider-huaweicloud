@@ -28,18 +28,21 @@ func DataSourceIdentityUsers() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Specifies the IAM username.",
 			},
 			"enabled": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Specifies the status of the IAM user, the default value is **true**.",
 			},
 			"user_id": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ConflictsWith: []string{"name", "enabled"},
+				Description:   "Specifies the id of the IAM user. This parameter conflicts with `name` and `enabled`.",
 			},
 
 			"users": {
@@ -97,7 +100,7 @@ func dataSourceIdentityUsersRead(_ context.Context, d *schema.ResourceData, meta
 		if err != nil {
 			return diag.Errorf("error retrieving IAM user: %v", err)
 		}
-		result, ids = flattenIAMUserList(client, append(make([]users.User, 0, 1), *user))
+		result, ids = flattenIAMUserList(client, []users.User{*user})
 	} else {
 		listOpts := users.ListOpts{
 			Name:    d.Get("name").(string),

@@ -21,13 +21,15 @@ func DataSourceIdentityProjects() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Specifies the IAM project name to query",
 			},
 			"project_id": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ConflictsWith: []string{"name"},
+				Description:   "Specifies the IAM project id to query. This parameter conflicts with `name`.",
 			},
 
 			"projects": {
@@ -86,7 +88,7 @@ func dataSourceIdentityProjectsRead(_ context.Context, d *schema.ResourceData, m
 		if err != nil {
 			return diag.Errorf("error retrieving IAM project: %v", err)
 		}
-		result, ids = flattenProjectList(append(make([]projects.Project, 0, 1), *project))
+		result, ids = flattenProjectList([]projects.Project{*project})
 	} else {
 		listOpts := projects.ListOpts{
 			Name: d.Get("name").(string),
