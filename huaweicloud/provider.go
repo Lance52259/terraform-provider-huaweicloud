@@ -1132,6 +1132,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_custom_role":         iam.DataSourceIdentityCustomRole(),
 			"huaweicloud_identity_group":               iam.DataSourceIdentityGroup(),
 			"huaweicloud_identity_projects":            iam.DataSourceIdentityProjects(),
+			"huaweicloud_identity_auth_projects":       iam.DataSourceIdentityAuthProjects(),
+			"huaweicloud_identity_user_projects":       iam.DataSourceIdentityUserProjects(),
 			"huaweicloud_identity_users":               iam.DataSourceIdentityUsers(),
 			"huaweicloud_identity_agencies":            iam.DataSourceIdentityAgencies(),
 			"huaweicloud_identity_providers":           iam.DataSourceIamIdentityProviders(),
