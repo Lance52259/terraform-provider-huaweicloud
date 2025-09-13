@@ -12,8 +12,7 @@ Use this data source to query the project list of a specified IAM user by admini
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identity_user_projects" "test" {
-}
+data "huaweicloud_identity_user_projects" "test" {}
 ```
 
 ```hcl

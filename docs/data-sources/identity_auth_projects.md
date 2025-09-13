@@ -12,8 +12,7 @@ Use this data source to query the list of projects accessible by current user wi
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identity_auth_projects" "test" {
-}
+data "huaweicloud_identity_auth_projects" "test" {}
 ```
 
 ## Argument Reference

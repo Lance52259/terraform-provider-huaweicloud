@@ -29,6 +29,5 @@ func TestDataSourceIdentityAuthProjects(t *testing.T) {
 }
 
 const testTestDataSourceIdentityAuthProjects = `
-data "huaweicloud_identity_auth_projects" "test" {
-}
+data "huaweicloud_identity_auth_projects" "test" {}
 `
