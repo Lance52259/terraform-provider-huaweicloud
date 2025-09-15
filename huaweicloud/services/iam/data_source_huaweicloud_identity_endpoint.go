@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"net/url"
 )
 
 // @API IAM GET /v3/endpoints
@@ -31,11 +32,6 @@ func DataSourceIdentityEndpoint() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The ID of service",
-			},
-			"token": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "IAM user authentication token ",
 			},
 			"endpoints": {
 				Type:     schema.TypeList,
@@ -70,43 +66,26 @@ func DataSourceIdentityEndpoint() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"links": {
-							Type:     schema.TypeMap,
+						"link": {
+							Type:     schema.TypeString,
 							Computed: true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
 						},
 					},
-				},
-			},
-			"links": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
 				},
 			},
 		},
 	}
 }
+
 func dataSourceIdentityEndpointRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
-	var (
-		getIdentityEndpointHttpUrl = "v3/endpoints"
-		product                    = "iam"
-	)
-	client, err := cfg.NewServiceClient(product, cfg.GetRegion(d))
+	client, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating Identity Endpoint client: %s", err)
 	}
-	getIdentityEndpointBasePath := client.Endpoint + getIdentityEndpointHttpUrl
+	getIdentityEndpointBasePath := client.Endpoint + "v3/endpoints"
 	getIdentityEndpointOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders: map[string]string{
-			"X-Auth-Token": d.Get("token").(string),
-			"Content-Type": "application/json;charset=utf8",
-		},
 	}
 	endpointId := d.Get("endpoint_id").(string)
 	if endpointId != "" {
@@ -114,15 +93,19 @@ func dataSourceIdentityEndpointRead(_ context.Context, d *schema.ResourceData, m
 	}
 	interfaceParam := d.Get("interface").(string)
 	serviceId := d.Get("service_id").(string)
-	if interfaceParam != "" && serviceId != "" {
-		getIdentityEndpointBasePath = getIdentityEndpointBasePath + "?service_id=" + serviceId + "&interface=" + interfaceParam
-	} else if interfaceParam != "" {
-		getIdentityEndpointBasePath = getIdentityEndpointBasePath + "?interface=" + interfaceParam
-	} else {
-		getIdentityEndpointBasePath = getIdentityEndpointBasePath + "?service_id=" + serviceId
+	u, err := url.Parse(getIdentityEndpointBasePath)
+	if err != nil {
+		return diag.Errorf("error update query path: %s", err)
 	}
-
-	response, err := client.Request("GET", getIdentityEndpointBasePath, &getIdentityEndpointOpt)
+	query := u.Query()
+	if serviceId != "" {
+		query.Add("service_id", serviceId)
+	}
+	if interfaceParam != "" {
+		query.Add("interface", interfaceParam)
+	}
+	u.RawQuery = query.Encode()
+	response, err := client.Request("GET", u.String(), &getIdentityEndpointOpt)
 	if err != nil {
 		return diag.Errorf("error get identity token: %s", err)
 	}
@@ -133,25 +116,20 @@ func dataSourceIdentityEndpointRead(_ context.Context, d *schema.ResourceData, m
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if endpointId != "" {
-		endpoint := flattenEndpoint(append(make([]interface{}, 0, 1), utils.PathSearch("endpoint", respBody, nil)))
-		if e := d.Set("endpoints", endpoint); e != nil {
+		endpoints := flattEndpoints([]interface{}{utils.PathSearch("endpoint", respBody, nil)})
+		if e := d.Set("endpoints", endpoints); e != nil {
 			return diag.FromErr(e)
 		}
 	} else {
-		endpoint := flattenEndpoint(utils.PathSearch("endpoints", respBody, nil).([]interface{}))
+		endpoint := flattEndpoints(utils.PathSearch("endpoints", respBody, nil).([]interface{}))
 		if e := d.Set("endpoints", endpoint); e != nil {
-			return diag.FromErr(e)
-		}
-		links := flattenLinks(utils.PathSearch("links", respBody, nil))
-		if e := d.Set("links", links); e != nil {
 			return diag.FromErr(e)
 		}
 	}
 	return nil
 }
 
-func flattenEndpoint(endPointBody []interface{}) []map[string]interface{} {
-
+func flattEndpoints(endPointBody []interface{}) []map[string]interface{} {
 	endpoints := make([]map[string]interface{}, len(endPointBody))
 	for i, endpoint := range endPointBody {
 		endpoints[i] = map[string]interface{}{
@@ -162,20 +140,8 @@ func flattenEndpoint(endPointBody []interface{}) []map[string]interface{} {
 			"region":     utils.PathSearch("region", endpoint, nil),
 			"url":        utils.PathSearch("url", endpoint, nil),
 			"enabled":    utils.PathSearch("enabled", endpoint, nil),
-			"links":      flattenLinks(utils.PathSearch("links", endpoint, nil)),
+			"link":       utils.PathSearch("self", utils.PathSearch("links", endpoint, nil), nil),
 		}
 	}
 	return endpoints
-}
-
-func flattenLinks(linkBody interface{}) map[string]interface{} {
-	if linkBody == nil {
-		return nil
-	}
-	res := map[string]interface{}{
-		"next":     utils.PathSearch("next", linkBody, nil),
-		"previous": utils.PathSearch("previous", linkBody, nil),
-		"self":     utils.PathSearch("self", linkBody, nil).(string),
-	}
-	return res
 }
