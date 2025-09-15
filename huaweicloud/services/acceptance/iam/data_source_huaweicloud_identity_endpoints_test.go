@@ -9,10 +9,10 @@ import (
 )
 
 func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_identity_endpoint.test"
+	dataSource := "data.huaweicloud_identity_endpoints.test"
 
-	config := testAccIdentityEndpoint_basic()
-	configWithId := testAccIdentityEndpointById_basic()
+	config := testAccIdentityEndpoints_basic()
+	configWithId := testAccIdentityEndpointsById_basic()
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
@@ -37,16 +37,16 @@ func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
 	})
 }
 
-func testAccIdentityEndpoint_basic() string {
+func testAccIdentityEndpoints_basic() string {
 	return `
-data "huaweicloud_identity_endpoint" "test" {
+data "huaweicloud_identity_endpoints" "test" {
 }
 `
 }
 
-func testAccIdentityEndpointById_basic() string {
+func testAccIdentityEndpointsById_basic() string {
 	return `
-data "huaweicloud_identity_endpoint" "test" {
+data "huaweicloud_identity_endpoints" "test" {
   endpoint_id = "0046cca357c94165b7a10ec2c01bdf60"
 }
 `

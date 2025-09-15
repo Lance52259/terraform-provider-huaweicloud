@@ -12,9 +12,9 @@ import (
 )
 
 // @API IAM GET /v3/endpoints
-func DataSourceIdentityEndpoint() *schema.Resource {
+func DataSourceIdentityEndpoints() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceIdentityEndpointRead,
+		ReadContext: dataSourceIdentityEndpointsRead,
 
 		Schema: map[string]*schema.Schema{
 			"endpoint_id": {
@@ -77,7 +77,7 @@ func DataSourceIdentityEndpoint() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityEndpointRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	client, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {

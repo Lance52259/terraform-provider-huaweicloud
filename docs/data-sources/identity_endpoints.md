@@ -1,11 +1,11 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identity_endpoint"
+page_title: "HuaweiCloud: huaweicloud_identity_endpoints"
 description: "Use this data source to get information of endpoint within HuaweiCloud."
 ---
 
-# huaweicloud_identity_endpoint
+# huaweicloud_identity_endpoints
 
 Use this data source to get information of endpoint within HuaweiCloud.
 
@@ -16,13 +16,13 @@ Use this data source to get information of endpoint within HuaweiCloud.
 ```hcl
 variable "endpoint_id" {}
 
-data "huaweicloud_identity_endpoint" "test" {
+data "huaweicloud_identity_endpoints" "test" {
   endpoint_id = var.endpoint_id
 }
 ```
 
 ```hcl
-data "huaweicloud_identity_endpoint" "test" {
+data "huaweicloud_identity_endpoints" "test" {
 
 }
 ```
