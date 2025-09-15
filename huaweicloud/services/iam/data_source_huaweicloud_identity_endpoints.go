@@ -107,7 +107,7 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	u.RawQuery = query.Encode()
 	response, err := client.Request("GET", u.String(), &getIdentityEndpointOpt)
 	if err != nil {
-		return diag.Errorf("error get identity token: %s", err)
+		return diag.Errorf("error getting identity endpoints: %s", err)
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
@@ -116,12 +116,12 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if endpointId != "" {
-		endpoints := flattEndpoints([]interface{}{utils.PathSearch("endpoint", respBody, nil)})
+		endpoints := flattenEndpointsList([]interface{}{utils.PathSearch("endpoint", respBody, nil)})
 		if e := d.Set("endpoints", endpoints); e != nil {
 			return diag.FromErr(e)
 		}
 	} else {
-		endpoint := flattEndpoints(utils.PathSearch("endpoints", respBody, nil).([]interface{}))
+		endpoint := flattenEndpointsList(utils.PathSearch("endpoints", respBody, nil).([]interface{}))
 		if e := d.Set("endpoints", endpoint); e != nil {
 			return diag.FromErr(e)
 		}
@@ -129,7 +129,7 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	return nil
 }
 
-func flattEndpoints(endPointBody []interface{}) []map[string]interface{} {
+func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 	endpoints := make([]map[string]interface{}, len(endPointBody))
 	for i, endpoint := range endPointBody {
 		endpoints[i] = map[string]interface{}{
