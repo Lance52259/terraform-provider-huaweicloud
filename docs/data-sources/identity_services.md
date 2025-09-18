@@ -5,7 +5,7 @@ page_title: "HuaweiCloud: huaweicloud_identity_services"
 description: "Use this data source to query the services list within HuaweiCloud."
 ---
 
-# huaweicloud_identity_regions
+# huaweicloud_identity_services
 
 Use this data source to query the services list within HuaweiCloud.
 

@@ -10,6 +10,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IAM GET /v3/services/{service_id}
 // @API IAM GET /v3/services
 func DataSourceIdentityServices() *schema.Resource {
 	return &schema.Resource{
