@@ -25,9 +25,9 @@ data "huaweicloud_identity_role_assignments" "test" {
 
 * `subject_user_id` - (Optional, String) Specifies authorized IAM user ID. Conflict with subject_agency_id and subject_group_id 
 
-* `subject_group_id` - (Optional, String) Specifies authorized user group ID.Conflict with subject_user_id and subject_agency_id
+* `subject_group_id` - (Optional, String) Specifies authorized user group ID. Conflict with subject_user_id and subject_agency_id
 
-* `subject_agency_id` - (Optional, String) Specifies authorized delegation ID.Conflict with subject_user_id and subject_group_id
+* `subject_agency_id` - (Optional, String) Specifies authorized delegation ID. Conflict with subject_user_id and subject_group_id
 
 * `scope` - (Optional, String) Specifies Scope of authorization, value range: **project**, **domain**, **enterprise_project**. This parameter can only choose one among 
   * **project**, 
@@ -35,11 +35,11 @@ data "huaweicloud_identity_role_assignments" "test" {
   * **enterprise_project**.
   Default: **domain**
 
-* `scope_project_id` - (Optional, String) Specifies authorized project ID.Conflict with scope_domain_id and scope_enterprise_projects_id
+* `scope_project_id` - (Optional, String) Specifies authorized project ID. Conflict with scope_domain_id and scope_enterprise_projects_id
 
-* `scope_domain_id` - (Optional, String) Specifies pending query account ID.Conflict with scope_enterprise_projects_id and scope_project_id
+* `scope_domain_id` - (Optional, String) Specifies pending query account ID. Conflict with scope_enterprise_projects_id and scope_project_id
 
-* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID.Conflict with scope_domain_id and scope_project_id
+* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID. Conflict with scope_domain_id and scope_project_id
 
 * `is_inherited` - (Optional, String) Specifies takes effect when the parameter scope=domain or scope.domain_id exists. 
   * **true**: query records based on authorization for all projects. 
