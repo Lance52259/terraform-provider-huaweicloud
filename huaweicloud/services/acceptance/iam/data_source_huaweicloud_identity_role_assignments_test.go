@@ -20,7 +20,6 @@ func TestAccIdentityRoleAssignments_basic(t *testing.T) {
 				Config: config,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "1"),
-					resource.TestCheckResourceAttr(dataSource, "total_num", "1"),
 				),
 			},
 		},
@@ -30,7 +29,6 @@ func TestAccIdentityRoleAssignments_basic(t *testing.T) {
 func testAccIdentityRoleAssignments_basic() string {
 	return `
   data "huaweicloud_identity_role_assignments" "test" {
- 	 domain_id = "7555306cc351437d9f2ec35246d25532"
 }
 `
 }

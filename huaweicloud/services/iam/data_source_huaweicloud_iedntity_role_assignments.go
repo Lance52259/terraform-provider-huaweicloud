@@ -19,10 +19,6 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 		ReadContext: DataSourceIdentityRoleAssignmentsRead,
 
 		Schema: map[string]*schema.Schema{
-			"domain_id": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
 			"role_id": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -105,14 +101,12 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 				Default:  true,
 			},
 			"page": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntAtLeast(1),
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 			"per_page": {
-				Type:         schema.TypeInt,
-				Optional:     true,
-				ValidateFunc: validation.IntBetween(1, 50),
+				Type:     schema.TypeInt,
+				Optional: true,
 			},
 			"role_assignments": {
 				Type:     schema.TypeList,
@@ -135,13 +129,6 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
-						"scope": {
-							Type:     schema.TypeMap,
-							Computed: true,
-							Elem: &schema.Schema{
-								Type: schema.TypeString,
-							},
-						},
 						"is_inherited": {
 							Type:     schema.TypeBool,
 							Computed: true,
@@ -149,16 +136,13 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 					},
 				},
 			},
-			"total_num": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 		},
 	}
 }
 
 func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
+	domainId := cfg.DomainID
 	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
@@ -170,10 +154,8 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 		return diag.Errorf("error update query path: %s", err)
 	}
 	query := u.Query()
-	domainId := d.Get("domain_id").(string)
 	query.Add("domain_id", domainId)
-	roleId := d.Get("role_id").(string)
-	if roleId != "" {
+	if roleId := d.Get("role_id").(string); roleId != "" {
 		query.Add("role_id", roleId)
 	}
 	subject := d.Get("subject").(string)
@@ -184,44 +166,36 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 	if subjectUserId != "" {
 		query.Add("subject.user_id", subjectUserId)
 	}
-	subjectGroupId := d.Get("subject_group_id").(string)
-	if subjectGroupId != "" {
+	if subjectGroupId := d.Get("subject_group_id").(string); subjectGroupId != "" {
 		query.Add("subject.group_id", subjectGroupId)
 	}
-	subjectAgencyId := d.Get("subject_agency_id").(string)
-	if subjectAgencyId != "" {
+	if subjectAgencyId := d.Get("subject_agency_id").(string); subjectAgencyId != "" {
 		query.Add("subject.agency_id", subjectAgencyId)
 	}
 	scope := d.Get("scope").(string)
 	if scope != "" {
 		query.Add("scope", scope)
 	}
-	scopeProjectId := d.Get("scope_project_id").(string)
-	if scopeProjectId != "" {
+	if scopeProjectId := d.Get("scope_project_id").(string); scopeProjectId != "" {
 		query.Add("scope.project_id", scopeProjectId)
 	}
 	scopeDomainId := d.Get("scope_domain_id").(string)
 	if scopeDomainId != "" {
 		query.Add("scope.domain_id", scopeDomainId)
 	}
-	scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string)
-	if scopeEnterpriseProjectsId != "" {
+	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
 		query.Add("scope.enterprise_projects_id", scopeEnterpriseProjectsId)
 	}
-	isInherited := d.Get("is_inherited").(bool)
-	if scope == "domain" || scopeDomainId != "" {
+	if isInherited := d.Get("is_inherited").(bool); scope == "domain" || scopeDomainId != "" {
 		query.Add("is_inherited", strconv.FormatBool(isInherited))
 	}
-	includeGroup := d.Get("include_group").(bool)
-	if subject == "user" || subjectUserId != "" {
+	if includeGroup := d.Get("include_group").(bool); subject == "user" || subjectUserId != "" {
 		query.Add("include_group", strconv.FormatBool(includeGroup))
 	}
-	page := d.Get("page").(int)
-	if page > 0 {
+	if page := d.Get("page").(int); page > 0 {
 		query.Add("page", strconv.Itoa(page))
 	}
-	perPage := d.Get("per_page").(int)
-	if perPage > 0 {
+	if perPage := d.Get("per_page").(int); perPage > 0 {
 		query.Add("per_page", strconv.Itoa(perPage))
 	}
 	u.RawQuery = query.Encode()
@@ -233,9 +207,6 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 	respBody, err := utils.FlattenResponse(response)
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	if err = d.Set("total_num", utils.PathSearch("total_num", respBody, nil)); err != nil {
-		return diag.Errorf("error setting total_num fields: %s", err)
-	}
 	if err = d.Set("role_assignments", showRoleAssignments(utils.PathSearch("role_assignments", respBody, nil).([]interface{}))); err != nil {
 		return diag.Errorf("error setting total_num fields: %s", err)
 	}
@@ -248,24 +219,10 @@ func showRoleAssignments(assignmentsBody []interface{}) []map[string]interface{}
 		assignments[i] = map[string]interface{}{
 			"role_id":      utils.PathSearch("id", utils.PathSearch("role", assignment, nil), nil),
 			"is_inherited": utils.PathSearch("is_inherited", assignment, nil),
-			"scope":        showAssignmentsScope(utils.PathSearch("scope", assignment, nil)),
 			"user_id":      utils.PathSearch("id", utils.PathSearch("user", assignment, nil), nil),
 			"group_id":     utils.PathSearch("id", utils.PathSearch("group", assignment, nil), nil),
 			"agency_id":    utils.PathSearch("id", utils.PathSearch("agency", assignment, nil), nil),
 		}
 	}
 	return assignments
-}
-
-func showAssignmentsScope(scopeBody interface{}) map[string]interface{} {
-	if scopeBody == nil {
-		return nil
-	}
-	scope := map[string]interface{}{
-		"project_id":            utils.PathSearch("id", utils.PathSearch("project", scopeBody, nil), nil),
-		"domain_id":             utils.PathSearch("id", utils.PathSearch("domain", scopeBody, nil), nil),
-		"enterprise_project_id": utils.PathSearch("id", utils.PathSearch("enterprise_project", scopeBody, nil), nil),
-	}
-	return scope
-
 }

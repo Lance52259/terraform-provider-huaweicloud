@@ -12,40 +12,34 @@ Use this data-source to get role assignments of an IAM user within HuaweiCloud.
 ## Example Usage
 
 ```hcl
-variable "domain_id" {}
-
 data "huaweicloud_identity_role_assignments" "test" {
- domain_id = var.domaind_id
 }
 ```
 
 ## Argument Reference
 
-* `domain_id` - (Required, String) Specifies pending query account ID
-
-* `domain_id` - (Optional, String) Specifies strategy ID
-
 * `subject` - (Optional, String) Specifies authorization entity, value range: **user**, **group**, **agency**. This parameter can only choose one from 
-  * **subject.user_id**, 
-  * **subject.group_id**, 
-  * **subject.agency_id**.
+  * **user**, 
+  * **group**, 
+  * **agency**.
 
-* `subject_user_id` - (Optional, String) Specifies authorized IAM user ID
+* `subject_user_id` - (Optional, String) Specifies authorized IAM user ID. Conflict with subject_agency_id and subject_group_id 
 
-* `subject_group_id` - (Optional, String) Specifies authorized user group ID
+* `subject_group_id` - (Optional, String) Specifies authorized user group ID.Conflict with subject_user_id and subject_agency_id
 
-* `subject_agency_id` - (Optional, String) Specifies authorized delegation ID
+* `subject_agency_id` - (Optional, String) Specifies authorized delegation ID.Conflict with subject_user_id and subject_group_id
 
 * `scope` - (Optional, String) Specifies Scope of authorization, value range: **project**, **domain**, **enterprise_project**. This parameter can only choose one among 
-  * **scope.project_id**, 
-  * **scope.domain_id**, 
-  * **scope.enterprise_projects_id**.
+  * **project**, 
+  * **domain**, 
+  * **enterprise_project**.
+  Default: **domain**
 
-* `scope_project_id` - (Optional, String) Specifies authorized project ID
+* `scope_project_id` - (Optional, String) Specifies authorized project ID.Conflict with scope_domain_id and scope_enterprise_projects_id
 
-* `scope_domain_id` - (Optional, String) Specifies pending query account ID
+* `scope_domain_id` - (Optional, String) Specifies pending query account ID.Conflict with scope_enterprise_projects_id and scope_project_id
 
-* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID
+* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID.Conflict with scope_domain_id and scope_project_id
 
 * `is_inherited` - (Optional, String) Specifies takes effect when the parameter scope=domain or scope.domain_id exists. 
   * **true**: query records based on authorization for all projects. 
@@ -64,9 +58,7 @@ data "huaweicloud_identity_role_assignments" "test" {
 ## Attribute Reference
 
 * `role_assignments` - Indicates authorization information.   
-  The [role_assignments](#IdentityRoleAssignments_Assignments ) structure is documented below.
-
-* `total_num` - Indicates returns the total number of authorization records.
+  The [role_assignments](#IdentityRoleAssignments_Assignments) structure is documented below.
 
 <a name="IdentityRoleAssignments_Assignments"></a>
 The `role_assignments` block contains:
@@ -79,16 +71,5 @@ The `role_assignments` block contains:
 
 * `agency_id` - Indicates commission ID
 
-* `scope` - Indicates the scope of the authorization
-  The [scope](#IdentityRoleAssignments_Scope ) structure is documented below.
-
 * `is_inherited` - Indicates  based on authorization for all projects
 
-<a name="IdentityRoleAssignments_Scope"></a>
-The `scope` block contains:
-
-* `project_id` - Indicates information based on IAM project authorization. 
-
-* `domain_id` - Indicates information based on global service or authorization of all items. 
-
-* `enterprise_project_id` - Indicates information based on enterprise project authorization.
