@@ -9,8 +9,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccDataSourceAccountAssignmentsForPrincipal_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_identitycenter_account_assignments_for_principal.test"
+func TestAccDataSourceAccountAssignments_basic(t *testing.T) {
+	dataSource := "data.huaweicloud_identitycenter_account_assignments.test"
 	rName := acceptance.RandomAccResourceName()
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
@@ -23,7 +23,7 @@ func TestAccDataSourceAccountAssignmentsForPrincipal_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceAccountAssignmentsForPrincipal_basic(rName),
+				Config: testDataSourceAccountAssignments_basic(rName),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "account_assignments.#"),
@@ -37,15 +37,15 @@ func TestAccDataSourceAccountAssignmentsForPrincipal_basic(t *testing.T) {
 	})
 }
 
-func testDataSourceAccountAssignmentsForPrincipal_basic(name string) string {
+func testDataSourceAccountAssignments_basic(name string) string {
 	return fmt.Sprintf(`
 %[1]s
  
-data "huaweicloud_identitycenter_account_assignments_for_principal" "test" {
-  depends_on 		= [huaweicloud_identitycenter_account_assignment.test]
-  instance_id 		= data.huaweicloud_identitycenter_instance.test.id
-  principal_id      = huaweicloud_identitycenter_user.test.id
-  principal_type    = "USER"
+data "huaweicloud_identitycenter_account_assignments" "test" {
+  depends_on     = [huaweicloud_identitycenter_account_assignment.test]
+  instance_id    = data.huaweicloud_identitycenter_instance.test.id
+  principal_id   = huaweicloud_identitycenter_user.test.id
+  principal_type = "USER"
 }
 `, testAccountAssignment_basic(name))
 }

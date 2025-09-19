@@ -1,14 +1,14 @@
 ---
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identitycenter_account_assignments_for_principal"
+page_title: "HuaweiCloud: huaweicloud_identitycenter_account_assignments"
 description: |-
-  Use this data source to get the Identity Center account assignments for principal.
+  Use this data source to get the Identity Center account assignments.
 ---
 
-# huaweicloud_identitycenter_account_assignments_for_principal
+# huaweicloud_identitycenter_account_assignments
 
-Use this data source to get the Identity Center account assignments for principal.
+Use this data source to get the Identity Center account assignments.
 
 ## Example Usage
 
@@ -17,10 +17,10 @@ variable "instance_id" {}
 variable "principal_id" {}
 variable "principal_type" {}
 
-data "huaweicloud_identitycenter_account_assignments_for_principal" "test" {
-  instance_id      = var.instance_id
-  principal_id     = var.principal_id
-  principal_type   = var.principal_type
+data "huaweicloud_identitycenter_account_assignments" "test" {
+  instance_id    = var.instance_id
+  principal_id   = var.principal_id
+  principal_type = var.principal_type
 }
 ```
 

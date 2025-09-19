@@ -18,7 +18,7 @@ import (
 )
 
 // @API IdentityCenter GET /v1/instances/{instance_id}/account-assignments-for-principals
-func DataSourceIdentityCenterAccountAssignmentsForPrincipal() *schema.Resource {
+func DataSourceIdentityCenterAccountAssignments() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityCenterAccountAssignmentsForPrincipalRead,
 
