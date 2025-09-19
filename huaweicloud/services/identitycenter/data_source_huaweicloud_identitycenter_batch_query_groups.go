@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product IdentityCenter
-// ---------------------------------------------------------------
-
 package identitycenter
 
 import (
@@ -16,7 +11,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -76,20 +70,18 @@ func resourceIdentityCenterBatchQueryGroupsRead(_ context.Context, d *schema.Res
 		KeepResponseBody: true,
 	}
 	getIdentityCenterGroupsOpt.JSONBody = utils.RemoveNil(buildDescribeGroupsBodyParam(d))
-	var groups []interface{}
 
 	getIdentityCenterGroupsResp, err := getIdentityCenterGroupsClient.Request("POST",
 		getIdentityCenterGroupsPath, &getIdentityCenterGroupsOpt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center groups.")
+		return diag.FromErr(err)
 	}
 
 	getIdentityCenterGroupsRespBody, err := utils.FlattenResponse(getIdentityCenterGroupsResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	groups = append(groups, flattenGetIdentityCenterGroupsResponseBodyGroup(getIdentityCenterGroupsRespBody)...)
 
 	dataSourceId, err := uuid.GenerateUUID()
 	if err != nil {
@@ -100,7 +92,7 @@ func resourceIdentityCenterBatchQueryGroupsRead(_ context.Context, d *schema.Res
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("groups", groups),
+		d.Set("groups", flattenGetIdentityCenterGroupsResponseBodyGroup(getIdentityCenterGroupsRespBody)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
