@@ -2662,9 +2662,10 @@ func Provider() *schema.Provider {
 			"huaweicloud_rds_wal_log_replay_switch":          rds.ResourceRdsWalLogReplaySwitch(),
 			"huaweicloud_rds_restore_read_replica_database":  rds.ResourceRdsRestoreReadReplicaDatabase(),
 
-			"huaweicloud_rgc_account":             rgc.ResourceAccount(),
-			"huaweicloud_rgc_account_enroll":      rgc.ResourceAccountEnroll(),
-			"huaweicloud_rgc_organizational_unit": rgc.ResourceOrganizationalUnit(),
+			"huaweicloud_rgc_account":                      rgc.ResourceAccount(),
+			"huaweicloud_rgc_account_enroll":               rgc.ResourceAccountEnroll(),
+			"huaweicloud_rgc_organizational_unit":          rgc.ResourceOrganizationalUnit(),
+			"huaweicloud_rgc_organizational_unit_register": rgc.ResourceOrganizationalUnitRegister(),
 
 			"huaweicloud_rms_policy_assignment":                  rms.ResourcePolicyAssignment(),
 			"huaweicloud_rms_policy_assignment_evaluate":         rms.ResourcePolicyAssignmentEvaluate(),
