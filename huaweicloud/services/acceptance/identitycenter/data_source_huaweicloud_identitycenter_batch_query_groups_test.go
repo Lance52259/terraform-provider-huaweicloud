@@ -41,7 +41,7 @@ func testAccDatasourceIdentityCenterBatchQueryGroups_basic(name string) string {
 %s
 
 data "huaweicloud_identitycenter_groups" "test"{
-  depends_on = [huaweicloud_identitycenter_group.test]
+  depends_on        = [huaweicloud_identitycenter_group.test]
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }
 
