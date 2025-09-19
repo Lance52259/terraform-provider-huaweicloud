@@ -1150,6 +1150,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_system_identity_policy_attachments":      identitycenter.DataSourceSystemIdentityPolicyAttachments(),
 			"huaweicloud_identitycenter_application_templates":                   identitycenter.DataSourceIdentityCenterApplicationTemplates(),
 			"huaweicloud_identitycenter_catalog_applications":                    identitycenter.DataSourceIdentityCenterCatalogApplications(),
+			"huaweicloud_identitycenter_batch_query_groups":                      identitycenter.DataSourceIdentityCenterBatchQueryGroups(),
 
 			"huaweicloud_iec_bandwidths":     iec.DataSourceBandWidths(),
 			"huaweicloud_iec_eips":           iec.DataSourceEips(),
