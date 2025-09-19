@@ -18,7 +18,7 @@ variable "user_ids" {}
  
 data "huaweicloud_identitycenter_batch_query_groups" "test"{
   identity_store_id = var.identity_store_id
-  user_ids = var.user_ids
+  user_ids          = var.user_ids
 }
 ```
 

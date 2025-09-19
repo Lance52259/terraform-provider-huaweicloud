@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product IdentityCenter
-// ---------------------------------------------------------------
-
 package identitycenter
 
 import (
@@ -16,7 +11,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -76,20 +70,18 @@ func resourceIdentityCenterBatchQueryUsersRead(_ context.Context, d *schema.Reso
 		KeepResponseBody: true,
 	}
 	getIdentityCenterUsersOpt.JSONBody = utils.RemoveNil(buildDescribeUsersBodyParam(d))
-	var users []interface{}
 
 	getIdentityCenterUsersResp, err := getIdentityCenterUsersClient.Request("POST",
 		getIdentityCenterUsersPath, &getIdentityCenterUsersOpt)
 
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center users.")
+		return diag.FromErr(err)
 	}
 
 	getIdentityCenterUsersRespBody, err := utils.FlattenResponse(getIdentityCenterUsersResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	users = append(users, flattenGetIdentityCenterUsersResponseBodyUser(d, getIdentityCenterUsersRespBody)...)
 
 	dataSourceId, err := uuid.GenerateUUID()
 	if err != nil {
@@ -100,7 +92,7 @@ func resourceIdentityCenterBatchQueryUsersRead(_ context.Context, d *schema.Reso
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("users", users),
+		d.Set("users", flattenGetIdentityCenterUsersResponseBodyUser(d, getIdentityCenterUsersRespBody)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())

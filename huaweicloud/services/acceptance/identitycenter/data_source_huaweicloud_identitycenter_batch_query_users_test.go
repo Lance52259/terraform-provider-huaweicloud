@@ -68,14 +68,14 @@ func testAccDatasourceIdentityCenterBatchQueryUsers_basic(name string) string {
 %s
 
 data "huaweicloud_identitycenter_users" "test"{
-  depends_on = [huaweicloud_identitycenter_user.test]
+  depends_on        = [huaweicloud_identitycenter_user.test]
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }
 
 data "huaweicloud_identitycenter_batch_query_users" "test"{
-  depends_on = [huaweicloud_identitycenter_user.test]
+  depends_on        = [huaweicloud_identitycenter_user.test]
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
-  user_ids = [for user in data.huaweicloud_identitycenter_users.test.users: user.id]
+  user_ids          = [for user in data.huaweicloud_identitycenter_users.test.users: user.id]
 }
 `, testIdentityCenterUser_basic(name))
 }
