@@ -120,7 +120,7 @@ func resourceTokenWithIdTokenRead(c context.Context, d *schema.ResourceData, met
 	// If token expired, try to create a new token.
 	expiresAt, err := time.ParseInLocation(`2006-01-02T15:04:05Z`, d.Get("expires_at").(string), time.UTC)
 	if err != nil {
-		diag.Errorf("error parsing expires at: %s", err)
+		return diag.Errorf("error parsing expires at: %s", err)
 	}
 	if time.Now().After(expiresAt) {
 		return resourceTokenWithIdTokenCreate(c, d, meta)
