@@ -65,11 +65,11 @@ data "huaweicloud_identity_users" "test" {
 func testAccUsersDataSourceBasic1(name, password string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_user" "user_1" {
-  name        = "%[1]s"
-  password    = "%[2]s"
-  enabled     = true
-  email       = "%[1]s@abc.com"
-  description = "tested by terraform"
+  name                              = "%[1]s"
+  password                          = "%[2]s"
+  enabled                           = true
+  email                             = "%[1]s@abc.com"
+  description                       = "tested by terraform"
   login_protect_verification_method = "email"
 }
 
@@ -83,11 +83,11 @@ data "huaweicloud_identity_users" "test" {
 func testAccUsersDataSourceBasic2(name, password string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_user" "user_1" {
-  name        = "%[1]s"
-  password    = "%[2]s"
-  enabled     = true
-  email       = "%[1]s@abc.com"
-  description = "tested by terraform"
+  name                              = "%[1]s"
+  password                          = "%[2]s"
+  enabled                           = true
+  email                             = "%[1]s@abc.com"
+  description                       = "tested by terraform"
   login_protect_verification_method = "email"
 }
 

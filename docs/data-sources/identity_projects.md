@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_projects"
-description: "Use this data source to query the IAM project list within HuaweiCloud."
+description: |-
+  "Use this data source to query the IAM project list within HuaweiCloud."
 ---
 
 # huaweicloud_identity_projects
@@ -32,8 +33,10 @@ data "huaweicloud_identity_projects" "test" {
 ### Obtain project information by project id
 
 ```hcl
+variable "project_id" {}
+
 data "huaweicloud_identity_projects" "test" {
-  project_id = "Your project id"
+  project_id = var.project_id
 }
 ```
 

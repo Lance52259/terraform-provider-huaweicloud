@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_users"
-description: "Use this data source to query the IAM user list within HuaweiCloud."
+description: |-
+  "Use this data source to query the IAM user list within HuaweiCloud."
 ---
 
 # huaweicloud_identity_users
@@ -14,14 +15,17 @@ Use this data source to query the IAM user list within HuaweiCloud.
 ## Example Usage
 
 ```hcl
+variable "user_name" {}
+variable "user_id" {}
+
 data "huaweicloud_identity_users" "all" {}
 
 data "huaweicloud_identity_users" "one1" {
-  name = "user_name"
+  name = var.user_name
 }
 
 data "huaweicloud_identity_users" "one2" {
-  user_id = "user id"
+  user_id = var.user_id
 }
 ```
 
