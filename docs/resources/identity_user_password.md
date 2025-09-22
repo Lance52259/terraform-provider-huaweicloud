@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_password"
-description: "Modify IAM user's own passwords within HuaweiCloud."
+description: |-
+  "Modify IAM user's own passwords within HuaweiCloud."
 ---
 
 # huaweicloud_identity_user_password

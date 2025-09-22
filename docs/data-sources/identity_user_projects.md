@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_projects"
-description: "Use this data source to query the project list of a specified IAM user by administrators, or query your own project list within HuaweiCloud."
+description: |- 
+  "Use this data source to query the project list of a specified IAM user by administrators, or query your own project list within HuaweiCloud."
 ---
 
 # huaweicloud_identity_user_projects

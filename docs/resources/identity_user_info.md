@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_info"
-description: "Modify IAM user's own information within HuaweiCloud."
+description: |-
+  "Modify IAM user's own information within HuaweiCloud."
 ---
 
 # huaweicloud_identity_user_info

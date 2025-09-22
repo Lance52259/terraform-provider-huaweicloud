@@ -58,7 +58,10 @@ func DataSourceIdentityAuthProjectsRead(_ context.Context, d *schema.ResourceDat
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	id, _ := uuid.GenerateUUID()
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.FromErr(err)
+	}
 	d.SetId(id)
 	projectsBody := utils.PathSearch("projects", respBody, nil).([]interface{})
 	projects := flattenProjects(projectsBody)
