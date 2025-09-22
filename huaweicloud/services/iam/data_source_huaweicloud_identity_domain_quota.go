@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -23,9 +22,6 @@ func DataSourceIdentityDomainQuota() *schema.Resource {
 			"type": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{"user", "group", "idp", "agency", "policy",
-					"assigment_group_mp", "assigment_agency_mp", "assigment_group_ep", "assigment_user_ep", "mapping"},
-					false),
 				Description: "Query the type of quota. If this parameter is not filled in, all types of quotas will " +
 					"be returned. The value range is as follows: user, group, idp, agency, policy, " +
 					"assigment_group_mp, assigment_agency_mp, assigment_group_ep, assigment_user_ep, mapping",
