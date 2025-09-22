@@ -38,9 +38,9 @@ func TestAccIdentityUnscopedTokenWithIdToken(t *testing.T) {
 func testAccIdentityUnscopedTokenWithIdToken(idpId, protocolId, idToken string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_unscoped_token_with_id_token" "test" {
-  idp_id = "%[1]s"
+  idp_id      = "%[1]s"
   protocol_id = "%[2]s"
-  id_token = "%[3]s"
+  id_token    = "%[3]s"
 }
 `, idpId, protocolId, idToken)
 }

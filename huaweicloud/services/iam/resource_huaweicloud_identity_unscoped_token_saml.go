@@ -69,10 +69,14 @@ func ResourceIdentityUnscopedTokenSaml() *schema.Resource {
 func resourceUnscopedTokenSamlCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	var client *golangsdk.ServiceClient
+	var err error
 	if d.Get("with_global_domain").(bool) {
-		client, _ = cfg.IAMV3GlobalClient()
+		client, err = cfg.IAMV3GlobalClient()
 	} else {
-		client, _ = cfg.IAMV3Client(cfg.GetRegion(d))
+		client, err = cfg.IAMV3Client(cfg.GetRegion(d))
+	}
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
 	unscopedTokenSamlPath := client.Endpoint + "v3.0/OS-FEDERATION/tokens"

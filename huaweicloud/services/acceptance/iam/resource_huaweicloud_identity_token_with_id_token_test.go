@@ -57,7 +57,7 @@ func TestAccIdentityTokenWithIdToken(t *testing.T) {
 func testAccIdentityTokenWithIdToken(idpId, idToken string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_token_with_id_token" "test" {
-  idp_id = "%[1]s"
+  idp_id   = "%[1]s"
   id_token = "%[2]s"
 }
 `, idpId, idToken)
@@ -66,8 +66,8 @@ resource "huaweicloud_identity_token_with_id_token" "test" {
 func testAccIdentityTokenWithIdTokenWithDomainName(idpId, idToken, domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_token_with_id_token" "test" {
-  idp_id = "%[1]s"
-  id_token = "%[2]s"
+  idp_id      = "%[1]s"
+  id_token    = "%[2]s"
   domain_name = "%[3]s"
 }
 `, idpId, idToken, domainName)
@@ -76,8 +76,8 @@ resource "huaweicloud_identity_token_with_id_token" "test" {
 func testAccIdentityTokenWithIdTokenWithProjectName(idpId, idToken, projectName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_token_with_id_token" "test" {
-  idp_id = "%[1]s"
-  id_token = "%[2]s"
+  idp_id       = "%[1]s"
+  id_token     = "%[2]s"
   project_name = "%[3]s"
 }
 `, idpId, idToken, projectName)

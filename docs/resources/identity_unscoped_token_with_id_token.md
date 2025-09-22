@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_unscoped_token_with_id_token"
-description: "Manages a federated authentication unscoped token via the OpenID Connect ID token method within HuaweiCloud."
+description: |-
+  "Manages a federated authentication unscoped token via the OpenID Connect ID token method within HuaweiCloud."
 ---
 
 # huaweicloud_identity_unscoped_token_with_id_token

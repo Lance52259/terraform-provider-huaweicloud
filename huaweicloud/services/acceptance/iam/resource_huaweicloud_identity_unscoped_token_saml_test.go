@@ -37,8 +37,8 @@ func TestAccIdentityUnscopedTokenSaml(t *testing.T) {
 func testAccIdentityUnscopedTokenSaml(idpId, samlResponse string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_unscoped_token_saml" "test" {
-  idp_id = "%[1]s"
-  saml_response = "%[2]s"
+  idp_id             = "%[1]s"
+  saml_response      = "%[2]s"
   with_global_domain = true
 }
 `, idpId, samlResponse)

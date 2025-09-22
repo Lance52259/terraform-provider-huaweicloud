@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_unscoped_token_saml"
-description: "Manages an unscoped token through IdP-initiated federated authentication within HuaweiCloud."
+description: |-
+  "Manages an unscoped token through IdP-initiated federated authentication within HuaweiCloud."
 ---
 
 # huaweicloud_identity_unscoped_token_saml
