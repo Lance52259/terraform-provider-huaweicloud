@@ -97,7 +97,7 @@ resource "huaweicloud_identity_provider_conversion" "conversion" {
 resource "huaweicloud_identity_provider_protocol" "protocol" {
   provider_id = huaweicloud_identity_provider.provider1.id
   protocol_id = "saml"
-  mapping_id = huaweicloud_identity_provider_conversion.conversion.id
+  mapping_id  = huaweicloud_identity_provider_conversion.conversion.id
 }
 `, name, generateTestMappingID(name))
 }

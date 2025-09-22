@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -38,15 +37,15 @@ func ResourceIdentityProviderProtocol() *schema.Resource {
 				Description: "Name of an identity provider.",
 			},
 			"protocol_id": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: validation.StringInSlice([]string{"saml", "oidc"}, false),
-				Description:  "The protocol ID to be registered. The content of this field is `saml` or `oidc`.",
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The protocol ID to be registered. The content of this field is `saml` or `oidc`.",
 			},
 			"mapping_id": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "When the identity provider type is `iam_user_sso`, there is no need to bind a mapping ID, and this field does not need to be passed; otherwise, this field is mandatory.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "When the identity provider type is `iam_user_sso`, there is no need to bind a " +
+					"mapping ID, and this field does not need to be passed; otherwise, this field is mandatory.",
 			},
 
 			"links": {
@@ -144,7 +143,6 @@ func resourceIdentityProviderProtocolUpdate(ctx context.Context, d *schema.Resou
 	if err != nil {
 		return diag.Errorf("UpdateProtocol error : %s", err)
 	}
-	d.SetId(fmt.Sprintf("%s:%s", idpId, protocolId))
 	return resourceIdentityProviderProtocolRead(ctx, d, meta)
 }
 

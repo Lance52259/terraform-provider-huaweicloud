@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocol"
-description: "Manage the protocol of identity provider within HuaweiCloud IAM service."
+description: |-
+  "Manage the protocol of identity provider within HuaweiCloud IAM service."
 ---
 
 # huaweicloud_identity_provider_protocol
@@ -16,10 +17,19 @@ specified in `huaweicloud_identity_provider_protocol`, it will try to update the
 ## Example Usage
 
 ```hcl
+variable "provider_id" {}
+variable "mapping_id" {}
+
 resource "huaweicloud_identity_provider_protocol" "protocol" {
-  provider_id = "Your identity provider id"
+  provider_id = var.provider_id
   protocol_id = "saml"
-  mapping_id = "Your mapping id"
+  mapping_id  = var.mapping_id
+}
+
+resource "huaweicloud_identity_provider_protocol" "protocol" {
+  provider_id = var.provider_id
+  protocol_id = "saml"
+  mapping_id  = var.mapping_id
 }
 ```
 
@@ -31,14 +41,15 @@ The following arguments are supported:
 
 * `protocol_id` - (Required, String) Specifies the identity protocol of the identity provider. The content of this field is `saml` or `oidc`.
 
-* `mapping_id` - (Optional, String) Specifies the mapping_id for the protocol. When the identity provider type is `iam_user_sso`, there is no need to bind a mapping ID, and this field does not need to be passed; otherwise, this field is mandatory.
+* `mapping_id` - (Optional, String) Specifies the mapping_id for the protocol. When the identity provider type is `iam_user_sso`, 
+there is no need to bind a mapping ID, and this field does not need to be passed; otherwise, this field is mandatory.
 
 ## Attribute Reference
 
 * `links` - Indicates the links of protocol.
   The [protocols](#IdentityProtocols_Links) structure is documented below.
 
-<a name="IdentityProtocols_Links"></a>
+  <a name="IdentityProtocols_Links"></a>
 The `links` block contains:
 
 * `self` - Indicates the resource link.
@@ -47,7 +58,8 @@ The `links` block contains:
 
 ## Import
 
-Identity provider protocol can be imported using the `<provider_id>:<protocol_id>`. For example, if you have provider_id `provider_test` and protocol `saml`, you should use `provider_test:saml` to import.
+Identity provider protocol can be imported using the `<provider_id>:<protocol_id>`. For example, 
+if you have provider_id `provider_test` and protocol `saml`, you should use `provider_test:saml` to import.
 
 ```bash
 $ terraform import huaweicloud_identity_provider_protocol.protocol <provider_id>:<protocol_id>

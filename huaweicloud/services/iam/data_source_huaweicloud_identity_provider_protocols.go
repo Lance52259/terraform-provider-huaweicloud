@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -27,10 +26,9 @@ func DataSourceIamIdentityProviderProtocols() *schema.Resource {
 				Description: "Name of an identity provider.",
 			},
 			"protocol_id": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"saml", "oidc"}, false),
-				Description:  "The protocol id. The valid values are `saml` and `oidc`",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The protocol id.",
 			},
 
 			"protocols": {
@@ -47,6 +45,7 @@ func DataSourceIamIdentityProviderProtocols() *schema.Resource {
 						"mapping_id": {
 							Type:        schema.TypeString,
 							Required:    true,
+							Computed:    true,
 							Description: "Mapping Id",
 						},
 						"links": {

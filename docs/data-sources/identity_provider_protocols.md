@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocols"
-description: "Use this data source to get the list of IAM identity provider protocols."
+description: |-
+  "Use this data source to get the list of IAM identity provider protocols."
 ---
 
 # huaweicloud_identity_provider_protocols
@@ -12,12 +13,14 @@ Use this data source to query the list of IAM identity provider protocols within
 ## Example Usage
 
 ```hcl
+variable "provider_id" {}
+
 data "huaweicloud_identity_provider_protocols" "test1" {
-  provider_id = "Your identity provider id"
+  provider_id = var.provider_id
 }
 
 data "huaweicloud_identity_provider_protocols" "test2" {
-  provider_id = "Your identity provider id"
+  provider_id = var.provider_id
   protocol_id = "saml"
 }
 ```
@@ -29,14 +32,13 @@ The following arguments are supported:
 * `provider_id` - (Required, String) Name of an identity provider.
 
 * `protocol_id` - (Optional, String) Specifies the protocol id. 
-  The valid values are **saml** and **oidc**.
 
 ## Attribute Reference
 
 * `protocols` - Indicates the protocol Information List.
   The [protocols](#IdentityProtocols_Protocols) structure is documented below.
 
-<a name="IdentityProtocols_Protocols"></a>
+  <a name="IdentityProtocols_Protocols"></a>
 The `protocols` block contains:
 
 * `id` - The protocol id.
@@ -46,7 +48,7 @@ The `protocols` block contains:
 * `links` - Indicates the links of protocol.
   The [protocols](#IdentityProtocols_Links) structure is documented below.
 
-<a name="IdentityProtocols_Links"></a>
+  <a name="IdentityProtocols_Links"></a>
 The `links` block contains:
 
 * `self` - Indicates the protocol resource link.
