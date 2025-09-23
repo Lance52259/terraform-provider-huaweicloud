@@ -46,7 +46,6 @@ func DataSourceIamIdentityProviderProtocols() *schema.Resource {
 						},
 						"mapping_id": {
 							Type:        schema.TypeString,
-							Required:    true,
 							Computed:    true,
 							Description: "Mapping Id",
 						},
