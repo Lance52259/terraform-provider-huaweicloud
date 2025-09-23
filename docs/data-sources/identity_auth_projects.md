@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_auth_projects"
 description: |-
-  Use this data source to query the IAM project list within HuaweiCloud.
+  Use this data source to query the list of projects accessible by current user within HuaweiCloud.
 ---
 
 # huaweicloud_identity_auth_projects
@@ -25,7 +25,7 @@ This data source doesn't need argument.
 * `projects` - Indicates the details of the projects.
   The [projects](#IdentityAuthProjects_Projects) structure is documented below.
 
-  <a name="IdentityAuthProjects_Projects"></a>
+<a name="IdentityAuthProjects_Projects"></a>
 The `projects` block supports:
 
 * `id` - Indicates the IAM project ID.

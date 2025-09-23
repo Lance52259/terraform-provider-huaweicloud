@@ -4,9 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
@@ -64,7 +66,7 @@ func resourceIdentityUserInfoCreate(ctx context.Context, d *schema.ResourceData,
 	if err != nil {
 		return diag.Errorf("error updateUserInfo: %d, %s", response.StatusCode, err)
 	}
-	d.SetId("user:" + userId + ":info")
+	d.SetId(userId)
 	return nil
 }
 
@@ -80,7 +82,7 @@ func resourceIdentityUserInfoUpdate(ctx context.Context, d *schema.ResourceData,
 }
 
 func resourceIdentityUserInfoDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	errorMsg := "Deleting email or mobile is not supported."
+	errorMsg := "Deleting email or mobile is not supported. The email and mobile are only removed from the state, but it remains in the cloud."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,

@@ -4,9 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
@@ -62,7 +63,7 @@ func resourceIdentityUserPasswordCreate(ctx context.Context, d *schema.ResourceD
 	if err != nil {
 		return diag.Errorf("error updateUserPassword: %d, %s", response.StatusCode, err)
 	}
-	d.SetId("user:" + userId + ":password")
+	d.SetId(userId)
 	return nil
 }
 

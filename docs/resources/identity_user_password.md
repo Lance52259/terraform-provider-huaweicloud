@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_password"
 description: |-
-  "Modify IAM user's own passwords within HuaweiCloud."
+  Modify IAM user's own passwords within HuaweiCloud.
 ---
 
 # huaweicloud_identity_user_password
@@ -32,4 +32,4 @@ resource "huaweicloud_identity_user_password" "test" {
 
 ## Attribute Reference
 
-* `id` - Resource ID in format `user:<userId>:password`.
+* `id` - Resource ID in format `<user_id>`.

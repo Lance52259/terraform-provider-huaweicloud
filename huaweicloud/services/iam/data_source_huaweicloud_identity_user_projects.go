@@ -4,10 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -78,7 +80,7 @@ func DataSourceIdentityUserProjectsRead(_ context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 	d.SetId(id)
-	projectsBody := utils.PathSearch("projects", respBody, nil).([]interface{})
+	projectsBody := utils.PathSearch("projects", respBody, make([]interface{}, 0)).([]interface{})
 	projects := flattenProjects(projectsBody)
 	if err = d.Set("projects", projects); err != nil {
 		return diag.Errorf("error setting projects fields: %s", err)
