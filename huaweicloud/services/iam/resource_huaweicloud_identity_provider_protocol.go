@@ -6,10 +6,12 @@ import (
 	"log"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -114,12 +116,12 @@ func resourceIdentityProviderProtocolRead(_ context.Context, d *schema.ResourceD
 		return diag.FromErr(err)
 	}
 	links := append(make([]interface{}, 0, 1), map[string]interface{}{
-		"self":              utils.PathSearch("protocol.links.self", respBody, nil),
-		"identity_provider": utils.PathSearch("protocol.links.identity_provider", respBody, nil),
+		"self":              utils.PathSearch("protocol.links.self", respBody, ""),
+		"identity_provider": utils.PathSearch("protocol.links.identity_provider", respBody, ""),
 	})
 	mErr := multierror.Append(nil,
-		d.Set("protocol_id", utils.PathSearch("protocol.id", respBody, nil)),
-		d.Set("mapping_id", utils.PathSearch("protocol.mapping_id", respBody, nil)),
+		d.Set("protocol_id", utils.PathSearch("protocol.id", respBody, "")),
+		d.Set("mapping_id", utils.PathSearch("protocol.mapping_id", respBody, "")),
 		d.Set("links", links),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {

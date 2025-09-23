@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocol"
 description: |-
-  "Manage the protocol of identity provider within HuaweiCloud IAM service."
+  Manage the protocol of identity provider within HuaweiCloud IAM service.
 ---
 
 # huaweicloud_identity_provider_protocol
@@ -47,9 +47,9 @@ there is no need to bind a mapping ID, and this field does not need to be passed
 ## Attribute Reference
 
 * `links` - Indicates the links of protocol.
-  The [protocols](#IdentityProtocols_Links) structure is documented below.
+  The [links](#IdentityProtocols_Links) structure is documented below.
 
-  <a name="IdentityProtocols_Links"></a>
+<a name="IdentityProtocols_Links"></a>
 The `links` block contains:
 
 * `self` - Indicates the resource link.

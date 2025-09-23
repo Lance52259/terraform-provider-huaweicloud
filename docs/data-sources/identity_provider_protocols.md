@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_provider_protocols"
 description: |-
-  "Use this data source to get the list of IAM identity provider protocols."
+  Use this data source to query the list of IAM identity provider protocols within HuaweiCloud.
 ---
 
 # huaweicloud_identity_provider_protocols
@@ -38,7 +38,7 @@ The following arguments are supported:
 * `protocols` - Indicates the protocol Information List.
   The [protocols](#IdentityProtocols_Protocols) structure is documented below.
 
-  <a name="IdentityProtocols_Protocols"></a>
+<a name="IdentityProtocols_Protocols"></a>
 The `protocols` block contains:
 
 * `id` - The protocol id.
@@ -46,9 +46,9 @@ The `protocols` block contains:
 * `mapping_id` - Indicates the mapping id of the protocol.
 
 * `links` - Indicates the links of protocol.
-  The [protocols](#IdentityProtocols_Links) structure is documented below.
+  The [links](#IdentityProtocols_Links) structure is documented below.
 
-  <a name="IdentityProtocols_Links"></a>
+<a name="IdentityProtocols_Links"></a>
 The `links` block contains:
 
 * `self` - Indicates the protocol resource link.

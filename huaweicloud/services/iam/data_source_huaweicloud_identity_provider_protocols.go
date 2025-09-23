@@ -4,10 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -102,7 +104,7 @@ func listProviderProtocols(iamV3Client *golangsdk.ServiceClient, d *schema.Resou
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	protocolsBody := utils.PathSearch("protocols", respBody, nil).([]interface{})
+	protocolsBody := utils.PathSearch("protocols", respBody, make([]interface{}, 0)).([]interface{})
 	protocols := make([]interface{}, 0, len(protocolsBody))
 	for _, protocol := range protocolsBody {
 		protocols = append(protocols, flattenProtocol(protocol))
@@ -126,7 +128,7 @@ func showProviderProtocol(iamV3Client *golangsdk.ServiceClient, d *schema.Resour
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	protocolBody := utils.PathSearch("protocol", respBody, nil)
+	protocolBody := utils.PathSearch("protocol", respBody, make([]interface{}, 0))
 	protocols := append(make([]interface{}, 0, 1), flattenProtocol(protocolBody))
 	if err = d.Set("protocols", protocols); err != nil {
 		return diag.Errorf("error setting protocols fields: %s", err)
@@ -139,11 +141,11 @@ func flattenProtocol(protocolModel interface{}) map[string]interface{} {
 		return nil
 	}
 	protocol := make(map[string]interface{})
-	protocol["id"] = utils.PathSearch("id", protocolModel, nil)
-	protocol["mapping_id"] = utils.PathSearch("mapping_id", protocolModel, nil)
+	protocol["id"] = utils.PathSearch("id", protocolModel, "")
+	protocol["mapping_id"] = utils.PathSearch("mapping_id", protocolModel, "")
 	links := append(make([]interface{}, 0, 1), map[string]string{
-		"self":              utils.PathSearch("links.self", protocolModel, nil).(string),
-		"identity_provider": utils.PathSearch("links.identity_provider", protocolModel, nil).(string),
+		"self":              utils.PathSearch("links.self", protocolModel, "").(string),
+		"identity_provider": utils.PathSearch("links.identity_provider", protocolModel, "").(string),
 	})
 	protocol["links"] = links
 	return protocol
