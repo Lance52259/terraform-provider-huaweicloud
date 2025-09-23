@@ -2679,6 +2679,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_organizational_unit":          rgc.ResourceOrganizationalUnit(),
 			"huaweicloud_rgc_organizational_unit_register": rgc.ResourceOrganizationalUnitRegister(),
 			"huaweicloud_rgc_landing_zone":                 rgc.ResourceLandingZone(),
+			"huaweicloud_rgc_control":                      rgc.ResourceControl(),
 
 			"huaweicloud_rms_policy_assignment":                  rms.ResourcePolicyAssignment(),
 			"huaweicloud_rms_policy_assignment_evaluate":         rms.ResourcePolicyAssignmentEvaluate(),
