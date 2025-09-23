@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_security_compliance"
-description: "Use this data source to get details of the user domain's security compliance."
+description: |-
+  Use this data source to get details of the user domain's security compliance.
 ---
 
 # huaweicloud_identity_security_compliance

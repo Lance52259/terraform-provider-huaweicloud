@@ -4,12 +4,14 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -70,8 +72,8 @@ func showSecurityCompliance(iamClient *golangsdk.ServiceClient, d *schema.Resour
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	mErr := multierror.Append(nil,
-		d.Set("password_regex", utils.PathSearch("config.security_compliance.password_regex", respBody, nil)),
-		d.Set("password_regex_description", utils.PathSearch("config.security_compliance.password_regex_description", respBody, nil)),
+		d.Set("password_regex", utils.PathSearch("config.security_compliance.password_regex", respBody, "")),
+		d.Set("password_regex_description", utils.PathSearch("config.security_compliance.password_regex_description", respBody, "")),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting SecurityCompliance fields: %s", err)
@@ -94,7 +96,7 @@ func showSecurityComplianceByOption(iamClient *golangsdk.ServiceClient, optionSt
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	err = d.Set(optionStr, utils.PathSearch("config."+optionStr, respBody, nil))
+	err = d.Set(optionStr, utils.PathSearch("config."+optionStr, respBody, make([]interface{}, 0)))
 	if err != nil {
 		return diag.Errorf("error setting showSecurityComplianceByOption fields: %s", err)
 	}
