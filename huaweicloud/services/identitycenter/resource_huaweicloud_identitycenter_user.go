@@ -1,8 +1,3 @@
-// ---------------------------------------------------------------
-// *** AUTO GENERATED CODE ***
-// @Product IdentityCenter
-// ---------------------------------------------------------------
-
 package identitycenter
 
 import (
@@ -26,6 +21,8 @@ import (
 // @API IdentityStore GET /v1/identity-stores/{identity_store_id}/users/{user_id}
 // @API IdentityStore PUT /v1/identity-stores/{identity_store_id}/users/{user_id}
 // @API IdentityStore DELETE /v1/identity-stores/{identity_store_id}/users/{user_id}
+// @API IdentityStore POST /v1/identity-stores/{identity_store_id}/users/{user_id}/enable
+// @API IdentityStore POST /v1/identity-stores/{identity_store_id}/users/{user_id}/disable
 func ResourceIdentityCenterUser() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityCenterUserCreate,
@@ -141,6 +138,10 @@ func ResourceIdentityCenterUser() *schema.Resource {
 				Computed:    true,
 				Description: `Whether the user is enabled.`,
 			},
+			"user_status": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -228,6 +229,7 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 	// createIdentityCenterUser: create IdentityCenter user
 	var (
 		createIdentityCenterUserHttpUrl = "v1/identity-stores/{identity_store_id}/users"
+		disableUserHttpUrl              = "v1/identity-stores/{identity_store_id}/users/{user_id}/disable"
 		createIdentityCenterUserProduct = "identitystore"
 	)
 	createIdentityCenterUserClient, err := cfg.NewServiceClient(createIdentityCenterUserProduct, region)
@@ -259,6 +261,27 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.Errorf("unable to find the Identity Center user ID from the API response")
 	}
 	d.SetId(userId)
+
+	if status, ok := d.GetOk("user_status"); ok && status == "disabled" {
+		disableUserClient, err := cfg.NewServiceClient(createIdentityCenterUserProduct, region)
+		if err != nil {
+			return diag.Errorf("error creating Identity Center Client: %s", err)
+		}
+
+		disableUserPath := disableUserClient.Endpoint + disableUserHttpUrl
+		disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}",
+			fmt.Sprintf("%v", d.Get("identity_store_id")))
+		disableUserPath = strings.ReplaceAll(disableUserPath, "{user_id}", d.Id())
+
+		disableUserOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		_, err = disableUserClient.Request("POST", disableUserPath,
+			&disableUserOpt)
+		if err != nil {
+			return diag.Errorf("error disabling Identity Center User: %s", err)
+		}
+	}
 
 	return resourceIdentityCenterUserRead(ctx, d, meta)
 }
@@ -418,6 +441,8 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 	// updateIdentityCenterUser: update Identity Center user
 	var (
 		updateIdentityCenterUserHttpUrl = "v1/identity-stores/{identity_store_id}/users/{user_id}"
+		enableUserHttpUrl               = "v1/identity-stores/{identity_store_id}/users/{user_id}/enable"
+		disableUserHttpUrl              = "v1/identity-stores/{identity_store_id}/users/{user_id}/disable"
 		updateIdentityCenterUserProduct = "identitystore"
 	)
 	updateIdentityCenterUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
@@ -433,11 +458,59 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 	updateIdentityCenterUserOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	updateIdentityCenterUserOpt.JSONBody = utils.RemoveNil(buildUpdateIdentityCenterUserBodyParams(d))
-	_, err = updateIdentityCenterUserClient.Request("PUT", updateIdentityCenterUserPath,
-		&updateIdentityCenterUserOpt)
-	if err != nil {
-		return diag.Errorf("error updating Identity Center User: %s", err)
+	params := utils.RemoveNil(buildUpdateIdentityCenterUserBodyParams(d))
+	if params != nil {
+		ops := params["operations"]
+		if ops != nil && len(ops.([]map[string]interface{})) > 0 {
+			updateIdentityCenterUserOpt.JSONBody = params
+			_, err = updateIdentityCenterUserClient.Request("PUT", updateIdentityCenterUserPath,
+				&updateIdentityCenterUserOpt)
+			if err != nil {
+				return diag.Errorf("error updating Identity Center User: %s", err)
+			}
+		}
+	}
+
+	if d.HasChange("user_status") {
+		if d.Get("user_status").(string) == "enabled" {
+			enableUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
+			if err != nil {
+				return diag.Errorf("error creating Identity Center Client: %s", err)
+			}
+
+			enableUserPath := enableUserClient.Endpoint + enableUserHttpUrl
+			enableUserPath = strings.ReplaceAll(enableUserPath, "{identity_store_id}",
+				fmt.Sprintf("%v", d.Get("identity_store_id")))
+			enableUserPath = strings.ReplaceAll(enableUserPath, "{user_id}", d.Id())
+
+			enableUserOpt := golangsdk.RequestOpts{
+				KeepResponseBody: true,
+			}
+			_, err = enableUserClient.Request("POST", enableUserPath,
+				&enableUserOpt)
+			if err != nil {
+				return diag.Errorf("error enabling Identity Center User: %s", err)
+			}
+		} else if d.Get("user_status").(string) == "disabled" {
+			disableUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
+			if err != nil {
+				return diag.Errorf("error creating Identity Center Client: %s", err)
+			}
+
+			disableUserPath := disableUserClient.Endpoint + disableUserHttpUrl
+			disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}",
+				fmt.Sprintf("%v", d.Get("identity_store_id")))
+			disableUserPath = strings.ReplaceAll(disableUserPath, "{user_id}", d.Id())
+
+			disableUserOpt := golangsdk.RequestOpts{
+				KeepResponseBody: true,
+			}
+			_, err = disableUserClient.Request("POST", disableUserPath,
+				&disableUserOpt)
+			if err != nil {
+				return diag.Errorf("error disabling Identity Center User: %s", err)
+			}
+		}
 	}
 	return resourceIdentityCenterUserRead(ctx, d, meta)
 }
