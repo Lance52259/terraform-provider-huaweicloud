@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_users"
 description: |-
-  "Use this data source to query the IAM user list within HuaweiCloud."
+  Use this data source to query the IAM user list within HuaweiCloud.
 ---
 
 # huaweicloud_identity_users
@@ -42,7 +42,9 @@ data "huaweicloud_identity_users" "one2" {
 * `id` - The data source ID.
 
 * `users` - The details of the queried IAM users. The structure is documented below.
+  The [users](#IdentityUsers_users) structure is documented below.
 
+<a name="IdentityUsers_users"></a>
 The `users` block contains:
 
 * `id` - Indicates the ID of the User.

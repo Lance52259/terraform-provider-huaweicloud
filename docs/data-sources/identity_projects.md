@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_projects"
 description: |-
-  "Use this data source to query the IAM project list within HuaweiCloud."
+  Use this data source to query the IAM project list within HuaweiCloud.
 ---
 
 # huaweicloud_identity_projects
@@ -55,7 +55,9 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The data source ID.
 
 * `projects` - The details of the query projects. The structure is documented below.
+  The [projects](#IdentityProjects_projects) structure is documented below.
 
+<a name="IdentityProjects_projects"></a>
 The `projects` block supports:
 
 * `id` - The IAM project ID.
