@@ -18,7 +18,7 @@ variable "tenant_id" {}
 
 resource "huaweicloud_identitycenter_bearer_token" "test"{
   identity_store_id = var.identity_store_id
-  tenant_id = var.tenant_id
+  tenant_id         = var.tenant_id
 }
 ```
 

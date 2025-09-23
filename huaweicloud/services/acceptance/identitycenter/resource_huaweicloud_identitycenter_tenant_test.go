@@ -106,7 +106,7 @@ func testIdentityCenterTenant_basic() string {
 %s
 
 resource "huaweicloud_identitycenter_tenant" "test" {
-  depends_on = [huaweicloud_identitycenter_identity_provider.test]
+  depends_on        = [huaweicloud_identitycenter_identity_provider.test]
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }
 `, testIdentityCenterIdentityProvider_create_without_metadata_basic())

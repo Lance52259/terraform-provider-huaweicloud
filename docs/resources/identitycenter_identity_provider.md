@@ -20,9 +20,9 @@ variable "login_url" {}
 
 resource "huaweicloud_identitycenter_identity_provider" "test"{
   identity_store_id = var.identity_store_id
-  idp_certificate = var.idp_certificate
-  entity_id = var.entity_id
-  login_url = var.login_url
+  idp_certificate   = var.idp_certificate
+  entity_id         = var.entity_id
+  login_url         = var.login_url
 }
 ```
 

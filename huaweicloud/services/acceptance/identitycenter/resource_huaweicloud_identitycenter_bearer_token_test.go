@@ -109,9 +109,9 @@ func testIdentityCenterBearerToken_basic() string {
 %s
 
 resource "huaweicloud_identitycenter_bearer_token" "test" {
-  depends_on = [huaweicloud_identitycenter_tenant.test]
+  depends_on        = [huaweicloud_identitycenter_tenant.test]
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
-  tenant_id = huaweicloud_identitycenter_tenant.test.id
+  tenant_id         = huaweicloud_identitycenter_tenant.test.id
 }
 `, testIdentityCenterTenant_basic())
 }

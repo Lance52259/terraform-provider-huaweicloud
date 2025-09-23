@@ -18,10 +18,10 @@ variable "idp_id" {}
 variable "x509_certificate_in_pem" {}
 
 resource "huaweicloud_identitycenter_identity_provider_certificate" "test"{
-  identity_store_id = var.identity_store_id
-  idp_id = var.idp_id
+  identity_store_id       = var.identity_store_id
+  idp_id                  = var.idp_id
   x509_certificate_in_pem = var.x509_certificate_in_pem
-  certificate_use = "SIGNING"
+  certificate_use         = "SIGNING"
 }
 ```
 
@@ -72,7 +72,7 @@ The `idp_certificate` block supports:
 
 ## Import
 
-The IdentityCenter identity provider can be imported using the `identity_store_id` and `idp_id` separated by a slash, e.g.
+The IdentityCenter identity provider certificate can be imported using the `identity_store_id`, `idp_id` and `certificate_id` separated by a slash, e.g.
 
 ```bash
 $ terraform import huaweicloud_identitycenter_identity_provider_certificate.test <identity_store_id>/<idp_id>/<certificate_id>
