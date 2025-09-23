@@ -1150,6 +1150,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_access_control_attribute_configurations": identitycenter.DataSourceAccessControlAttributeConfigurations(),
 			"huaweicloud_identitycenter_permission_sets":                         identitycenter.DataSourceIdentitycenterPermissionSets(),
 			"huaweicloud_identitycenter_account_provisioning_permission_sets":    identitycenter.DataSourceAccountProvisioningPermissionSets(),
+			"huaweicloud_identitycenter_service_provider_configuration":          identitycenter.DataSourceIdentityCenterServiceProviderConfiguration(),
 			"huaweicloud_identitycenter_permission_set_provisioning_accounts":    identitycenter.DataSourcePermissionSetProvisioningAccounts(),
 			"huaweicloud_identitycenter_permission_set_provisionings":            identitycenter.DataSourceIdentitycenterPermissionSetProvisionings(),
 			"huaweicloud_identitycenter_system_policy_attachments":               identitycenter.DataSourceIdentitycenterSystemPolicyAttachments(),
@@ -2403,6 +2404,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_custom_policy_attachment":               identitycenter.ResourceCustomPolicyAttachment(),
 			"huaweicloud_identitycenter_custom_role_attachment":                 identitycenter.ResourceCustomRoleAttachment(),
 			"huaweicloud_identitycenter_access_control_attribute_configuration": identitycenter.ResourceAccessControlAttributeConfiguration(),
+			"huaweicloud_identitycenter_service_provider_certificate":           identitycenter.ResourceIdentityCenterServiceProviderCertificate(),
 			"huaweicloud_identitycenter_provision_permission_set":               identitycenter.ResourceProvisionPermissionSet(),
 			"huaweicloud_identitycenter_application_instance":                   identitycenter.ResourceIdentityCenterApplicationInstance(),
 
