@@ -1134,6 +1134,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_federation_projects":    iam.DataSourceIdentityFederationProjects(),
 			"huaweicloud_identity_keystone_metadata_file": iam.DataSourceIdentityKeystoneMetadataFile(),
 			"huaweicloud_identity_group":                  iam.DataSourceIdentityGroup(),
+			"huaweicloud_identity_check_group_membership": iam.DataSourceIdentityCheckGroupMembership(),
 			"huaweicloud_identity_projects":               iam.DataSourceIdentityProjects(),
 			"huaweicloud_identity_auth_projects":          iam.DataSourceIdentityAuthProjects(),
 			"huaweicloud_identity_user_projects":          iam.DataSourceIdentityUserProjects(),
