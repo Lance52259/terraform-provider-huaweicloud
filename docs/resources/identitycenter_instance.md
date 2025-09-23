@@ -13,8 +13,7 @@ Manages an Identity Center instance resource within HuaweiCloud.
 ## Example Usage
 
 ```hcl
-resource "huaweicloud_identitycenter_instance" "test" {
-}
+resource "huaweicloud_identitycenter_instance" "test" {}
 ```
 
 ## Argument Reference
