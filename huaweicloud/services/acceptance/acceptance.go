@@ -317,6 +317,7 @@ var (
 	HW_RGC_ORGANIZATIONAL_UNIT_NAME  = os.Getenv("HW_RGC_ORGANIZATIONAL_UNIT_NAME")
 	HW_RGC_BLUEPRINT_PRODUCT_ID      = os.Getenv("HW_RGC_BLUEPRINT_PRODUCT_ID")
 	HW_RGC_BLUEPRINT_PRODUCT_VERSION = os.Getenv("HW_RGC_BLUEPRINT_PRODUCT_VERSION")
+	HW_RGC_ACCOUNT_ID                = os.Getenv("HW_RGC_ACCOUNT_ID")
 
 	HW_SDRS_PROTECTION_INSTANCE_ID = os.Getenv("HW_SDRS_PROTECTION_INSTANCE_ID")
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
@@ -802,9 +803,23 @@ func TestAccPreCheckRGCOrganization(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckRGCOrganizationalUnitID(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckRGCBlueprint(t *testing.T) {
 	if HW_RGC_BLUEPRINT_PRODUCT_ID == "" || HW_RGC_BLUEPRINT_PRODUCT_VERSION == "" {
 		t.Skip("HW_RGC_BLUEPRINT_PRODUCT_ID and HW_RGC_BLUEPRINT_PRODUCT_VERSION must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckAccountEnroll(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" || HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID and HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
 	}
 }
 
