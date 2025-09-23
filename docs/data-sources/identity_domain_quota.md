@@ -3,7 +3,7 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_domain_quota"
 description: |-
-  "Use this data source to get domain(account) quota."
+  Use this data source to get domain(account) quota.
 ---
 
 # huaweicloud_identity_domain_quota
@@ -33,7 +33,7 @@ data "huaweicloud_identity_domain_quota" "test" {
 * `resources` - Indicates the resource info list.
   The [resources](#IdentityDomainQuota_Resources) structure is documented below.
 
-  <a name="IdentityDomainQuota_Resources"></a>
+<a name="IdentityDomainQuota_Resources"></a>
 The `resources` block contains:
 
 * `type` - Indicates the type of resource.
