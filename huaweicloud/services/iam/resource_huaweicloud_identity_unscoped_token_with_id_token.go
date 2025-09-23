@@ -7,10 +7,11 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 
 	"github.com/chnsz/golangsdk"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
 // ResourceIdentityUnscopedTokenWithIdToken

@@ -103,18 +103,18 @@ func setFederationToken(d *schema.ResourceData, response *http.Response) error {
 	if err != nil {
 		return err
 	}
-	username := utils.PathSearch("token.user.name", respBody, nil).(string)
-	groupsModel := utils.PathSearch("token.user.\"OS-FEDERATION\".groups", respBody, nil).([]interface{})
+	username := utils.PathSearch("token.user.name", respBody, "").(string)
+	groupsModel := utils.PathSearch("token.user.\"OS-FEDERATION\".groups", respBody, make([]interface{}, 0)).([]interface{})
 	groups := make([]string, 0, len(groupsModel))
 	for _, groupModel := range groupsModel {
-		groups = append(groups, utils.PathSearch("name", groupModel, nil).(string))
+		groups = append(groups, utils.PathSearch("name", groupModel, "").(string))
 	}
 
 	d.SetId(d.Get("idp_id").(string) + ":" + username)
 	mErr := multierror.Append(
 		d.Set("token", response.Header.Get("X-Subject-Token")),
 		d.Set("username", username),
-		d.Set("expires_at", utils.PathSearch("token.expires_at", respBody, nil).(string)),
+		d.Set("expires_at", utils.PathSearch("token.expires_at", respBody, "").(string)),
 		d.Set("groups", groups),
 	)
 	return mErr.ErrorOrNil()
