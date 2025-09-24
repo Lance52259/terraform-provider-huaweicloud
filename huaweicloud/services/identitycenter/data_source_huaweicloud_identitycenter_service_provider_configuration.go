@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IdentityCenter GET /v1/identity-stores/{identity_store_id}/sp-config
 func DataSourceIdentityCenterServiceProviderConfiguration() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityCenterServiceProviderConfigurationRead,
