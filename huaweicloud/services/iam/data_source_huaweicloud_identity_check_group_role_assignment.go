@@ -81,7 +81,7 @@ func dataSourceIdentityCheckGroupRoleAssignmentRead(_ context.Context, d *schema
 	}
 	response, err := iamClient.Request("HEAD", checkGroupRoleAssignmentPath, &options)
 	if err != nil {
-		return diag.Errorf("error checkGroupRoleAssignment: %d, %s", response.StatusCode, err)
+		return diag.Errorf("error checkGroupRoleAssignment: %s", err)
 	}
 	id, err := uuid.GenerateUUID()
 	if err != nil {

@@ -54,7 +54,7 @@ func dataSourceIdentityCheckGroupMembershipRead(_ context.Context, d *schema.Res
 	}
 	response, err := iamClient.Request("HEAD", checkGroupMembershipPath, &options)
 	if err != nil {
-		return diag.Errorf("error checkGroupMembership: %d, %s", response.StatusCode, err)
+		return diag.Errorf("error checkGroupMembership: %s", err)
 	}
 	id, err := uuid.GenerateUUID()
 	if err != nil {

@@ -81,7 +81,7 @@ func dataSourceIdentityCheckAgencyRoleAssignmentRead(_ context.Context, d *schem
 	}
 	response, err := iamClient.Request("HEAD", checkAgencyRoleAssignmentPath, &options)
 	if err != nil {
-		return diag.Errorf("error checkAgencyRoleAssignment: %d, %s", response.StatusCode, err)
+		return diag.Errorf("error checkAgencyRoleAssignment: %s", err)
 	}
 	id, err := uuid.GenerateUUID()
 	if err != nil {
