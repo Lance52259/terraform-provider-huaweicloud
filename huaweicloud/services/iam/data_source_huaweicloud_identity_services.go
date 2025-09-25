@@ -2,10 +2,13 @@ package iam
 
 import (
 	"context"
-	"github.com/chnsz/golangsdk"
+
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -69,7 +72,7 @@ func dataSourceIdentityServicesRead(_ context.Context, d *schema.ResourceData, m
 	}
 	response, err := iamClient.Request("GET", getIdentityServiceBasePath, &getIdentityServiceOpt)
 	if err != nil {
-		return diag.Errorf("error getting identity endpoints: %s", err)
+		return diag.Errorf("error getting identity services: %s", err)
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
@@ -78,12 +81,12 @@ func dataSourceIdentityServicesRead(_ context.Context, d *schema.ResourceData, m
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if serviceId != "" {
-		services := flattenServicesList([]interface{}{utils.PathSearch("service", respBody, nil)})
+		services := flattenServicesList([]interface{}{utils.PathSearch("service", respBody, make([]interface{}, 0))})
 		if e := d.Set("services", services); e != nil {
 			return diag.FromErr(e)
 		}
 	} else {
-		services := flattenServicesList(utils.PathSearch("services", respBody, nil).([]interface{}))
+		services := flattenServicesList(utils.PathSearch("services", respBody, make([]interface{}, 0)).([]interface{}))
 		if e := d.Set("services", services); e != nil {
 			return diag.FromErr(e)
 		}
@@ -95,11 +98,11 @@ func flattenServicesList(servicesBody []interface{}) []map[string]interface{} {
 	services := make([]map[string]interface{}, len(servicesBody))
 	for i, service := range servicesBody {
 		services[i] = map[string]interface{}{
-			"name":    utils.PathSearch("name", service, nil),
-			"link":    utils.PathSearch("self", utils.PathSearch("links", service, nil), nil),
-			"id":      utils.PathSearch("id", service, nil),
-			"type":    utils.PathSearch("type", service, nil),
-			"enabled": utils.PathSearch("enabled", service, nil).(bool),
+			"name":    utils.PathSearch("name", service, ""),
+			"link":    utils.PathSearch("self", utils.PathSearch("links", service, ""), ""),
+			"id":      utils.PathSearch("id", service, ""),
+			"type":    utils.PathSearch("type", service, ""),
+			"enabled": utils.PathSearch("enabled", service, ""),
 		}
 	}
 	return services
