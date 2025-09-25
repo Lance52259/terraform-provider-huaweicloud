@@ -4,10 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -91,7 +93,7 @@ func listRegions(iamClient *golangsdk.ServiceClient, d *schema.ResourceData) dia
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	regionsBody := utils.PathSearch("regions", respBody, nil).([]interface{})
+	regionsBody := utils.PathSearch("regions", respBody, make([]interface{}, 0)).([]interface{})
 	regions := make([]interface{}, 0, len(regionsBody))
 	for _, region := range regionsBody {
 		regions = append(regions, flattenRegion(region))
@@ -116,7 +118,7 @@ func showRegion(iamClient *golangsdk.ServiceClient, regionId string, d *schema.R
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	regionBody := utils.PathSearch("region", respBody, nil)
+	regionBody := utils.PathSearch("region", respBody, make([]interface{}, 0))
 	regions := append(make([]interface{}, 0, 1), flattenRegion(regionBody))
 	if err = d.Set("regions", regions); err != nil {
 		return diag.Errorf("error setting regions fields: %s", err)
@@ -129,10 +131,10 @@ func flattenRegion(regionModel interface{}) map[string]interface{} {
 		return nil
 	}
 	region := make(map[string]interface{})
-	region["id"] = utils.PathSearch("id", regionModel, nil)
-	region["type"] = utils.PathSearch("type", regionModel, nil)
-	region["description"] = utils.PathSearch("description", regionModel, nil)
-	region["link"] = utils.PathSearch("links.self", regionModel, nil)
+	region["id"] = utils.PathSearch("id", regionModel, "")
+	region["type"] = utils.PathSearch("type", regionModel, "")
+	region["description"] = utils.PathSearch("description", regionModel, "")
+	region["link"] = utils.PathSearch("links.self", regionModel, "")
 
 	locales := map[string]string{
 		"zh-cn": utils.PathSearch("locales.\"zh-cn\"", regionModel, "").(string),
