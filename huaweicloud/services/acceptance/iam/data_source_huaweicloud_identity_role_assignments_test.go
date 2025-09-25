@@ -41,8 +41,7 @@ func TestAccIdentityRoleAssignments_basic(t *testing.T) {
 
 func testAccIdentityRoleAssignments_basic() string {
 	return `
-  data "huaweicloud_identity_role_assignments" "test" {
-}
+  data "huaweicloud_identity_role_assignments" "test" {}
 `
 }
 func testAccIdentityRoleAssignments_user() string {
