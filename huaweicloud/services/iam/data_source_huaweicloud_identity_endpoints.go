@@ -14,9 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-const limit = 10
-
-// @API IAM GET /v3/endpoints
+//@API IAM GET /v3/endpoints
 func DataSourceIdentityEndpoints() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityEndpointsRead,
@@ -96,8 +94,7 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	if endpointId != "" {
 		getIdentityEndpointBasePath = getIdentityEndpointBasePath + "/" + endpointId
 	}
-	getIdentityEndpointBasePath += fmt.Sprintf("?limit=%v", limit)
-	path := buildQueryParamPath(d, getIdentityEndpointBasePath)
+	path := getIdentityEndpointBasePath + buildQueryParamPath(d)
 	response, err := client.Request("GET", path, &getIdentityEndpointOpt)
 	if err != nil {
 		return diag.Errorf("error getting identity endpoints: %s", err)
@@ -139,12 +136,16 @@ func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 	return endpoints
 }
 
-func buildQueryParamPath(d *schema.ResourceData, path string) string {
+func buildQueryParamPath(d *schema.ResourceData) string {
+	res := ""
 	if interfaceParam, ok := d.GetOk("interface"); ok {
-		path += fmt.Sprintf("&interface=%s", interfaceParam)
+		res += fmt.Sprintf("%s&interface=%s", res, interfaceParam)
 	}
 	if serviceId, ok := d.GetOk("service_id"); ok {
-		path += fmt.Sprintf("&service_id=%s", serviceId)
+		res += fmt.Sprintf("%s&service_id=%s", res, serviceId)
 	}
-	return path
+	if res != "" {
+		res = "?" + res[1:]
+	}
+	return res
 }
