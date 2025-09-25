@@ -2,14 +2,19 @@ package iam
 
 import (
 	"context"
-	"github.com/chnsz/golangsdk"
+	"fmt"
+
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"net/url"
 )
+
+const limit = 10
 
 // @API IAM GET /v3/endpoints
 func DataSourceIdentityEndpoints() *schema.Resource {
@@ -91,21 +96,9 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	if endpointId != "" {
 		getIdentityEndpointBasePath = getIdentityEndpointBasePath + "/" + endpointId
 	}
-	interfaceParam := d.Get("interface").(string)
-	serviceId := d.Get("service_id").(string)
-	u, err := url.Parse(getIdentityEndpointBasePath)
-	if err != nil {
-		return diag.Errorf("error update query path: %s", err)
-	}
-	query := u.Query()
-	if serviceId != "" {
-		query.Add("service_id", serviceId)
-	}
-	if interfaceParam != "" {
-		query.Add("interface", interfaceParam)
-	}
-	u.RawQuery = query.Encode()
-	response, err := client.Request("GET", u.String(), &getIdentityEndpointOpt)
+	getIdentityEndpointBasePath += fmt.Sprintf("?limit=%v", limit)
+	path := buildQueryParamPath(d, getIdentityEndpointBasePath)
+	response, err := client.Request("GET", path, &getIdentityEndpointOpt)
 	if err != nil {
 		return diag.Errorf("error getting identity endpoints: %s", err)
 	}
@@ -116,12 +109,12 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if endpointId != "" {
-		endpoints := flattenEndpointsList([]interface{}{utils.PathSearch("endpoint", respBody, nil)})
+		endpoints := flattenEndpointsList([]interface{}{utils.PathSearch("endpoint", respBody, make([]interface{}, 0))})
 		if e := d.Set("endpoints", endpoints); e != nil {
 			return diag.FromErr(e)
 		}
 	} else {
-		endpoint := flattenEndpointsList(utils.PathSearch("endpoints", respBody, nil).([]interface{}))
+		endpoint := flattenEndpointsList(utils.PathSearch("endpoints", respBody, make([]interface{}, 0)).([]interface{}))
 		if e := d.Set("endpoints", endpoint); e != nil {
 			return diag.FromErr(e)
 		}
@@ -133,15 +126,25 @@ func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 	endpoints := make([]map[string]interface{}, len(endPointBody))
 	for i, endpoint := range endPointBody {
 		endpoints[i] = map[string]interface{}{
-			"service_id": utils.PathSearch("service_id", endpoint, nil),
-			"region_id":  utils.PathSearch("region_id", endpoint, nil),
-			"id":         utils.PathSearch("id", endpoint, nil),
-			"interface":  utils.PathSearch("interface", endpoint, nil),
-			"region":     utils.PathSearch("region", endpoint, nil),
-			"url":        utils.PathSearch("url", endpoint, nil),
-			"enabled":    utils.PathSearch("enabled", endpoint, nil),
-			"link":       utils.PathSearch("self", utils.PathSearch("links", endpoint, nil), nil),
+			"service_id": utils.PathSearch("service_id", endpoint, ""),
+			"region_id":  utils.PathSearch("region_id", endpoint, ""),
+			"id":         utils.PathSearch("id", endpoint, ""),
+			"interface":  utils.PathSearch("interface", endpoint, ""),
+			"region":     utils.PathSearch("region", endpoint, ""),
+			"url":        utils.PathSearch("url", endpoint, ""),
+			"enabled":    utils.PathSearch("enabled", endpoint, ""),
+			"link":       utils.PathSearch("self", utils.PathSearch("links", endpoint, ""), ""),
 		}
 	}
 	return endpoints
+}
+
+func buildQueryParamPath(d *schema.ResourceData, path string) string {
+	if interfaceParam, ok := d.GetOk("interface"); ok {
+		path += fmt.Sprintf("&interface=%s", interfaceParam)
+	}
+	if serviceId, ok := d.GetOk("service_id"); ok {
+		path += fmt.Sprintf("&service_id=%s", serviceId)
+	}
+	return path
 }

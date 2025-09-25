@@ -10,6 +10,7 @@ import (
 
 func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_identity_endpoints.test"
+	dataSourceById := "data.huaweicloud_identity_endpoints.test1"
 
 	config := testAccIdentityEndpoints_basic()
 	configWithId := testAccIdentityEndpointsById_basic()
@@ -22,8 +23,8 @@ func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
 			{
 				Config: configWithId,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "endpoints.#", "1"),
-					resource.TestCheckResourceAttr(dataSource, "endpoints.0.enabled", "true"),
+					resource.TestCheckResourceAttr(dataSourceById, "endpoints.#", "1"),
+					resource.TestCheckResourceAttr(dataSourceById, "endpoints.0.enabled", "true"),
 				),
 			},
 			{
@@ -39,15 +40,16 @@ func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
 
 func testAccIdentityEndpoints_basic() string {
 	return `
-data "huaweicloud_identity_endpoints" "test" {
-}
+data "huaweicloud_identity_endpoints" "test" {}
 `
 }
 
 func testAccIdentityEndpointsById_basic() string {
 	return `
-data "huaweicloud_identity_endpoints" "test" {
-  endpoint_id = "0046cca357c94165b7a10ec2c01bdf60"
+data "huaweicloud_identity_endpoints" "test" {}
+
+data "huaweicloud_identity_endpoints" "test1" {
+  endpoint_id = data.huaweicloud_identity_endpoints.test.endpoints.0.id
 }
 `
 }
