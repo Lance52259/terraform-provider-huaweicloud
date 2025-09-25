@@ -115,6 +115,7 @@ func dataSourceIdentityRoleAttributes(d *schema.ResourceData, role *roles.Role) 
 	}
 
 	mErr := multierror.Append(nil,
+		d.Set("role_id", role.ID),
 		d.Set("name", role.Name),
 		d.Set("description", role.Description),
 		d.Set("display_name", role.DisplayName),

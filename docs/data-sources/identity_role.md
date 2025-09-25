@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_role"
-description: "Use this data source to get details of the specified IAM **system-defined** role or policy."
+description: |-
+  Use this data source to get details of the specified IAM **system-defined** role or policy.
 ---
 
 # huaweicloud_identity_role
@@ -93,8 +94,10 @@ data "huaweicloud_identity_role" "kms_adm" {
 }
 ```
 ```hcl
+variable "role_id" {}
+
 data "huaweicloud_identity_permission_detail" "test" {
-  role_id =  "0af84c1502f447fa9c2fa18083fbb87e"
+  role_id = var.role_id
 }
 ```
 ```hcl
@@ -111,7 +114,6 @@ data "huaweicloud_identity_role" "role_1" {
   It's required if `display_name` is not specified.
 
 * `role_id` - (Optional, String) Specifies the role ID to query the details of the specified role.
-
 
 ## Attribute Reference
 
