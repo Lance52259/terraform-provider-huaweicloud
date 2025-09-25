@@ -2,10 +2,12 @@ package iam
 
 import (
 	"context"
+
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -70,12 +72,6 @@ func dataSourceIdentityAccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		return diag.Errorf("unable to generate ID: %s", err)
-	}
-	d.SetId(id)
 	getAccessKeyPath := iamClient.Endpoint + "v3.0/OS-CREDENTIAL/credentials"
 	accessKey := d.Get("access_key").(string)
 	if accessKey != "" {
@@ -98,20 +94,15 @@ func ListAccessKey(path string, iamClient *golangsdk.ServiceClient, d *schema.Re
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	id, _ := uuid.GenerateUUID()
-	d.SetId(id)
-	credentialsModel := utils.PathSearch("credential", respBody, nil)
-	res := make(map[string]interface{})
-	res["user_id"] = utils.PathSearch("user_id", credentialsModel, nil)
-	res["access"] = utils.PathSearch("access", credentialsModel, nil)
-	res["status"] = utils.PathSearch("status", credentialsModel, nil)
-	res["create_time"] = utils.PathSearch("create_time", credentialsModel, nil)
-	res["description"] = utils.PathSearch("description", credentialsModel, nil)
-	res["last_use_time"] = utils.PathSearch("last_use_time", credentialsModel, nil)
-	credential := append(make([]interface{}, 0, 1), res)
+	credential := flattenAccessKeyList(utils.PathSearch("credential", respBody, make([]interface{}, 0)))
 	if err = d.Set("credentials", credential); err != nil {
 		return diag.Errorf("error setting credentials fields: %s", err)
 	}
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.Errorf("unable to generate ID: %s", err)
+	}
+	d.SetId(id)
 	return nil
 }
 
@@ -130,21 +121,41 @@ func ShowAccessKey(userId string, path string, iamClient *golangsdk.ServiceClien
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	id, _ := uuid.GenerateUUID()
-	d.SetId(id)
-	credentialsModel := utils.PathSearch("credentials", respBody, nil).([]interface{})
-	credentials := make([]map[string]interface{}, len(credentialsModel))
-	for i, credential := range credentialsModel {
-		credentials[i] = map[string]interface{}{
-			"user_id":     utils.PathSearch("user_id", credential, nil),
-			"access":      utils.PathSearch("access", credential, nil),
-			"status":      utils.PathSearch("status", credential, nil),
-			"create_time": utils.PathSearch("create_time", credential, nil),
-			"description": utils.PathSearch("description", credential, nil),
-		}
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.Errorf("unable to generate ID: %s", err)
 	}
+	d.SetId(id)
+	credentials := flattenAccessKey(utils.PathSearch("credentials", respBody, make([]interface{}, 0)).([]interface{}))
 	if err = d.Set("credentials", credentials); err != nil {
 		return diag.Errorf("error setting credentials fields: %s", err)
 	}
 	return nil
+}
+
+func flattenAccessKeyList(credentialBody interface{}) []interface{} {
+	res := map[string]interface{}{
+		"user_id":       utils.PathSearch("user_id", credentialBody, ""),
+		"access":        utils.PathSearch("access", credentialBody, ""),
+		"status":        utils.PathSearch("status", credentialBody, ""),
+		"create_time":   utils.PathSearch("create_time", credentialBody, ""),
+		"description":   utils.PathSearch("description", credentialBody, ""),
+		"last_use_time": utils.PathSearch("last_use_time", credentialBody, ""),
+	}
+	result := append(make([]interface{}, 0, 1), res)
+	return result
+}
+
+func flattenAccessKey(credentialsModel []interface{}) []map[string]interface{} {
+	credentials := make([]map[string]interface{}, len(credentialsModel))
+	for i, credential := range credentialsModel {
+		credentials[i] = map[string]interface{}{
+			"user_id":     utils.PathSearch("user_id", credential, ""),
+			"access":      utils.PathSearch("access", credential, ""),
+			"status":      utils.PathSearch("status", credential, ""),
+			"create_time": utils.PathSearch("create_time", credential, ""),
+			"description": utils.PathSearch("description", credential, ""),
+		}
+	}
+	return credentials
 }

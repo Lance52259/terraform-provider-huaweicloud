@@ -1,9 +1,11 @@
 package iam
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
 func TestAccIdentityAccessKeyDataSource_basic(t *testing.T) {
@@ -52,6 +54,8 @@ resource "huaweicloud_identity_user" "test_user" {
   description = "tested by terraform"
 }
 resource "huaweicloud_identity_access_key" "key_1" {
+  depends_on = [huaweicloud_identity_access_key.key_1]
+
   user_id     = huaweicloud_identity_user.test_user.id
 }
 data "huaweicloud_identity_access_key" "test" {
@@ -75,6 +79,5 @@ data "huaweicloud_identity_access_key" "test" {
 `
 
 const testAccIdentityAccessKeyDataSourceWithoutParams_basic = `
-data "huaweicloud_identity_access_key" "test" {
-}
+data "huaweicloud_identity_access_key" "test" {}
 `
