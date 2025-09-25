@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_role_assignments"
-description: "Use this data-source to get role assignments of an IAM user within HuaweiCloud."
+description: |-
+  Use this data-source to get role assignments of an IAM user within HuaweiCloud.
 ---
 
 # huaweicloud_identity_role_assignments
@@ -10,18 +11,29 @@ description: "Use this data-source to get role assignments of an IAM user within
 Use this data-source to get role assignments of an IAM user within HuaweiCloud.
 
 ## Example Usage
-
+Query By DomainId
+```hcl
+data "huaweicloud_identity_role_assignments" "test" {}
+```
+Query With Inherited
 ```hcl
 data "huaweicloud_identity_role_assignments" "test" {
+  is_inherited = true
+}
+```
+Query By RoleId
+```hcl
+variable "role_id" {}
+
+data "huaweicloud_identity_role_assignments" "test" {
+  is_inherited = true
+  role_id = var.role_id
 }
 ```
 
 ## Argument Reference
 
-* `subject` - (Optional, String) Specifies authorization entity, value range: **user**, **group**, **agency**. This parameter can only choose one from 
-  * **user**, 
-  * **group**, 
-  * **agency**.
+* `subject` - (Optional, String) Specifies authorization entity, value range: **user**, **group**, **agency**. 
 
 * `subject_user_id` - (Optional, String) Specifies authorized IAM user ID. Conflict with subject_agency_id and subject_group_id 
 
@@ -29,11 +41,7 @@ data "huaweicloud_identity_role_assignments" "test" {
 
 * `subject_agency_id` - (Optional, String) Specifies authorized delegation ID. Conflict with subject_user_id and subject_group_id
 
-* `scope` - (Optional, String) Specifies Scope of authorization, value range: **project**, **domain**, **enterprise_project**. This parameter can only choose one among 
-  * **project**, 
-  * **domain**, 
-  * **enterprise_project**.
-  Default: **domain**
+* `scope` - (Optional, String) Specifies Scope of authorization, value range: **project**, **domain**, **enterprise_project**.Default: **domain**
 
 * `scope_project_id` - (Optional, String) Specifies authorized project ID. Conflict with scope_domain_id and scope_enterprise_projects_id
 

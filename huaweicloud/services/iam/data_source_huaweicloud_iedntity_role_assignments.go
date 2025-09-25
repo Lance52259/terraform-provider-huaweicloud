@@ -2,16 +2,18 @@ package iam
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"net/url"
-	"strconv"
 )
+
+const perPage = 50
 
 // @API IAM GET /v3.0/OS-PERMISSION/role-assignments
 func DataSourceIdentityRoleAssignments() *schema.Resource {
@@ -26,11 +28,6 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 			"subject": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					"user",
-					"group",
-					"agency",
-				}, false),
 			},
 			"subject_user_id": {
 				Type:     schema.TypeString,
@@ -60,11 +57,6 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "domain",
-				ValidateFunc: validation.StringInSlice([]string{
-					"project",
-					"domain",
-					"enterprise_project",
-				}, false),
 			},
 			"scope_project_id": {
 				Type:     schema.TypeString,
@@ -99,14 +91,6 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
-			},
-			"page": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			"per_page": {
-				Type:     schema.TypeInt,
-				Optional: true,
 			},
 			"role_assignments": {
 				Type:     schema.TypeList,
@@ -147,82 +131,85 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-
 	listRecordPath := iamClient.Endpoint + "v3.0/OS-PERMISSION/role-assignments"
-	u, err := url.Parse(listRecordPath)
-	if err != nil {
-		return diag.Errorf("error update query path: %s", err)
-	}
-	query := u.Query()
-	query.Add("domain_id", domainId)
-	if roleId := d.Get("role_id").(string); roleId != "" {
-		query.Add("role_id", roleId)
-	}
-	subject := d.Get("subject").(string)
-	if subject != "" {
-		query.Add("subject", subject)
-	}
-	subjectUserId := d.Get("subject_user_id").(string)
-	if subjectUserId != "" {
-		query.Add("subject.user_id", subjectUserId)
-	}
-	if subjectGroupId := d.Get("subject_group_id").(string); subjectGroupId != "" {
-		query.Add("subject.group_id", subjectGroupId)
-	}
-	if subjectAgencyId := d.Get("subject_agency_id").(string); subjectAgencyId != "" {
-		query.Add("subject.agency_id", subjectAgencyId)
-	}
-	scope := d.Get("scope").(string)
-	if scope != "" {
-		query.Add("scope", scope)
-	}
-	if scopeProjectId := d.Get("scope_project_id").(string); scopeProjectId != "" {
-		query.Add("scope.project_id", scopeProjectId)
-	}
-	scopeDomainId := d.Get("scope_domain_id").(string)
-	if scopeDomainId != "" {
-		query.Add("scope.domain_id", scopeDomainId)
-	}
-	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
-		query.Add("scope.enterprise_projects_id", scopeEnterpriseProjectsId)
-	}
-	if isInherited := d.Get("is_inherited").(bool); scope == "domain" || scopeDomainId != "" {
-		query.Add("is_inherited", strconv.FormatBool(isInherited))
-	}
-	if includeGroup := d.Get("include_group").(bool); subject == "user" || subjectUserId != "" {
-		query.Add("include_group", strconv.FormatBool(includeGroup))
-	}
-	if page := d.Get("page").(int); page > 0 {
-		query.Add("page", strconv.Itoa(page))
-	}
-	if perPage := d.Get("per_page").(int); perPage > 0 {
-		query.Add("per_page", strconv.Itoa(perPage))
-	}
-	u.RawQuery = query.Encode()
+	listRecordPath += fmt.Sprintf("?per_page=%v", perPage)
+	path := buildQueryRoleAssignmentsPath(d, listRecordPath, domainId)
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
-	response, err := iamClient.Request("GET", u.String(), &options)
-	if err != nil {
-		return diag.Errorf("error listRoleAssignments: %s", err)
+	currentPage := 1
+	result := make([]map[string]interface{}, 0)
+	for {
+		getPath := path + fmt.Sprintf("&page=%d", currentPage)
+		response, err := iamClient.Request("GET", getPath, &options)
+		if err != nil {
+			return diag.Errorf("error listRoleAssignments: %s", err)
+		}
+		respBody, err := utils.FlattenResponse(response)
+		result = flattenRoleAssignments(utils.PathSearch("role_assignments", respBody, nil).([]interface{}), result)
+		totalNum := utils.PathSearch("total_num", respBody, nil).(float64)
+		if float64(len(result)) >= totalNum {
+			break
+		}
+		currentPage++
 	}
-	respBody, err := utils.FlattenResponse(response)
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	if err = d.Set("role_assignments", showRoleAssignments(utils.PathSearch("role_assignments", respBody, nil).([]interface{}))); err != nil {
+	if err = d.Set("role_assignments", result); err != nil {
 		return diag.Errorf("error setting total_num fields: %s", err)
 	}
 	return nil
 }
 
-func showRoleAssignments(assignmentsBody []interface{}) []map[string]interface{} {
-	assignments := make([]map[string]interface{}, len(assignmentsBody))
-	for i, assignment := range assignmentsBody {
-		assignments[i] = map[string]interface{}{
+func flattenRoleAssignments(assignmentsBody []interface{}, results []map[string]interface{}) []map[string]interface{} {
+	for _, assignment := range assignmentsBody {
+		results = append(results, map[string]interface{}{
 			"role_id":      utils.PathSearch("id", utils.PathSearch("role", assignment, nil), nil),
 			"is_inherited": utils.PathSearch("is_inherited", assignment, nil),
 			"user_id":      utils.PathSearch("id", utils.PathSearch("user", assignment, nil), nil),
 			"group_id":     utils.PathSearch("id", utils.PathSearch("group", assignment, nil), nil),
 			"agency_id":    utils.PathSearch("id", utils.PathSearch("agency", assignment, nil), nil),
-		}
+		})
 	}
-	return assignments
+	return results
+}
+
+func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domainId string) string {
+	getPath += fmt.Sprintf("&domain_id=%s", domainId)
+	if roleId := d.Get("role_id").(string); roleId != "" {
+		getPath += fmt.Sprintf("&role_id=%s", roleId)
+	}
+	subject := d.Get("subject").(string)
+	if subject != "" {
+		getPath += fmt.Sprintf("&subject=%s", subject)
+	}
+	subjectUserId := d.Get("subject_user_id").(string)
+	if subjectUserId != "" {
+		getPath += fmt.Sprintf("&subject_user_id=%s", subjectUserId)
+	}
+	if subjectGroupId := d.Get("subject_group_id").(string); subjectGroupId != "" {
+		getPath += fmt.Sprintf("&subject_group_id=%s", subjectGroupId)
+	}
+	if subjectAgencyId := d.Get("subject_agency_id").(string); subjectAgencyId != "" {
+		getPath += fmt.Sprintf("&subject_agency_id=%s", subjectAgencyId)
+	}
+	scope := d.Get("scope").(string)
+	if scope != "" {
+		getPath += fmt.Sprintf("&scope=%s", scope)
+	}
+	if scopeProjectId := d.Get("scope_project_id").(string); scopeProjectId != "" {
+		getPath += fmt.Sprintf("&scope_project_id=%s", scopeProjectId)
+	}
+	scopeDomainId := d.Get("scope_domain_id").(string)
+	if scopeDomainId != "" {
+		getPath += fmt.Sprintf("&scope_domain_id=%s", scopeDomainId)
+	}
+	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
+		getPath += fmt.Sprintf("&scope_enterprise_projects_id=%s", scopeEnterpriseProjectsId)
+	}
+	if isInherited := d.Get("is_inherited").(bool); scope == "domain" || scopeDomainId != "" {
+		getPath += fmt.Sprintf("&is_inherited=%t", isInherited)
+	}
+	if includeGroup := d.Get("include_group").(bool); subject == "user" || subjectUserId != "" {
+		getPath += fmt.Sprintf("&include_group=%t", includeGroup)
+	}
+	return getPath
 }
