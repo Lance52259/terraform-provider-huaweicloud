@@ -46,7 +46,7 @@ In addition to all arguments above, the following attributes are exported:
 The `catalog` block supports:
 
 * `endpoints` - Indicates service endpoint information.
-    The [endpoints](#IdentityCatalog_Enpoints) structure is documented below.
+  The [endpoints](#IdentityCatalog_Enpoints) structure is documented below.
 
 * `id` - Indicates the service id.
 
