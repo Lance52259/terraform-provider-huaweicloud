@@ -13,6 +13,7 @@ Use this data source to query all permanent access key and specified access key 
 ## Example Usage
 
 ### Query AccessKey By UserId
+
 ```hcl
 resource "huaweicloud_identity_user" "test_user" {
   name        = "my_test_huaweicloud"
@@ -24,10 +25,14 @@ resource "huaweicloud_identity_access_key" "key_1" {
   user_id = huaweicloud_identity_user.test_user.id
 }
 data "huaweicloud_identity_access_key" "test" {
-  user_id = huaweicloud_identity_access_key.key_1.user_id
+  depends_on = [huaweicloud_identity_access_key.key_1]
+  
+  user_id    = huaweicloud_identity_access_key.key_1.user_id
 }
 ```
+
 ### Query AccessKey Info
+
 ```hcl
 resource "huaweicloud_identity_user" "test_user" {
   name        = "my_test_huaweicloud"
@@ -42,7 +47,9 @@ data "huaweicloud_identity_access_key" "test" {
   access_key = huaweicloud_identity_access_key.key_1.id
 }
 ```
+
 ### Query AccessKey 
+
 ```hcl
 data "huaweicloud_identity_access_key" "test3" {}
 ```
