@@ -21,10 +21,9 @@ func DataSourceIdentityEndpoints() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"endpoint_id": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				ConflictsWith: []string{"interface", "service_id"},
-				Description:   "The terminal node ID to be queried",
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The terminal node ID to be queried",
 			},
 			"interface": {
 				Type:        schema.TypeString,
@@ -130,7 +129,7 @@ func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 			"region":     utils.PathSearch("region", endpoint, ""),
 			"url":        utils.PathSearch("url", endpoint, ""),
 			"enabled":    utils.PathSearch("enabled", endpoint, ""),
-			"link":       utils.PathSearch("self", utils.PathSearch("links", endpoint, ""), ""),
+			"link":       utils.PathSearch("links.self", endpoint, ""),
 		}
 	}
 	return endpoints
