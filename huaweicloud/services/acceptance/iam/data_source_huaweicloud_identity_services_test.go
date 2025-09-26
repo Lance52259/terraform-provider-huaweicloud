@@ -1,9 +1,11 @@
 package iam
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
 func TestAccIdentityServices_basic(t *testing.T) {
@@ -43,8 +45,9 @@ data "huaweicloud_identity_services" "test" {
 }
 func testAccIdentityServicesById_basic() string {
 	return `
+data "huaweicloud_identity_services" "all" {}
+
 data "huaweicloud_identity_services" "test" {
-  service_id = "0031ef1f11ef4de9a6205054cb913e8b"
-}
+  service_id = data.huaweicloud_identity_services.all.services[0].id
 `
 }

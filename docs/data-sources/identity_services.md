@@ -11,7 +11,9 @@ description: |-
 Use this data source to query the services list within HuaweiCloud.
 
 ## Example Usage
+
 ### Query services by ID
+
 ```hcl
 variable "service_id" {}
 
@@ -19,7 +21,9 @@ data "huaweicloud_identity_services" "test" {
   service_id = var.service_id
 }
 ```
+
 ### Query all services
+
 ```hcl
 data "huaweicloud_identity_services" "test" {}
 ```
@@ -38,7 +42,7 @@ The `services` block contains:
 
 * `id` - Indicates service ID
 
-* `type` - Indicates the service Type.
+* `type` - Indicates the service type.
 
 * `name` - Indicates the service name.
 
