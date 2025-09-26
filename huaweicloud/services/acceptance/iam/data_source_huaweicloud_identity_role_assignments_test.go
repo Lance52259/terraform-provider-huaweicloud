@@ -20,13 +20,13 @@ func TestAccIdentityRoleAssignments_basic(t *testing.T) {
 			{
 				Config: testAccIdentityRoleAssignments_basic(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "1"),
+					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "7"),
 				),
 			},
 			{
 				Config: testAccIdentityRoleAssignments_user(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "6"),
+					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "7"),
 				),
 			},
 			{
@@ -53,9 +53,13 @@ func testAccIdentityRoleAssignments_user() string {
 }
 func testAccIdentityRoleAssignments_domain() string {
 	return `
+  data "huaweicloud_identity_role" "role_1" {
+ 	  name = "system_all_64"
+}
+
   data "huaweicloud_identity_role_assignments" "test" {
 	 is_inherited = true
-     role_id = "e2d75429549044d2b313fbdd11520f7d"
+     role_id 	  = huaweicloud_identity_role.role_1.0.roel_id
 }
 `
 }

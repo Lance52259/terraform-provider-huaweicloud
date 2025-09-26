@@ -32,55 +32,30 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 			"subject_user_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"subject_group_id",
-					"subject_agency_id",
-				},
 			},
 			"subject_group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"subject_user_id",
-					"subject_agency_id",
-				},
 			},
 			"subject_agency_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"subject_group_id",
-					"subject_user_id",
-				},
 			},
 			"scope": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "domain",
 			},
 			"scope_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"scope_domain_id",
-					"scope_enterprise_projects_id",
-				},
 			},
 			"scope_domain_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"scope_project_id",
-					"scope_enterprise_projects_id",
-				},
 			},
 			"scope_enterprise_projects_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ConflictsWith: []string{
-					"scope_project_id",
-					"scope_domain_id",
-				},
 			},
 			"is_inherited": {
 				Type:     schema.TypeBool,
@@ -162,11 +137,11 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 func flattenRoleAssignments(assignmentsBody []interface{}, results []map[string]interface{}) []map[string]interface{} {
 	for _, assignment := range assignmentsBody {
 		results = append(results, map[string]interface{}{
-			"role_id":      utils.PathSearch("id", utils.PathSearch("role", assignment, nil), nil),
+			"role_id":      utils.PathSearch("role.id", assignment, nil),
 			"is_inherited": utils.PathSearch("is_inherited", assignment, nil),
-			"user_id":      utils.PathSearch("id", utils.PathSearch("user", assignment, nil), nil),
-			"group_id":     utils.PathSearch("id", utils.PathSearch("group", assignment, nil), nil),
-			"agency_id":    utils.PathSearch("id", utils.PathSearch("agency", assignment, nil), nil),
+			"user_id":      utils.PathSearch("user.id", assignment, nil),
+			"group_id":     utils.PathSearch("group.id", assignment, nil),
+			"agency_id":    utils.PathSearch("agency.id", assignment, nil),
 		})
 	}
 	return results
@@ -205,11 +180,11 @@ func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domai
 	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
 		getPath += fmt.Sprintf("&scope_enterprise_projects_id=%s", scopeEnterpriseProjectsId)
 	}
-	if isInherited := d.Get("is_inherited").(bool); scope == "domain" || scopeDomainId != "" {
-		getPath += fmt.Sprintf("&is_inherited=%t", isInherited)
+	if scope == "domain" || scopeDomainId != "" {
+		getPath += fmt.Sprintf("&is_inherited=%t", d.Get("is_inherited").(bool))
 	}
-	if includeGroup := d.Get("include_group").(bool); subject == "user" || subjectUserId != "" {
-		getPath += fmt.Sprintf("&include_group=%t", includeGroup)
+	if subject == "user" || subjectUserId != "" {
+		getPath += fmt.Sprintf("&include_group=%t", d.Get("include_group").(bool))
 	}
 	return getPath
 }

@@ -11,23 +11,29 @@ description: |-
 Use this data source to get role assignments of an IAM user within HuaweiCloud.
 
 ## Example Usage
+
 ### Query By DomainId
+
 ```hcl
 data "huaweicloud_identity_role_assignments" "test" {}
 ```
+
 ### Query With Inherited
+
 ```hcl
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
 }
 ```
+
 ### Query By RoleId
+
 ```hcl
 variable "role_id" {}
 
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
-  role_id = var.role_id
+  role_id      = var.role_id
 }
 ```
 
@@ -53,13 +59,13 @@ data "huaweicloud_identity_role_assignments" "test" {
   * **true**: query records based on authorization for all projects. 
   * **false**: query records based on global service authorization.
 
-  Default: **false**.
+    Default: **false**.
 
 * `include_group` - (Optional, String) Specifies Whether to include records based on the permissions granted to the user groups of the IAM user.
   * **true**: Query records based on IAM user permissions and permissions granted to user groups of IAM users. 
   * **false**: Only query records based on IAM user permissions.
 
-  Default: **true**
+    Default: **true**
 
 ## Attribute Reference
 
