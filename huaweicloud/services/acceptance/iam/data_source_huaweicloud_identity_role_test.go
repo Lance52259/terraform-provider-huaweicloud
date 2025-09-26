@@ -42,9 +42,9 @@ func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 				Config: testAccIdentityRoleDataSource_by_roleid,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSourceName, "name", "wscn_adm"),
-					resource.TestCheckResourceAttr(dataSourceName, "display_name", "CodeArtsInspector Administrator"),
-					resource.TestCheckResourceAttr(dataSourceName, "role_id", "0af84c1502f447fa9c2fa18083fbb87e"),
+					resource.TestCheckResourceAttr(dataSourceName, "name", "kms_adm"),
+					resource.TestCheckResourceAttr(dataSourceName, "display_name", "KMS Administrator"),
+					resource.TestCheckResourceAttr(dataSourceName, "role_id", "38a3dd0c3ab141de8202a7d2463af616"),
 				),
 			},
 		},
@@ -63,7 +63,11 @@ data "huaweicloud_identity_role" "role_1" {
 }
 `
 const testAccIdentityRoleDataSource_by_roleid = `
+data "huaweicloud_identity_role" "role_3" {
+  display_name = "KMS Administrator"
+}
+
 data "huaweicloud_identity_role" "role_1" {
-  role_id = "0af84c1502f447fa9c2fa18083fbb87e"
+  role_id = data.huaweicloud_identity_role.role_3.id
 }
 `
