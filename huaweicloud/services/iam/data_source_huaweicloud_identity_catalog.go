@@ -2,14 +2,17 @@ package iam
 
 import (
 	"context"
-	"github.com/chnsz/golangsdk"
+	"strings"
+
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"strings"
 )
 
 // @API IAM GET /v3/auth/catalog
@@ -70,10 +73,6 @@ func DataSourceIdentityCatalog() *schema.Resource {
 					},
 				},
 			},
-			"link": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 		},
 	}
 }
@@ -97,13 +96,13 @@ func dataSourceIdentityCatalogRead(_ context.Context, d *schema.ResourceData, me
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	id, _ := uuid.GenerateUUID()
-	d.SetId(id)
-	catalog := flattenCatalogList(utils.PathSearch("catalog", respBody, nil).([]interface{}))
-	if e := d.Set("catalog", catalog); e != nil {
-		return diag.FromErr(e)
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	if e := d.Set("link", utils.PathSearch("self", utils.PathSearch("links", respBody, nil), nil)); e != nil {
+	d.SetId(id)
+	catalog := flattenCatalogList(utils.PathSearch("catalog", respBody, make([]interface{}, 0)).([]interface{}))
+	if e := d.Set("catalog", catalog); e != nil {
 		return diag.FromErr(e)
 	}
 	return nil
@@ -113,10 +112,10 @@ func flattenCatalogList(catalogBody []interface{}) []map[string]interface{} {
 	catalog := make([]map[string]interface{}, len(catalogBody))
 	for i, c := range catalogBody {
 		catalog[i] = map[string]interface{}{
-			"endpoints": flattenEndpointsList(utils.PathSearch("endpoints", c, nil).([]interface{})),
-			"name":      utils.PathSearch("name", c, nil),
-			"id":        utils.PathSearch("id", c, nil),
-			"type":      utils.PathSearch("type", c, nil),
+			"endpoints": flattenEndpointsList(utils.PathSearch("endpoints", c, make([]interface{}, 0)).([]interface{})),
+			"name":      utils.PathSearch("name", c, ""),
+			"id":        utils.PathSearch("id", c, ""),
+			"type":      utils.PathSearch("type", c, ""),
 		}
 	}
 	return catalog
@@ -126,11 +125,11 @@ func flattenEndpointsList(endpointsBody []interface{}) []map[string]interface{} 
 	endpoints := make([]map[string]interface{}, len(endpointsBody))
 	for i, endpoint := range endpointsBody {
 		endpoints[i] = map[string]interface{}{
-			"region":    utils.PathSearch("region", endpoint, nil),
-			"interface": utils.PathSearch("interface", endpoint, nil),
-			"id":        utils.PathSearch("id", endpoint, nil),
-			"region_id": utils.PathSearch("region_id", endpoint, nil),
-			"url":       utils.PathSearch("url", endpoint, nil),
+			"region":    utils.PathSearch("region", endpoint, ""),
+			"interface": utils.PathSearch("interface", endpoint, ""),
+			"id":        utils.PathSearch("id", endpoint, ""),
+			"region_id": utils.PathSearch("region_id", endpoint, ""),
+			"url":       utils.PathSearch("url", endpoint, ""),
 		}
 	}
 	return endpoints
