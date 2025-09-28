@@ -13,7 +13,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API IAM GET /v3.0/OS-PERMISSION/users/{user_id}/enterprise-projects
+// @API IAM GET /v3.0/OS-PERMISSION/enterprise-projects/{enterprise_project_id}/groups
 func DataSourceIdentityEnterpriseProjectGroups() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: DataSourceIdentityEnterpriseProjectGroupsRead,
