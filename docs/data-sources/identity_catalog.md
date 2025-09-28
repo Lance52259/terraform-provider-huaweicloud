@@ -8,9 +8,7 @@ description: |-
 
 # huaweicloud_identity_catalog
 
-se this data source to query the service catalog within HuaweiCloud.
-
--> **NOTE:** You *must* have IAM read privileges and **project** scope to use this data source.
+Use this data source to query the service catalog within HuaweiCloud.
 
 ## Example Usage
 
@@ -18,11 +16,13 @@ se this data source to query the service catalog within HuaweiCloud.
 variable "account_name" {}
 variable "user_name" {}
 variable "password" {}
+variable "project_name" {}
 
 resource "huaweicloud_identity_user_token" "test" {
   account_name = var.account_name
   user_name    = var.user_name
   password     = var.password
+  project_name = var.project_name
 }
 data "huaweicloud_identity_catalog" "test" {
   project_token = huaweicloud_identity_user_token.test.token
@@ -33,7 +33,7 @@ data "huaweicloud_identity_catalog" "test" {
 
 The following arguments are supported:
 
-* `project_token` - (Require, String) Specifies token for IAM user. No special permissions required, but the token's scope must be project.
+* `project_token` - (Require, String) Specifies project scope token for IAM user.
 
 ## Attribute Reference
 
@@ -55,7 +55,7 @@ The `catalog` block supports:
 * `type` - Indicates the service type.
 
 * <a name="IdentityCatalog_Enpoints"></a>
-The `catalog` block supports:
+The `endpoints` block supports:
 
 * `id` - Indicates the endpoint id.
 
