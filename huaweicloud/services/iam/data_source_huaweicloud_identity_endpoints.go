@@ -15,6 +15,7 @@ import (
 )
 
 //@API IAM GET /v3/endpoints
+//@API IAM GET /v3/endpoints/{endpoints_id}
 func DataSourceIdentityEndpoints() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityEndpointsRead,
@@ -129,7 +130,7 @@ func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 			"region":     utils.PathSearch("region", endpoint, ""),
 			"url":        utils.PathSearch("url", endpoint, ""),
 			"enabled":    utils.PathSearch("enabled", endpoint, ""),
-			"link":       utils.PathSearch("links.self", endpoint, ""),
+			"link":       utils.PathSearch("links.self", endpoint, nil),
 		}
 	}
 	return endpoints
