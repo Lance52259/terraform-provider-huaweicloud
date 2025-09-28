@@ -27,7 +27,7 @@ resource "huaweicloud_identity_access_key" "key_1" {
 data "huaweicloud_identity_access_key" "test" {
   depends_on = [huaweicloud_identity_access_key.key_1]
   
-  user_id    = huaweicloud_identity_access_key.key_1.user_id
+  user_id = huaweicloud_identity_access_key.key_1.user_id
 }
 ```
 

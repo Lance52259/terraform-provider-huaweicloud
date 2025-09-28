@@ -56,7 +56,7 @@ resource "huaweicloud_identity_user" "test_user" {
 resource "huaweicloud_identity_access_key" "key_1" {
   depends_on = [huaweicloud_identity_access_key.key_1]
 
-  user_id     = huaweicloud_identity_user.test_user.id
+  user_id = huaweicloud_identity_user.test_user.id
 }
 data "huaweicloud_identity_access_key" "test" {
   user_id = huaweicloud_identity_access_key.key_1.user_id
@@ -71,7 +71,7 @@ resource "huaweicloud_identity_user" "test_user" {
   description = "tested by terraform"
 }
 resource "huaweicloud_identity_access_key" "key_1" {
-  user_id  = huaweicloud_identity_user.test_user.id
+  user_id = huaweicloud_identity_user.test_user.id
 }
 data "huaweicloud_identity_access_key" "test" {
   access_key = huaweicloud_identity_access_key.key_1.id
