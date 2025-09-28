@@ -24,6 +24,7 @@ resource "huaweicloud_identity_user_token" "test" {
   password     = var.password
   project_name = var.project_name
 }
+
 data "huaweicloud_identity_catalog" "test" {
   project_token = huaweicloud_identity_user_token.test.token
 }
