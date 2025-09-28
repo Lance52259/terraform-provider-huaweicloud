@@ -99,10 +99,10 @@ func flattenServicesList(servicesBody []interface{}) []map[string]interface{} {
 	for i, service := range servicesBody {
 		services[i] = map[string]interface{}{
 			"name":    utils.PathSearch("name", service, ""),
-			"link":    utils.PathSearch("links.self", service, ""),
+			"link":    utils.PathSearch("links.self", service, nil),
 			"id":      utils.PathSearch("id", service, ""),
 			"type":    utils.PathSearch("type", service, ""),
-			"enabled": utils.PathSearch("enabled", service, ""),
+			"enabled": utils.PathSearch("enabled", service, nil),
 		}
 	}
 	return services
