@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
@@ -59,14 +60,18 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 				Optional: true,
 			},
 			"is_inherited": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"true", "false",
+				}, false),
 			},
 			"include_group": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, true),
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"true", "false",
+				}, true),
 			},
 			"role_assignments": {
 				Type:     schema.TypeList,
@@ -209,11 +214,13 @@ func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domai
 	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
 		getPath += fmt.Sprintf("&scope.enterprise_projects_id=%s", scopeEnterpriseProjectsId)
 	}
-	if scope == "domain" || scopeDomainId != "" {
-		getPath += fmt.Sprintf("&is_inherited=%s", d.Get("is_inherited"))
+	if v, ok := d.GetOk("is_inherited"); ok {
+		isInherited, _ := strconv.ParseBool(v.(string))
+		getPath += fmt.Sprintf("&is_inherited=%v", isInherited)
 	}
-	if subject == "user" || subjectUserId != "" {
-		getPath += fmt.Sprintf("&include_group=%s", d.Get("include_group"))
+	if v, ok := d.GetOk("include_group"); ok {
+		includeGroup, _ := strconv.ParseBool(v.(string))
+		getPath += fmt.Sprintf("&include_group=%v", includeGroup)
 	}
 	return getPath
 }
