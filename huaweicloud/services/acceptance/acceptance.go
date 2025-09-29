@@ -324,6 +324,7 @@ var (
 	HW_RGC_AUDIT_ACCOUNT_ID          = os.Getenv("HW_RGC_AUDIT_ACCOUNT_ID")
 	HW_RGC_MANAGE_ACCOUNT_EMAIL      = os.Getenv("HW_RGC_MANAGE_ACCOUNT_EMAIL")
 	HW_RGC_CONTROL_IDENTIFIER        = os.Getenv("HW_RGC_CONTROL_IDENTIFIER")
+	HW_RGC_TEMPLATE_BODY             = os.Getenv("HW_RGC_TEMPLATE_BODY")
 
 	HW_SDRS_PROTECTION_INSTANCE_ID = os.Getenv("HW_SDRS_PROTECTION_INSTANCE_ID")
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
@@ -848,6 +849,13 @@ func TestAccPreCheckRGCLandingZone(t *testing.T) {
 func TestAccPreCheckRGCControl(t *testing.T) {
 	if HW_RGC_CONTROL_IDENTIFIER == "" || HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
 		t.Skip("HW_RGC_CONTROL_IDENTIFIER and HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCTemplate(t *testing.T) {
+	if HW_RGC_TEMPLATE_BODY == "" {
+		t.Skip("HW_RGC_TEMPLATE_NAME and HW_RGC_TEMPLATE_BODY must be set for acceptance tests")
 	}
 }
 
