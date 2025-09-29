@@ -92,6 +92,13 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 							Type:     schema.TypeBool,
 							Computed: true,
 						},
+						"scope": {
+							Type:     schema.TypeMap,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 					},
 				},
 			},
@@ -142,9 +149,23 @@ func flattenRoleAssignments(assignmentsBody []interface{}, results []map[string]
 			"user_id":      utils.PathSearch("user.id", assignment, nil),
 			"group_id":     utils.PathSearch("group.id", assignment, nil),
 			"agency_id":    utils.PathSearch("agency.id", assignment, nil),
+			"scope":        flattenAssignmentsScope(utils.PathSearch("scope", assignment, nil)),
 		})
 	}
 	return results
+}
+
+func flattenAssignmentsScope(scopeBody interface{}) map[string]interface{} {
+	if scopeBody == nil {
+		return nil
+	}
+	scope := map[string]interface{}{
+		"project_id":            utils.PathSearch("id", utils.PathSearch("project", scopeBody, nil), nil),
+		"domain_id":             utils.PathSearch("id", utils.PathSearch("domain", scopeBody, nil), nil),
+		"enterprise_project_id": utils.PathSearch("id", utils.PathSearch("enterprise_project", scopeBody, nil), nil),
+	}
+	return scope
+
 }
 
 func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domainId string) string {

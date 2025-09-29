@@ -59,7 +59,7 @@ func testAccIdentityRoleAssignments_domain() string {
 
   data "huaweicloud_identity_role_assignments" "test" {
 	 is_inherited = true
-     role_id 	  = huaweicloud_identity_role.role_1.role_id
+     role_id 	  = data.huaweicloud_identity_role.role_1.role_id
 }
 `
 }

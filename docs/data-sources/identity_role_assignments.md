@@ -85,3 +85,14 @@ The `role_assignments` block contains:
 
 * `is_inherited` - Indicates  based on authorization for all projects.
 
+* `scope` - Indicates the scope of the authorization
+  The [scope](#IdentityRoleAssignments_Scope ) structure is documented below.
+
+<a name="IdentityRoleAssignments_Scope"></a>
+The `scope` block contains:
+
+* `project_id` - Indicates information based on IAM project authorization.
+
+* `domain_id` - Indicates information based on global service or authorization of all items.
+
+* `enterprise_project_id` - Indicates information based on enterprise project authorization.
