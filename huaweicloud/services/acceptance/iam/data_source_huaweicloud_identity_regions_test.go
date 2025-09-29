@@ -8,7 +8,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
+func TestDataSourceIdentityRegions(t *testing.T) {
 	dataSourceName := "data.huaweicloud_identity_regions.test"
 	dc := acceptance.InitDataSourceCheck(dataSourceName)
 
@@ -64,8 +64,7 @@ func TestDataSourceIdentitySecurityCompliance(t *testing.T) {
 }
 
 const testTestDataSourceIdentityRegions = `
-data "huaweicloud_identity_regions" "test" {
-}
+data "huaweicloud_identity_regions" "test" {}
 `
 
 const testTestDataSourceIdentityRegionsWithRegionId1 = `
