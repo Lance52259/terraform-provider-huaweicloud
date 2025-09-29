@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-func getAccountEnrollResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getOrganizationalUnitRegisterResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	// getAccount: Query RGC organizational unit via rgc API
 	var (
 		region            = acceptance.HW_REGION_NAME
@@ -50,7 +50,7 @@ func TestAccOrganizationalUnit_basic(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		rName,
 		&obj,
-		getAccountEnrollResourceFunc,
+		getOrganizationalUnitRegisterResourceFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{

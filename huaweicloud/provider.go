@@ -2683,6 +2683,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_landing_zone":                 rgc.ResourceLandingZone(),
 			"huaweicloud_rgc_control":                      rgc.ResourceControl(),
 			"huaweicloud_rgc_best_practice":                rgc.ResourceBestPractice(),
+			"huaweicloud_rgc_template":                     rgc.ResourceTemplate(),
 
 			"huaweicloud_rms_policy_assignment":                  rms.ResourcePolicyAssignment(),
 			"huaweicloud_rms_policy_assignment_evaluate":         rms.ResourcePolicyAssignmentEvaluate(),
