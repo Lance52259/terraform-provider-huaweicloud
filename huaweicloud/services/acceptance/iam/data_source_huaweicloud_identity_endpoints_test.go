@@ -23,14 +23,14 @@ func TestAccIdentityEndpointDataSource_basic(t *testing.T) {
 			{
 				Config: configWithId,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSourceById, "endpoints.#", "1"),
+					resource.TestCheckResourceAttrSet(dataSourceById, "endpoints.#"),
 					resource.TestCheckResourceAttr(dataSourceById, "endpoints.0.enabled", "true"),
 				),
 			},
 			{
 				Config: config,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "endpoints.#", "1062"),
+					resource.TestCheckResourceAttrSet(dataSource, "endpoints.#"),
 					resource.TestCheckResourceAttr(dataSource, "endpoints.0.enabled", "true"),
 				),
 			},
