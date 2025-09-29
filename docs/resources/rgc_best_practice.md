@@ -3,7 +3,7 @@ subcategory: "Resource Governance Center (RGC)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_rgc_best_parctice"
 description: |-
-    Manages an RGC best practice resource within HuaweiCloud.
+  Manages an RGC best-practice resource within HuaweiCloud.
 ---
 
 # huaweicloud_rgc_best_parctice
@@ -33,8 +33,6 @@ The following arguments are supported:
 This resource provides the following timeouts configuration options:
 
 * `create` - Default is 60 minutes.
-
-* `delete` - Default is 60 minutes.
 
 ## Import
 
