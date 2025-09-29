@@ -3,12 +3,12 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_group_enterprise_projects"
 description: |-
-  Use this data source to get enterprise projects of the specified IAM user group.
+  Use this data source to get enterprise projects of the specified IAM user group id.
 ---
 
 # huaweicloud_identity_group_enterprise_projects
 
-Use this data source to get enterprise projects of the specified IAM user group.
+Use this data source to get enterprise projects of the specified IAM user group id.
 
 ## Example Usage
 
@@ -26,12 +26,12 @@ data "huaweicloud_identity_group_enterprise_project" "group" {
 
 ## Attribute Reference
 
-* `enterprise_projects` - Indicates the users the group contains. 
+* `enterprise_projects` - Indicates the projects contains. 
   The [enterprise_projects](#IdentityEnterpriseProjects_projects) structure is documented below.
 
 <a name="IdentityEnterpriseProjects_projects"></a>
 The `enterprise_projects` block contains:
 
-* `project_id` - Indicates the ID of the IAM user.
+* `project_id` - Indicates the ID of enterprise projects.
 
 

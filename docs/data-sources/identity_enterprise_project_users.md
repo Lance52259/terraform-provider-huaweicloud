@@ -3,19 +3,19 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_enterprise_project_users"
 description: |-
-  Use this data source to get enterprise projects of the specified IAM users.
+  Use this data source to get IAM users of the specified enterprise project id within HuaweiCloud.
 ---
 
 # huaweicloud_identity_enterprise_project_users
 
-Use this data source to get enterprise projects of the specified IAM users.
+Use this data source to get IAM users of the specified enterprise project id within HuaweiCloud.
 
 ## Example Usage
 
 ```hcl
 variable "enterprise_project_id" {}
 
-data "huaweicloud_identity_enterprise_project_groups" "groups" {
+data "huaweicloud_identity_enterprise_project_users" "users" {
   enterprise_project_id = var.enterprise_project_id
 }
 ```
@@ -26,20 +26,22 @@ data "huaweicloud_identity_enterprise_project_groups" "groups" {
 
 ## Attribute Reference
 
-* `groups` - Indicates the users the group contains.
-  The [groups](#IdentityEnterpriseProjects_Groups) structure is documented below.
+* `users` - Indicates the user information.
+  The [users](#IdentityEnterpriseProjects_Users) structure is documented below.
 
-<a name="IdentityEnterpriseProjects_Groups"></a>
-The `groups` block contains:
+<a name="IdentityEnterpriseProjects_Users"></a>
+The `users` block contains:
 
-* `create_time` - Indicates the time of the IAM user groups creat.
+* `enabled` - Indicates whether to enable authorized users.
 
-* `description` - Indicates the description of the IAM user groups.
+* `description` - Indicates the description of the IAM user.
 
-* `domain_id` - Indicates the domain ID of the IAM user groups.
+* `domain_id` - Indicates the domain ID of the IAM user.
 
-* `id` - Indicates the ID of the IAM user groups.
+* `id` - Indicates the ID of the IAM user.
 
-* `name` - Indicates the name of the IAM user groups.
+* `name` - Indicates the name of the IAM user.
 
+* `policy_num` - Indicates number of user strategies
 
+* `lastest_policy_time` - Indicates the time when the user was recently associated with the enterprise project strategy

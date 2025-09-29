@@ -1,14 +1,14 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identity_group_enterprise_projects"
+page_title: "HuaweiCloud: huaweicloud_identity_enterprise_project_groups"
 description: |-
-  Use this data source to get enterprise projects of the specified IAM user group.
+  Use this data source to get IAM user groups of the specified enterprise project id within HuaweiCloud.
 ---
 
-# huaweicloud_identity_group_enterprise_projects
+# huaweicloud_identity_enterprise_project_groups
 
-Use this data source to get enterprise projects of the specified IAM user group.
+Use this data source to get IAM user groups of the specified enterprise project id within HuaweiCloud.
 
 ## Example Usage
 

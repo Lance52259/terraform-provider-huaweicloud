@@ -2,6 +2,7 @@ package iam
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -69,7 +70,8 @@ func DataSourceIdentityEnterpriseProjectUsersRead(_ context.Context, d *schema.R
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	enterpriseProjectId := d.Get("enterprise_project_id").(string)
-	path := iamClient.Endpoint + "v3.0/OS-PERMISSION/enterprise-projects/" + enterpriseProjectId + "/users"
+	path := iamClient.Endpoint + "v3.0/OS-PERMISSION/enterprise-projects/{enterprise_project_id}/users"
+	path = strings.ReplaceAll(path, "{enterprise_project_id}", enterpriseProjectId)
 	identityOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
