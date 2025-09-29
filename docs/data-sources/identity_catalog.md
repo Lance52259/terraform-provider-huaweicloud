@@ -34,7 +34,7 @@ data "huaweicloud_identity_catalog" "test" {
 
 The following arguments are supported:
 
-* `project_token` - (Require, String) Specifies project scope token for IAM user.
+* `project_token` - (Required, String) Specifies project scope token for IAM user.
 
 ## Attribute Reference
 
