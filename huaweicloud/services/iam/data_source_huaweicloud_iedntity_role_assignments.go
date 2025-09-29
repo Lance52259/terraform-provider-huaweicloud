@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -58,14 +59,14 @@ func DataSourceIdentityRoleAssignments() *schema.Resource {
 				Optional: true,
 			},
 			"is_inherited": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
 			},
 			"include_group": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, true),
 			},
 			"role_assignments": {
 				Type:     schema.TypeList,
@@ -118,7 +119,7 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 	path := buildQueryRoleAssignmentsPath(d, listRecordPath, domainId)
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
 	currentPage := 1
-	result := make([]map[string]interface{}, 0)
+	var res []interface{}
 	for {
 		getPath := path + fmt.Sprintf("&page=%d", currentPage)
 		response, err := iamClient.Request("GET", getPath, &options)
@@ -126,23 +127,30 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 			return diag.Errorf("error listRoleAssignments: %s", err)
 		}
 		respBody, err := utils.FlattenResponse(response)
-		result = flattenRoleAssignments(utils.PathSearch("role_assignments", respBody, nil).([]interface{}), result)
-		totalNum := utils.PathSearch("total_num", respBody, nil).(float64)
-		if float64(len(result)) >= totalNum {
+		result := flattenRoleAssignments(respBody)
+		res = append(res, result...)
+		totalNum := utils.PathSearch("total_num", respBody, float64(0)).(float64)
+		if len(result) >= int(totalNum) {
 			break
 		}
 		currentPage++
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	if err = d.Set("role_assignments", result); err != nil {
+	if err = d.Set("role_assignments", res); err != nil {
 		return diag.Errorf("error setting total_num fields: %s", err)
 	}
 	return nil
 }
 
-func flattenRoleAssignments(assignmentsBody []interface{}, results []map[string]interface{}) []map[string]interface{} {
-	for _, assignment := range assignmentsBody {
+func flattenRoleAssignments(resp interface{}) []interface{} {
+	if resp == nil {
+		return nil
+	}
+	curJson := utils.PathSearch("role_assignments", resp, make([]interface{}, 0))
+	curArray := curJson.([]interface{})
+	results := make([]interface{}, 0, len(curArray))
+	for _, assignment := range curArray {
 		results = append(results, map[string]interface{}{
 			"role_id":      utils.PathSearch("role.id", assignment, nil),
 			"is_inherited": utils.PathSearch("is_inherited", assignment, nil),
@@ -160,9 +168,9 @@ func flattenAssignmentsScope(scopeBody interface{}) map[string]interface{} {
 		return nil
 	}
 	scope := map[string]interface{}{
-		"project_id":            utils.PathSearch("id", utils.PathSearch("project", scopeBody, nil), nil),
-		"domain_id":             utils.PathSearch("id", utils.PathSearch("domain", scopeBody, nil), nil),
-		"enterprise_project_id": utils.PathSearch("id", utils.PathSearch("enterprise_project", scopeBody, nil), nil),
+		"project_id":            utils.PathSearch("project.id", scopeBody, nil),
+		"domain_id":             utils.PathSearch("domain.id", scopeBody, nil),
+		"enterprise_project_id": utils.PathSearch("enterprise_project.id", scopeBody, nil),
 	}
 	return scope
 
@@ -179,33 +187,33 @@ func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domai
 	}
 	subjectUserId := d.Get("subject_user_id").(string)
 	if subjectUserId != "" {
-		getPath += fmt.Sprintf("&subject_user_id=%s", subjectUserId)
+		getPath += fmt.Sprintf("&subject.user_id=%s", subjectUserId)
 	}
 	if subjectGroupId := d.Get("subject_group_id").(string); subjectGroupId != "" {
-		getPath += fmt.Sprintf("&subject_group_id=%s", subjectGroupId)
+		getPath += fmt.Sprintf("&subject.group_id=%s", subjectGroupId)
 	}
 	if subjectAgencyId := d.Get("subject_agency_id").(string); subjectAgencyId != "" {
-		getPath += fmt.Sprintf("&subject_agency_id=%s", subjectAgencyId)
+		getPath += fmt.Sprintf("&subject.agency_id=%s", subjectAgencyId)
 	}
 	scope := d.Get("scope").(string)
 	if scope != "" {
 		getPath += fmt.Sprintf("&scope=%s", scope)
 	}
 	if scopeProjectId := d.Get("scope_project_id").(string); scopeProjectId != "" {
-		getPath += fmt.Sprintf("&scope_project_id=%s", scopeProjectId)
+		getPath += fmt.Sprintf("&scope.project_id=%s", scopeProjectId)
 	}
 	scopeDomainId := d.Get("scope_domain_id").(string)
 	if scopeDomainId != "" {
-		getPath += fmt.Sprintf("&scope_domain_id=%s", scopeDomainId)
+		getPath += fmt.Sprintf("&scope.domain_id=%s", scopeDomainId)
 	}
 	if scopeEnterpriseProjectsId := d.Get("scope_enterprise_projects_id").(string); scopeEnterpriseProjectsId != "" {
-		getPath += fmt.Sprintf("&scope_enterprise_projects_id=%s", scopeEnterpriseProjectsId)
+		getPath += fmt.Sprintf("&scope.enterprise_projects_id=%s", scopeEnterpriseProjectsId)
 	}
 	if scope == "domain" || scopeDomainId != "" {
-		getPath += fmt.Sprintf("&is_inherited=%t", d.Get("is_inherited").(bool))
+		getPath += fmt.Sprintf("&is_inherited=%s", d.Get("is_inherited"))
 	}
 	if subject == "user" || subjectUserId != "" {
-		getPath += fmt.Sprintf("&include_group=%t", d.Get("include_group").(bool))
+		getPath += fmt.Sprintf("&include_group=%s", d.Get("include_group"))
 	}
 	return getPath
 }
