@@ -94,7 +94,7 @@ func ListAccessKey(path string, iamClient *golangsdk.ServiceClient, d *schema.Re
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	credential := flattenAccessKeyList(utils.PathSearch("credential", respBody, make([]interface{}, 0)))
+	credential := flattenAccessKeyList(utils.PathSearch("credential", respBody, nil))
 	if err = d.Set("credentials", credential); err != nil {
 		return diag.Errorf("error setting credentials fields: %s", err)
 	}

@@ -73,7 +73,7 @@ The `credentials` block contains:
 * `access` - Indicates the Access Key (AK) that was queried.
 
 * `status` - Indicates the status of the access_key. Valid values: 
-  * **active**, The access_key is enabled. 
+  * **active**: The access_key is enabled. 
   * **inactive**: The access_key is disabled.
 
 * `create_time` - Indicates the creation time of the access_key. The value is a UTC time in the YYYY-MM-DDTHH:mm:ss.ssssssZ format.
