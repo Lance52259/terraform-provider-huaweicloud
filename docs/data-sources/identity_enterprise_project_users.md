@@ -1,11 +1,12 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identity_group_enterprise_projects"
-description: "Use this data source to get enterprise projects of the specified IAM users."
+page_title: "HuaweiCloud: huaweicloud_identity_enterprise_project_users"
+description: |-
+  Use this data source to get enterprise projects of the specified IAM users.
 ---
 
-# huaweicloud_identity_group_enterprise_projects
+# huaweicloud_identity_enterprise_project_users
 
 Use this data source to get enterprise projects of the specified IAM users.
 
@@ -21,7 +22,7 @@ data "huaweicloud_identity_enterprise_project_groups" "groups" {
 
 ## Argument Reference
 
-* `enterprise_project_id` - (Optional, String) Specifies the ID of the enterprise project.
+* `enterprise_project_id` - (Required, String) Specifies the ID of the enterprise project.
 
 ## Attribute Reference
 

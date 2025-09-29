@@ -2,7 +2,8 @@
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_enterprise_projects"
-description: "Use this data source to get enterprise projects of the specified IAM user id."
+description: |-
+  Use this data source to get enterprise projects of the specified IAM user id.
 ---
 
 # huaweicloud_identity_user_enterprise_projects
@@ -21,7 +22,7 @@ data "huaweicloud_identity_user_enterprise_project" "user" {
 
 ## Argument Reference
 
-* `user_id` - (Optional, String) Specifies the ID of the identity user.
+* `user_id` - (Required, String) Specifies the ID of the identity user.
 
 ## Attribute Reference
 
