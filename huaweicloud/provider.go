@@ -1143,6 +1143,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_project_quota":       iam.DataSourceIdentityProjectQuota(),
 			"huaweicloud_identity_user_token_info":     iam.DataSourceIdentityUserTokenInfo(),
 			"huaweicloud_identity_security_compliance": iam.DataSourceIdentitySecurityCompliance(),
+			"huaweicloud_identity_access_key":          iam.DataSourceIdentityAccessKey(),
 			"huaweicloud_identity_role_assignments":    iam.DataSourceIdentityRoleAssignments(),
 
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
@@ -2684,6 +2685,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_landing_zone":                 rgc.ResourceLandingZone(),
 			"huaweicloud_rgc_control":                      rgc.ResourceControl(),
 			"huaweicloud_rgc_best_practice":                rgc.ResourceBestPractice(),
+			"huaweicloud_rgc_template":                     rgc.ResourceTemplate(),
 
 			"huaweicloud_rms_policy_assignment":                  rms.ResourcePolicyAssignment(),
 			"huaweicloud_rms_policy_assignment_evaluate":         rms.ResourcePolicyAssignmentEvaluate(),
