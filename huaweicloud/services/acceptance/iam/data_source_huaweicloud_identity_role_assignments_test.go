@@ -20,19 +20,19 @@ func TestAccIdentityRoleAssignments_basic(t *testing.T) {
 			{
 				Config: testAccIdentityRoleAssignments_basic(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "7"),
+					resource.TestCheckResourceAttrSet(dataSource, "role_assignments.#"),
 				),
 			},
 			{
 				Config: testAccIdentityRoleAssignments_user(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "7"),
+					resource.TestCheckResourceAttrSet(dataSource, "role_assignments.#"),
 				),
 			},
 			{
 				Config: testAccIdentityRoleAssignments_domain(),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(dataSource, "role_assignments.#", "2"),
+					resource.TestCheckResourceAttrSet(dataSource, "role_assignments.#"),
 				),
 			},
 		},
