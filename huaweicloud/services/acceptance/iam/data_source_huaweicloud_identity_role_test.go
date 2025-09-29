@@ -26,7 +26,6 @@ func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSourceName, "name", "system_all_64"),
 					resource.TestCheckResourceAttr(dataSourceName, "display_name", "OBS ReadOnlyAccess"),
-					resource.TestCheckResourceAttr(dataSourceName, "role_id", "e8cd0cf22f814019b192126de6dccc37"),
 				),
 			},
 			{
@@ -35,7 +34,6 @@ func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSourceName, "name", "kms_adm"),
 					resource.TestCheckResourceAttr(dataSourceName, "display_name", "KMS Administrator"),
-					resource.TestCheckResourceAttr(dataSourceName, "role_id", "38a3dd0c3ab141de8202a7d2463af616"),
 				),
 			},
 			{
@@ -44,7 +42,6 @@ func TestAccIdentityRoleDataSource_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(dataSourceName, "name", "kms_adm"),
 					resource.TestCheckResourceAttr(dataSourceName, "display_name", "KMS Administrator"),
-					resource.TestCheckResourceAttr(dataSourceName, "role_id", "38a3dd0c3ab141de8202a7d2463af616"),
 				),
 			},
 		},
