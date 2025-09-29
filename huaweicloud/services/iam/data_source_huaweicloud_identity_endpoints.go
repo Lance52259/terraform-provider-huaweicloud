@@ -106,7 +106,11 @@ func dataSourceIdentityEndpointsRead(_ context.Context, d *schema.ResourceData, 
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if endpointId != "" {
-		endpoints := flattenEndpointsList([]interface{}{utils.PathSearch("endpoint", respBody, nil)})
+		resp := utils.PathSearch("endpoint", respBody, nil)
+		if resp == nil {
+			return nil
+		}
+		endpoints := flattenEndpointsList([]interface{}{resp})
 		if e := d.Set("endpoints", endpoints); e != nil {
 			return diag.FromErr(e)
 		}
@@ -129,7 +133,7 @@ func flattenEndpointsList(endPointBody []interface{}) []map[string]interface{} {
 			"interface":  utils.PathSearch("interface", endpoint, ""),
 			"region":     utils.PathSearch("region", endpoint, ""),
 			"url":        utils.PathSearch("url", endpoint, ""),
-			"enabled":    utils.PathSearch("enabled", endpoint, ""),
+			"enabled":    utils.PathSearch("enabled", endpoint, nil),
 			"link":       utils.PathSearch("links.self", endpoint, nil),
 		}
 	}
