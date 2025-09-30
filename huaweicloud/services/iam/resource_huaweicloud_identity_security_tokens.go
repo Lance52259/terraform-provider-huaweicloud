@@ -2,21 +2,22 @@ package iam
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// ResourceIdentitySecurityTokens
 // @API IAM POST /v3.0/OS-CREDENTIAL/securitytokens
 func ResourceIdentitySecurityTokens() *schema.Resource {
 	return &schema.Resource{
@@ -34,31 +35,38 @@ func ResourceIdentitySecurityTokens() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "Authentication method, the content of this field is either [token] or [assume_role].",
+				Description: "Authentication method, the content of this field is either `token` or `assume_role`.",
 			},
 			"policy": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"agency_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"domain_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"domain_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 			"duration_seconds": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeInt,
 				Optional: true,
+				Default:  900,
+				ForceNew: true,
 			},
 			"session_user_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
 			},
 
 			"expires_at": {
@@ -84,60 +92,7 @@ func ResourceIdentitySecurityTokens() *schema.Resource {
 func resourceIdentitySecurityTokensCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient := common.NewCustomClient(true, "https://iam.{region_id}.myhuaweicloud.com")
-	err := createSecurityTokens(iamClient, d, cfg)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		return diag.Errorf("unable to generate ID: %s", err)
-	}
-	d.SetId(id)
-	return nil
-
-}
-
-func buildCreateSecurityTokensBodyParams(d *schema.ResourceData) map[string]interface{} {
-	methods := d.Get("methods").(string)
-	policy := ""
-	if val, ok := d.GetOk("policy"); ok {
-		policy = val.(string)
-	}
-	bodyParams := map[string]interface{}{}
-	if methods == "token" {
-		bodyParams = map[string]interface{}{
-			"identity": map[string]interface{}{
-				"methods": []string{
-					methods,
-				},
-				"token": map[string]interface{}{
-					"duration_seconds": d.Get("duration_seconds").(int),
-				},
-				"policy": policy,
-			},
-		}
-	} else {
-		bodyParams = map[string]interface{}{
-			"identity": map[string]interface{}{
-				"methods": []string{
-					methods,
-				},
-				"session_user": map[string]interface{}{
-					"domain_name":       d.Get("domain_name"),
-					"agency_name":       d.Get("agency_name"),
-					"duration_seconds":  d.Get("duration_seconds").(int),
-					"session_user_name": d.Get("session_user_name"),
-					"domain_id":         d.Get("domain_id"),
-				},
-				"policy": policy,
-			},
-		}
-	}
-	return bodyParams
-}
-
-func createSecurityTokens(iamClient *golangsdk.ServiceClient, d *schema.ResourceData, cfg *config.Config) error {
-	basePath := iamClient.ResourceBase + "/v3.0/OS-CREDENTIAL/securitytokens"
+	basePath := iamClient.ResourceBase + "v3.0/OS-CREDENTIAL/securitytokens"
 	basePath = strings.ReplaceAll(basePath, "{region_id}", cfg.GetRegion(d))
 	createTokenOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -150,39 +105,64 @@ func createSecurityTokens(iamClient *golangsdk.ServiceClient, d *schema.Resource
 	}
 	response, err := iamClient.Request("POST", basePath, &createTokenOpt)
 	if err != nil {
-		return fmt.Errorf("error getting identity security token: %s", err)
+		return diag.Errorf("error getting identity security token: %s", err)
 	}
-	resp, err := utils.FlattenResponse(response)
+	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
-		return fmt.Errorf("error flattening response: %s", err)
+		return diag.Errorf("error flattening response: %s", err)
 	}
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.Errorf("unable to generate ID: %s", err)
+	}
+	d.SetId(id)
 	mErr := multierror.Append(
-		d.Set("expires_at", utils.PathSearch("credential.expires_at", resp, nil)),
-		d.Set("access", utils.PathSearch("credential.access", resp, nil)),
-		d.Set("secret", utils.PathSearch("credential.secret", resp, nil)),
-		d.Set("securitytoken", utils.PathSearch("credential.securitytoken", resp, nil)),
+		d.Set("expires_at", utils.PathSearch("credential.expires_at", respBody, "").(string)),
+		d.Set("access", utils.PathSearch("credential.access", respBody, "").(string)),
+		d.Set("secret", utils.PathSearch("credential.secret", respBody, "").(string)),
+		d.Set("securitytoken", utils.PathSearch("credential.securitytoken", respBody, "").(string)),
 	)
-	return mErr.ErrorOrNil()
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func resourceIdentitySecurityTokensRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cfg := meta.(*config.Config)
-	region := cfg.GetRegion(d)
-	product := "identity"
-	client, err := cfg.NewServiceClient(product, region)
-	if err != nil {
-		return diag.Errorf("Error creating IAM client: %s", err)
+func buildCreateSecurityTokensBodyParams(d *schema.ResourceData) map[string]interface{} {
+	methods := d.Get("methods").(string)
+	bodyParams := map[string]interface{}{}
+	if methods == "token" {
+		bodyParams = map[string]interface{}{
+			"methods": []string{methods},
+			"token": map[string]interface{}{
+				"duration_seconds": d.Get("duration_seconds").(int),
+			},
+		}
+	} else if methods == "assume_role" {
+		bodyParams = map[string]interface{}{
+			"methods": []string{methods},
+			"assume_role": map[string]interface{}{
+				"agency_name":      d.Get("agency_name"),
+				"domain_name":      d.Get("domain_name"),
+				"domain_id":        d.Get("domain_id"),
+				"duration_seconds": d.Get("duration_seconds").(int),
+				"session_user": map[string]interface{}{
+					"name": d.Get("session_user_name"),
+				},
+			},
+		}
 	}
+	if policy, ok := d.GetOk("policy"); ok {
+		bodyParams["policy"] = policy
+	}
+	bodyParams = map[string]interface{}{"identity": bodyParams}
+	return bodyParams
+}
 
+func resourceIdentitySecurityTokensRead(c context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	expiresAt, err := time.ParseInLocation(`2006-01-02T15:04:05Z`, d.Get("expires_at").(string), time.UTC)
 	if err != nil {
 		diag.Errorf("error parsing expires at: %s", err)
 	}
 	if time.Now().After(expiresAt) {
-		err = createToken(client, d)
-		if err != nil {
-			return diag.FromErr(err)
-		}
+		return resourceIdentitySecurityTokensCreate(c, d, meta)
 	}
 	return nil
 }

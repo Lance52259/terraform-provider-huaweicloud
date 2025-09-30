@@ -9,8 +9,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccIdentitySecurityTokens_basic(t *testing.T) {
+func TestAccIdentitySecurityTokens(t *testing.T) {
 	resourceName := "huaweicloud_identity_security_tokens.test"
+	agencyName := acceptance.RandomAccResourceName()
 	userName := acceptance.RandomAccResourceName()
 	initPassword := acceptance.RandomPassword()
 	dc := acceptance.InitDataSourceCheck(resourceName)
@@ -23,42 +24,57 @@ func TestAccIdentitySecurityTokens_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: AccIdentitySecurityTokens_basic(userName, initPassword),
+				Config: AccIdentitySecurityTokensByAgency(agencyName, userName, initPassword),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(resourceName, "credential.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "expires_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "access"),
+					resource.TestCheckResourceAttrSet(resourceName, "secret"),
+					resource.TestCheckResourceAttrSet(resourceName, "securitytoken"),
+				),
+			},
+			{
+				Config: AccIdentitySecurityTokensByToken(userName, initPassword),
+				Check: resource.ComposeTestCheckFunc(
+					dc.CheckResourceExists(),
+					resource.TestCheckResourceAttrSet(resourceName, "expires_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "access"),
+					resource.TestCheckResourceAttrSet(resourceName, "secret"),
+					resource.TestCheckResourceAttrSet(resourceName, "securitytoken"),
 				),
 			},
 		},
 	})
 }
 
-func AccIdentitySecurityTokens_basic(userName string, initPassword string) string {
+func AccIdentitySecurityTokensByAgency(agencyName, userName, initPassword string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_identity_user_token" "test" {
+  account_name = "%[2]s"
+  user_name    = "%[3]s"
+  password     = "%[4]s"
+}
+
+resource "huaweicloud_identity_security_tokens" "test" {
+  token       = huaweicloud_identity_user_token.test.token
+  methods     = "assume_role"
+  agency_name = huaweicloud_identity_agency.test.name
+  domain_name = huaweicloud_identity_agency.test.delegated_domain_name
+  policy      = "{\"Version\":\"1.1\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"obs:object:GetObject\"],\"Resource\":[\"OBS:*:*:object:*\"]}]}"
+}
+`, testAccIdentityAgency_domain(agencyName), acceptance.HW_DOMAIN_NAME, acceptance.HW_USER_NAME, acceptance.HW_USER_PWD)
+}
+
+func AccIdentitySecurityTokensByToken(userName, initPassword string) string {
 	return fmt.Sprintf(`
 %[1]s
 
 resource "huaweicloud_identity_security_tokens" "test" {
-  token = huaweicloud_identity_user_token.test.token
-  methods = "token"
-  policy = <<POLICY
-{
-  "Version": "1.1",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["obs:object:GetObject"],
-      "Resource": ["OBS:*:*:object:*"],
-      "Condition": {
-        "StringEquals": {
-          "g:DomainName": ["DomainNameExample"]
-        }
-      }
-    }
-  ]
-}
-POLICY
-}
-
+  token            = huaweicloud_identity_user_token.test.token
+  methods          = "token"
+  duration_seconds = 3600
 }
 `, testAccIdentityUserToken_basic(userName, initPassword))
 }
