@@ -71,25 +71,25 @@ func resourceIdentityCenterApplicationAssignmentCreate(ctx context.Context, d *s
 	region := cfg.GetRegion(d)
 
 	var (
-		createApplicationAssignmentHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments/create"
-		createApplicationAssignmentProduct = "identitycenter"
+		createHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments/create"
+		createProduct = "identitycenter"
 	)
 
-	createApplicationAssignmentClient, err := cfg.NewServiceClient(createApplicationAssignmentProduct, region)
+	client, err := cfg.NewServiceClient(createProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createApplicationAssignmentPath := createApplicationAssignmentClient.Endpoint + createApplicationAssignmentHttpUrl
-	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	createPath := client.Endpoint + createHttpUrl
+	createPath = strings.ReplaceAll(createPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	createPath = strings.ReplaceAll(createPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	createApplicationAssignmentOpt := golangsdk.RequestOpts{
+	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildCreateApplicationAssignmentBodyParams(d)),
 	}
 
-	_, err = createApplicationAssignmentClient.Request("POST", createApplicationAssignmentPath, &createApplicationAssignmentOpt)
+	_, err = client.Request("POST", createPath, &createOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center application asssignment: %s", err)
 	}
@@ -117,22 +117,22 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 	var mErr *multierror.Error
 
 	var (
-		listApplicationAssignmentsHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments"
-		listApplicationAssignmentsProduct = "identitycenter"
+		listHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments"
+		listProduct = "identitycenter"
 	)
 
-	listApplicationAssignmentsClient, err := cfg.NewServiceClient(listApplicationAssignmentsProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listApplicationAssignmentsBasePath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
-	listApplicationAssignmentsBasePath = strings.ReplaceAll(listApplicationAssignmentsBasePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	listApplicationAssignmentsBasePath = strings.ReplaceAll(listApplicationAssignmentsBasePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	listBasePath := client.Endpoint + listHttpUrl
+	listBasePath = strings.ReplaceAll(listBasePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	listBasePath = strings.ReplaceAll(listBasePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	listApplicationAssignmentsPath := listApplicationAssignmentsBasePath + buildListApplicationAssignmentsQueryParams("")
+	listPath := listBasePath + buildListApplicationAssignmentsQueryParams("")
 
-	listApplicationAssignmentsOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
@@ -140,26 +140,26 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 	principalId := d.Get("principal_id")
 
 	for {
-		listApplicationAssignmentsResp, err := listApplicationAssignmentsClient.Request("GET", listApplicationAssignmentsPath, &listApplicationAssignmentsOpt)
+		listResp, err := client.Request("GET", listPath, &listOpt)
 		if err != nil {
 			return common.CheckDeletedDiag(d, err, "error retrieving Identity Center application assignments.")
 		}
 
-		listApplicationAssignmentsRespBody, err := utils.FlattenResponse(listApplicationAssignmentsResp)
+		listRespBody, err := utils.FlattenResponse(listResp)
 		if err != nil {
 			return diag.FromErr(err)
 		}
 
-		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listApplicationAssignmentsRespBody, nil)
+		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listRespBody, nil)
 		if assignment != nil {
 			break
 		}
 
-		marker := utils.PathSearch("page_info.next_marker", listApplicationAssignmentsRespBody, nil)
+		marker := utils.PathSearch("page_info.next_marker", listRespBody, nil)
 		if marker == nil {
 			break
 		}
-		listApplicationAssignmentsPath = listApplicationAssignmentsBasePath + buildListApplicationAssignmentsQueryParams(marker.(string))
+		listPath = listBasePath + buildListApplicationAssignmentsQueryParams(marker.(string))
 	}
 
 	if assignment == nil {
@@ -194,24 +194,24 @@ func resourceIdentityCenterApplicationAssignmentDelete(_ context.Context, d *sch
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteApplicationAssignmentHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments/delete"
-		deleteApplicationAssignmentProduct = "identitycenter"
+		deleteHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments/delete"
+		deleteProduct = "identitycenter"
 	)
-	deleteApplicationAssignmentClient, err := cfg.NewServiceClient(deleteApplicationAssignmentProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	deleteApplicationAssignmentPath := deleteApplicationAssignmentClient.Endpoint + deleteApplicationAssignmentHttpUrl
-	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	deleteApplicationAssignmentOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildCreateApplicationAssignmentBodyParams(d)),
 	}
 
-	_, err = deleteApplicationAssignmentClient.Request("POST", deleteApplicationAssignmentPath, &deleteApplicationAssignmentOpt)
+	_, err = client.Request("POST", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center application assignment: %s", err)
 	}

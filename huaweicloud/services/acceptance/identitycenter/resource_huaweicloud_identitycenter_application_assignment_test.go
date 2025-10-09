@@ -20,22 +20,22 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listApplicationAssignmentsHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments"
-		listApplicationAssignmentsProduct = "identitycenter"
+		listHttpUrl = "v1/instances/{instance_id}/applications/{application_instance_id}/assignments"
+		listProduct = "identitycenter"
 	)
 
-	listApplicationAssignmentsClient, err := cfg.NewServiceClient(listApplicationAssignmentsProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listApplicationAssignmentsPath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}", state.Primary.Attributes["instance_id"])
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", state.Primary.Attributes["instance_id"])
+	listPath = strings.ReplaceAll(listPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
 
-	listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildGetApplicationAssignmentQueryParams("")
+	listPath = listPath + buildGetApplicationAssignmentQueryParams("")
 
-	listApplicationAssignmentsOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
@@ -43,26 +43,26 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 	principalId := state.Primary.Attributes["principal_id"]
 
 	for {
-		listApplicationAssignmentsResp, err := listApplicationAssignmentsClient.Request("GET", listApplicationAssignmentsPath, &listApplicationAssignmentsOpt)
+		listResp, err := client.Request("GET", listPath, &listOpt)
 		if err != nil {
 			return nil, fmt.Errorf("error retrieving Identity Center application assignment: %s", err)
 		}
 
-		listApplicationAssignmentsRespBody, err := utils.FlattenResponse(listApplicationAssignmentsResp)
+		listRespBody, err := utils.FlattenResponse(listResp)
 		if err != nil {
 			return nil, err
 		}
 
-		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listApplicationAssignmentsRespBody, nil)
+		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listRespBody, nil)
 		if assignment != nil {
 			break
 		}
 
-		marker := utils.PathSearch("page_info.next_marker", listApplicationAssignmentsRespBody, nil)
+		marker := utils.PathSearch("page_info.next_marker", listRespBody, nil)
 		if marker == nil {
 			break
 		}
-		listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildGetApplicationAssignmentQueryParams(marker.(string))
+		listPath = listPath + buildGetApplicationAssignmentQueryParams(marker.(string))
 	}
 
 	if assignment != nil {
