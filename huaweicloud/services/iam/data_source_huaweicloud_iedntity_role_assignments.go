@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -134,8 +135,7 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 		respBody, err := utils.FlattenResponse(response)
 		result := flattenRoleAssignments(respBody)
 		res = append(res, result...)
-		totalNum := utils.PathSearch("total_num", respBody, float64(0)).(float64)
-		if len(result) >= int(totalNum) {
+		if len(result) == 0 {
 			break
 		}
 		currentPage++

@@ -21,8 +21,11 @@ data "huaweicloud_identity_role_assignments" "test" {}
 ### Query With Inherited
 
 ```hcl
+variable "scope" {}
+
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
+  scope 	   = var.scope
 }
 ```
 
@@ -30,9 +33,11 @@ data "huaweicloud_identity_role_assignments" "test" {
 
 ```hcl
 variable "role_id" {}
+variable "scope" {}
 
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
+  scope 	   = var.scope
   role_id      = var.role_id
 }
 ```

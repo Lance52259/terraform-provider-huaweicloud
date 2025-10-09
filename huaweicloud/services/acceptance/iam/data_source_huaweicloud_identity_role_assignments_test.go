@@ -47,7 +47,8 @@ func testAccIdentityRoleAssignments_basic() string {
 func testAccIdentityRoleAssignments_user() string {
 	return `
   data "huaweicloud_identity_role_assignments" "test" {
-	 is_inherited = true
+	 is_inherited = false
+     scope 		  = "domain"
 }
 `
 }
@@ -59,6 +60,7 @@ func testAccIdentityRoleAssignments_domain() string {
 
   data "huaweicloud_identity_role_assignments" "test" {
 	 is_inherited = true
+     scope 		  = "domain"
      role_id 	  = data.huaweicloud_identity_role.role_1.role_id
 }
 `
