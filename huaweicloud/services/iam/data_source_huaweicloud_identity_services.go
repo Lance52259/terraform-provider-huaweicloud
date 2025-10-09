@@ -81,7 +81,11 @@ func dataSourceIdentityServicesRead(_ context.Context, d *schema.ResourceData, m
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if serviceId != "" {
-		services := flattenServicesList([]interface{}{utils.PathSearch("service", respBody, nil)})
+		resp := utils.PathSearch("service", respBody, nil)
+		if resp == nil {
+			return nil
+		}
+		services := flattenServicesList([]interface{}{resp})
 		if e := d.Set("services", services); e != nil {
 			return diag.FromErr(e)
 		}

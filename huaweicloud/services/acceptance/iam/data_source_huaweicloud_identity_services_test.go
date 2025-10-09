@@ -39,8 +39,7 @@ func TestAccIdentityServices_basic(t *testing.T) {
 
 func testAccIdentityServices_basic() string {
 	return `
-data "huaweicloud_identity_services" "test" {
-}
+data "huaweicloud_identity_services" "test" {}
 `
 }
 func testAccIdentityServicesById_basic() string {
@@ -49,5 +48,6 @@ data "huaweicloud_identity_services" "all" {}
 
 data "huaweicloud_identity_services" "test" {
   service_id = data.huaweicloud_identity_services.all.services[0].id
+}
 `
 }
