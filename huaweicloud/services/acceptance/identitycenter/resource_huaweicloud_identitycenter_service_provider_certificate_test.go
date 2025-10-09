@@ -19,34 +19,34 @@ func getServiceProviderCertificateResourceFunc(cfg *config.Config, state *terraf
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		getSpCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
-		getSpCertificatesProduct = "identitystore"
+		getHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
+		getProduct = "identitystore"
 	)
-	client, err := cfg.NewServiceClient(getSpCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(getProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IdentityCenter client: %s", err)
 	}
 
-	getSpCertificatesPath := client.Endpoint + getSpCertificatesHttpUrl
-	getSpCertificatesPath = strings.ReplaceAll(getSpCertificatesPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
+	getPath := client.Endpoint + getHttpUrl
+	getPath = strings.ReplaceAll(getPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
 
-	getSpCertificatesOpt := golangsdk.RequestOpts{
+	getOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	certificateId := state.Primary.ID
 
-	getSpCertificatesResp, err := client.Request("GET", getSpCertificatesPath, &getSpCertificatesOpt)
+	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center service provider certificate: %s", err)
 	}
 
-	getSpCertificatesRespBody, err := utils.FlattenResponse(getSpCertificatesResp)
+	getRespBody, err := utils.FlattenResponse(getResp)
 	if err != nil {
 		return nil, err
 	}
 
-	certificate := utils.PathSearch(fmt.Sprintf("[?certificate_id =='%s']|[0]", certificateId), getSpCertificatesRespBody, nil)
+	certificate := utils.PathSearch(fmt.Sprintf("[?certificate_id =='%s']|[0]", certificateId), getRespBody, nil)
 	if certificate == nil {
 		return nil, fmt.Errorf("error get Identity Center service provider certificate")
 	}
