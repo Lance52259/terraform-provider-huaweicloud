@@ -47,43 +47,28 @@ func ResourceIdentityCenterServiceProviderCertificate() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"state": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
 			"enable_force_new": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
 				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
-			"certificate": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"x509certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"algorithm": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"expiry_date": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"state": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"certificate_id": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
-			},
-			"sp_certificate_status": {
+			"x509certificate": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Computed: true,
+			},
+			"algorithm": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"expiry_date": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -96,22 +81,20 @@ func resourceIdentityCenterServiceProviderCertificateCreate(ctx context.Context,
 	var (
 		createSpCertificateHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
 		activeSpCertificateHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates/{certificate_id}/active"
-		createSpCertificateProduct = "identitystore"
+		product                    = "identitystore"
 	)
-	createSpCertificateClient, err := cfg.NewServiceClient(createSpCertificateProduct, region)
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createSpCertificatePath := createSpCertificateClient.Endpoint + createSpCertificateHttpUrl
-	createSpCertificatePath = strings.ReplaceAll(createSpCertificatePath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	createSpCertificatePath := client.Endpoint + createSpCertificateHttpUrl
+	createSpCertificatePath = strings.ReplaceAll(createSpCertificatePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
 	createSpCertificateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	createSpCertificateResp, err := createSpCertificateClient.Request("POST",
-		createSpCertificatePath, &createSpCertificateOpt)
+	createSpCertificateResp, err := client.Request("POST", createSpCertificatePath, &createSpCertificateOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center service provider certificate: %s", err)
 	}
@@ -127,22 +110,15 @@ func resourceIdentityCenterServiceProviderCertificateCreate(ctx context.Context,
 	}
 	d.SetId(certificateId)
 
-	if status, ok := d.GetOk("sp_certificate_status"); ok && status == "active" {
-		activeSpCertificateClient, err := cfg.NewServiceClient(createSpCertificateProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating Identity Center Client: %s", err)
-		}
-
-		activeSpCertificatePath := activeSpCertificateClient.Endpoint + activeSpCertificateHttpUrl
-		activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{identity_store_id}",
-			fmt.Sprintf("%v", d.Get("identity_store_id")))
+	if status, ok := d.GetOk("state"); ok && status == "ACTIVE" {
+		activeSpCertificatePath := client.Endpoint + activeSpCertificateHttpUrl
+		activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 		activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{certificate_id}", d.Id())
 
 		activeSpCertificateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 		}
-		_, err = activeSpCertificateClient.Request("POST", activeSpCertificatePath,
-			&activeSpCertificateOpt)
+		_, err = client.Request("POST", activeSpCertificatePath, &activeSpCertificateOpt)
 		if err != nil {
 			return diag.Errorf("error activing Identity Center identity provider certificate: %s", err)
 		}
@@ -158,65 +134,46 @@ func resourceIdentityCenterServiceProviderCertificateRead(_ context.Context, d *
 	var mErr *multierror.Error
 
 	var (
-		listSpCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
-		listSpCertificatesProduct = "identitystore"
+		getSpCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
+		getSpCertificatesProduct = "identitystore"
 	)
-	listSpCertificatesClient, err := cfg.NewServiceClient(listSpCertificatesProduct, region)
+	getSpCertificatesClient, err := cfg.NewServiceClient(getSpCertificatesProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listSpCertificatesPath := listSpCertificatesClient.Endpoint + listSpCertificatesHttpUrl
-	listSpCertificatesPath = strings.ReplaceAll(listSpCertificatesPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	getSpCertificatesPath := getSpCertificatesClient.Endpoint + getSpCertificatesHttpUrl
+	getSpCertificatesPath = strings.ReplaceAll(getSpCertificatesPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
-	listSpCertificatesOpt := golangsdk.RequestOpts{
+	getSpCertificatesOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listSpCertificatesResp, err := listSpCertificatesClient.Request("GET", listSpCertificatesPath, &listSpCertificatesOpt)
+	getSpCertificatesResp, err := getSpCertificatesClient.Request("GET", getSpCertificatesPath, &getSpCertificatesOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center service provider certificate.")
 	}
 
-	listSpCertificatesRespBody, err := utils.FlattenResponse(listSpCertificatesResp)
+	getSpCertificatesRespBody, err := utils.FlattenResponse(getSpCertificatesResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	certificates := flattenSpCertificates(listSpCertificatesRespBody, d)
+	certificate := utils.PathSearch(fmt.Sprintf("[?certificate_id =='%s']|[0]", d.Id()), getSpCertificatesRespBody, nil)
 
-	if len(certificates) == 0 {
+	if certificate == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no sp certificate found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("certificate", certificates),
+		d.Set("state", utils.PathSearch("state", certificate, nil)),
+		d.Set("x509certificate", utils.PathSearch("x509certificate", certificate, nil)),
+		d.Set("expiry_date", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("expiry_date", certificate, float64(0)).(float64))/1000, false)),
+		d.Set("algorithm", utils.PathSearch("algorithm", certificate, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
-}
-
-func flattenSpCertificates(resp interface{}, d *schema.ResourceData) []interface{} {
-	if resp == nil {
-		return nil
-	}
-	jsonPath := fmt.Sprintf("[?certificate_id =='%s']", d.Id())
-	curJson := utils.PathSearch(jsonPath, resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	certs := make([]interface{}, len(curArray))
-	for i, v := range curArray {
-		certs[i] = map[string]interface{}{
-			"x509certificate": utils.PathSearch("x509certificate", v, nil),
-			"expiry_date": utils.FormatTimeStampRFC3339(
-				int64(utils.PathSearch("expiry_date", v, float64(0)).(float64))/1000, false),
-			"algorithm":      utils.PathSearch("algorithm", v, nil),
-			"state":          utils.PathSearch("state", v, nil),
-			"certificate_id": utils.PathSearch("certificate_id", v, nil),
-		}
-	}
-	return certs
 }
 
 func resourceIdentityCenterServiceProviderCertificateUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -228,26 +185,26 @@ func resourceIdentityCenterServiceProviderCertificateUpdate(ctx context.Context,
 		activeSpCertificateProduct = "identitystore"
 	)
 
-	if d.HasChange("sp_certificate_status") {
-		if d.Get("sp_certificate_status").(string) == "active" {
+	if d.HasChange("state") {
+		if d.Get("state").(string) == "ACTIVE" {
 			activeSpCertificateClient, err := cfg.NewServiceClient(activeSpCertificateProduct, region)
 			if err != nil {
 				return diag.Errorf("error creating Identity Center Client: %s", err)
 			}
 
 			activeSpCertificatePath := activeSpCertificateClient.Endpoint + activeSpCertificateHttpUrl
-			activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{identity_store_id}",
-				fmt.Sprintf("%v", d.Get("identity_store_id")))
+			activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 			activeSpCertificatePath = strings.ReplaceAll(activeSpCertificatePath, "{certificate_id}", d.Id())
 
 			activeSpCertificateOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
 			}
-			_, err = activeSpCertificateClient.Request("POST", activeSpCertificatePath,
-				&activeSpCertificateOpt)
+			_, err = activeSpCertificateClient.Request("POST", activeSpCertificatePath, &activeSpCertificateOpt)
 			if err != nil {
 				return diag.Errorf("error activing Identity Center identity provider certificate: %s", err)
 			}
+		} else {
+			return diag.Errorf("state must be set to 'ACTIVE'")
 		}
 	}
 	return resourceIdentityCenterServiceProviderCertificateRead(ctx, d, meta)
@@ -267,15 +224,13 @@ func resourceIdentityCenterServiceProviderCertificateDelete(_ context.Context, d
 	}
 
 	deleteCertificatePath := deleteCertificateClient.Endpoint + deleteCertificateHttpUrl
-	deleteCertificatePath = strings.ReplaceAll(deleteCertificatePath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	deleteCertificatePath = strings.ReplaceAll(deleteCertificatePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 	deleteCertificatePath = strings.ReplaceAll(deleteCertificatePath, "{certificate_id}", d.Id())
 
 	deleteCertificateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteCertificateClient.Request("DELETE", deleteCertificatePath,
-		&deleteCertificateOpt)
+	_, err = deleteCertificateClient.Request("DELETE", deleteCertificatePath, &deleteCertificateOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center service provider certificate: %s", err)
 	}

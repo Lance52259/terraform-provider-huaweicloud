@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_service_provider_configuration"
-description: |
+description: |-
   Use this data source to get the Identity Center service provider configuration.
 ---
 

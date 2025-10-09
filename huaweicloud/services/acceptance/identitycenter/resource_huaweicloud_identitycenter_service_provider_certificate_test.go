@@ -19,47 +19,39 @@ func getServiceProviderCertificateResourceFunc(cfg *config.Config, state *terraf
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listSpCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
-		listSpCertificatesProduct = "identitystore"
+		getSpCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/saml-certificates"
+		getSpCertificatesProduct = "identitystore"
 	)
-	client, err := cfg.NewServiceClient(listSpCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(getSpCertificatesProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IdentityCenter client: %s", err)
 	}
 
-	listSpCertificatesPath := client.Endpoint + listSpCertificatesHttpUrl
-	listSpCertificatesPath = strings.ReplaceAll(listSpCertificatesPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
+	getSpCertificatesPath := client.Endpoint + getSpCertificatesHttpUrl
+	getSpCertificatesPath = strings.ReplaceAll(getSpCertificatesPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
 
-	listSpCertificatesOpt := golangsdk.RequestOpts{
+	getSpCertificatesOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	certificateId := state.Primary.ID
 
-	listSpCertificatesResp, err := client.Request("GET",
-		listSpCertificatesPath, &listSpCertificatesOpt)
+	getSpCertificatesResp, err := client.Request("GET",
+		getSpCertificatesPath, &getSpCertificatesOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center service provider certificate: %s", err)
 	}
 
-	listSpCertificatesRespBody, err := utils.FlattenResponse(listSpCertificatesResp)
+	getSpCertificatesRespBody, err := utils.FlattenResponse(getSpCertificatesResp)
 	if err != nil {
 		return nil, err
 	}
 
-	certificates := utils.PathSearch("[]", listSpCertificatesRespBody, nil)
-
-	if certificates == nil {
+	certificate := utils.PathSearch(fmt.Sprintf("[?certificate_id =='%s']|[0]", certificateId), getSpCertificatesRespBody, nil)
+	if certificate == nil {
 		return nil, fmt.Errorf("error get Identity Center service provider certificate")
 	}
-
-	for _, v := range certificates.([]interface{}) {
-		if certificateId == utils.PathSearch("certificate_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center service provider certificate")
+	return certificate, nil
 }
 
 func TestAccServiceProviderCertificate_basic(t *testing.T) {
@@ -87,12 +79,10 @@ func TestAccServiceProviderCertificate_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "identity_store_id",
 						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.#"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.x509certificate"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.algorithm"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.expiry_date"),
-					resource.TestCheckResourceAttr(rName, "certificate.0.state", "INACTIVE"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.certificate_id"),
+					resource.TestCheckResourceAttrSet(rName, "x509certificate"),
+					resource.TestCheckResourceAttrSet(rName, "algorithm"),
+					resource.TestCheckResourceAttrSet(rName, "expiry_date"),
+					resource.TestCheckResourceAttr(rName, "state", "INACTIVE"),
 				),
 			},
 			{
@@ -100,21 +90,17 @@ func TestAccServiceProviderCertificate_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrPair(rName, "identity_store_id",
 						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.#"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.x509certificate"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.algorithm"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.expiry_date"),
-					resource.TestCheckResourceAttr(rName, "certificate.0.state", "ACTIVE"),
-					resource.TestCheckResourceAttrSet(rName, "certificate.0.certificate_id"),
-					resource.TestCheckResourceAttr(rName, "sp_certificate_status", "active"),
+					resource.TestCheckResourceAttrSet(rName, "x509certificate"),
+					resource.TestCheckResourceAttrSet(rName, "algorithm"),
+					resource.TestCheckResourceAttrSet(rName, "expiry_date"),
+					resource.TestCheckResourceAttr(rName, "state", "ACTIVE"),
 				),
 			},
 			{
-				ResourceName:            rName,
-				ImportState:             true,
-				ImportStateIdFunc:       testServiceProviderCertificateImportState(rName),
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"sp_certificate_status"},
+				ResourceName:      rName,
+				ImportState:       true,
+				ImportStateIdFunc: testServiceProviderCertificateImportState(rName),
+				ImportStateVerify: true,
 			},
 		},
 	})
@@ -151,8 +137,8 @@ func testServiceProviderCertificate_update() string {
 %s
 
 resource "huaweicloud_identitycenter_service_provider_certificate" "test"{
-  identity_store_id     = data.huaweicloud_identitycenter_instance.test.identity_store_id
-  sp_certificate_status = "active"
+  identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
+  state             = "ACTIVE"
 }
 `, testAccDatasourceIdentityCenter_basic())
 }

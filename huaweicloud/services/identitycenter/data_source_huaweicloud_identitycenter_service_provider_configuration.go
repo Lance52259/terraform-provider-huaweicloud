@@ -81,8 +81,7 @@ func dataSourceIdentityCenterServiceProviderConfigurationRead(_ context.Context,
 	}
 
 	path := client.Endpoint + httpUrl
-	path = strings.ReplaceAll(path, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	path = strings.ReplaceAll(path, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
 	opt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
