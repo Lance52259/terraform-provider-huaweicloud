@@ -19,48 +19,38 @@ func getIdentityCenterIdentityProviderResourceFunc(cfg *config.Config, state *te
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listExternalIdPConfigurationsForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp"
-		listExternalIdPConfigurationsForDirectoryProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp"
+		listProduct = "identitystore"
 	)
-	listExternalIdPConfigurationsForDirectoryClient, err := cfg.NewServiceClient(listExternalIdPConfigurationsForDirectoryProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listExternalIdPConfigurationsForDirectoryPath := listExternalIdPConfigurationsForDirectoryClient.Endpoint + listExternalIdPConfigurationsForDirectoryHttpUrl
-	listExternalIdPConfigurationsForDirectoryPath = strings.ReplaceAll(listExternalIdPConfigurationsForDirectoryPath, "{identity_store_id}",
-		state.Primary.Attributes["identity_store_id"])
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
 
-	listExternalIdPConfigurationsForDirectoryOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	idpId := state.Primary.ID
 
-	listExternalIdPConfigurationsForDirectoryResp, err := listExternalIdPConfigurationsForDirectoryClient.Request("GET",
-		listExternalIdPConfigurationsForDirectoryPath, &listExternalIdPConfigurationsForDirectoryOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center identity provider: %s", err)
 	}
 
-	listExternalIdPConfigurationsForDirectoryRespBody, err := utils.FlattenResponse(listExternalIdPConfigurationsForDirectoryResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	associations := utils.PathSearch("associations", listExternalIdPConfigurationsForDirectoryRespBody, nil)
-
-	if associations == nil {
+	association := utils.PathSearch(fmt.Sprintf("associations[?idp_id=='%s']|[0]", idpId), listRespBody, nil)
+	if association == nil {
 		return nil, fmt.Errorf("error get Identity Center identity provider")
 	}
-
-	for _, v := range associations.([]interface{}) {
-		if idpId == utils.PathSearch("idp_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center identity provider")
+	return association, nil
 }
 
 func TestAccIdentityProvider_basic(t *testing.T) {

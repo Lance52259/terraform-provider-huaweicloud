@@ -107,57 +107,50 @@ func resourceIdentityCenterIdentityProviderCreate(ctx context.Context, d *schema
 	region := cfg.GetRegion(d)
 
 	var (
-		createExternalIdPConfigurationForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp"
-		enableExternalIdPConfigurationForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/enable"
-		identityStoreProduct                              = "identitystore"
+		createHttpUrl        = "v1/identity-stores/{identity_store_id}/external-idp"
+		enableHttpUrl        = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/enable"
+		identityStoreProduct = "identitystore"
 	)
 
-	createExternalIdPConfigurationForDirectoryClient, err := cfg.NewServiceClient(identityStoreProduct, region)
+	client, err := cfg.NewServiceClient(identityStoreProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	createExternalIdPConfigurationForDirectoryPath := createExternalIdPConfigurationForDirectoryClient.Endpoint + createExternalIdPConfigurationForDirectoryHttpUrl
-	createExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(createExternalIdPConfigurationForDirectoryPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	createPath := client.Endpoint + createHttpUrl
+	createPath = strings.ReplaceAll(createPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
-	createExternalIdPConfigurationForDirectoryOpt := golangsdk.RequestOpts{
+	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildCreateExternalIdPConfigurationForDirectoryBodyParams(d)),
 	}
 
-	createExternalIdPConfigurationForDirectoryResp, err := createExternalIdPConfigurationForDirectoryClient.Request("POST", createExternalIdPConfigurationForDirectoryPath, &createExternalIdPConfigurationForDirectoryOpt)
+	createResp, err := client.Request("POST", createPath, &createOpt)
 	if err != nil {
 		return diag.Errorf("error creating identity provider: %s", err)
 	}
 
-	createExternalIdPConfigurationForDirectoryRespBody, err := utils.FlattenResponse(createExternalIdPConfigurationForDirectoryResp)
+	createRespBody, err := utils.FlattenResponse(createResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	idpId := utils.PathSearch("idp_id", createExternalIdPConfigurationForDirectoryRespBody, "").(string)
+	idpId := utils.PathSearch("idp_id", createRespBody, "").(string)
 	if idpId == "" {
 		return diag.Errorf("unable to find the Identity Center identity provider ID from the API response")
 	}
 
 	d.SetId(idpId)
 
-	enableExternalIdPConfigurationForDirectoryClient, err := cfg.NewServiceClient(identityStoreProduct, region)
-	if err != nil {
-		return diag.Errorf("error creating Identity Center client: %s", err)
-	}
+	enablePath := client.Endpoint + enableHttpUrl
+	enablePath = strings.ReplaceAll(enablePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	enablePath = strings.ReplaceAll(enablePath, "{idp_id}", d.Id())
 
-	enableExternalIdPConfigurationForDirectoryPath := enableExternalIdPConfigurationForDirectoryClient.Endpoint + enableExternalIdPConfigurationForDirectoryHttpUrl
-	enableExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(enableExternalIdPConfigurationForDirectoryPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	enableExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(enableExternalIdPConfigurationForDirectoryPath, "{idp_id}", d.Id())
-
-	enableExternalIdPConfigurationForDirectoryOpt := golangsdk.RequestOpts{
+	enableOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	_, err = enableExternalIdPConfigurationForDirectoryClient.Request("POST", enableExternalIdPConfigurationForDirectoryPath, &enableExternalIdPConfigurationForDirectoryOpt)
+	_, err = client.Request("POST", enablePath, &enableOpt)
 	if err != nil {
 		return diag.Errorf("error enabling identity provider: %s", err)
 	}
@@ -184,53 +177,52 @@ func resourceIdentityCenterIdentityProviderRead(_ context.Context, d *schema.Res
 	var mErr *multierror.Error
 
 	var (
-		listExternalIdPConfigurationsForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp"
-		listExternalIdPConfigurationsForDirectoryProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp"
+		listProduct = "identitystore"
 	)
-	listExternalIdPConfigurationsForDirectoryClient, err := cfg.NewServiceClient(listExternalIdPConfigurationsForDirectoryProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listExternalIdPConfigurationsForDirectoryPath := listExternalIdPConfigurationsForDirectoryClient.Endpoint + listExternalIdPConfigurationsForDirectoryHttpUrl
-	listExternalIdPConfigurationsForDirectoryPath = strings.ReplaceAll(listExternalIdPConfigurationsForDirectoryPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
-	listExternalIdPConfigurationsForDirectoryOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listExternalIdPConfigurationsForDirectoryResp, err := listExternalIdPConfigurationsForDirectoryClient.Request("GET", listExternalIdPConfigurationsForDirectoryPath, &listExternalIdPConfigurationsForDirectoryOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving identity provider.")
 	}
 
-	listExternalIdPConfigurationsForDirectoryRespBody, err := utils.FlattenResponse(listExternalIdPConfigurationsForDirectoryResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	associations, _ := utils.PathSearch("associations", listExternalIdPConfigurationsForDirectoryRespBody, make([]interface{}, 0)).([]interface{})
-	if len(associations) == 0 {
+	association := utils.PathSearch(fmt.Sprintf("associations[?idp_id=='%s']|[0]", d.Id()), listRespBody, nil)
+	if association == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no identity provider found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("entity_id", utils.PathSearch("associations|[0].idp_saml_config.entity_id", listExternalIdPConfigurationsForDirectoryRespBody, nil)),
-		d.Set("login_url", utils.PathSearch("associations|[0].idp_saml_config.login_url", listExternalIdPConfigurationsForDirectoryRespBody, nil)),
-		d.Set("is_enabled", utils.PathSearch("associations|[0].is_enabled", listExternalIdPConfigurationsForDirectoryRespBody, nil)),
-		d.Set("want_request_signed", utils.PathSearch("associations|[0].idp_saml_config.want_request_signed", listExternalIdPConfigurationsForDirectoryRespBody, nil)),
-		d.Set("idp_certificate_ids", flattenIdentityCenterIdentityProviderCertificate(listExternalIdPConfigurationsForDirectoryRespBody)),
+		d.Set("entity_id", utils.PathSearch("idp_saml_config.entity_id", association, nil)),
+		d.Set("login_url", utils.PathSearch("idp_saml_config.login_url", association, nil)),
+		d.Set("is_enabled", utils.PathSearch("is_enabled", association, nil)),
+		d.Set("want_request_signed", utils.PathSearch("idp_saml_config.want_request_signed", association, nil)),
+		d.Set("idp_certificate_ids", flattenIdentityCenterIdentityProviderCertificate(association)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenIdentityCenterIdentityProviderCertificate(resp interface{}) []interface{} {
-	if resp == nil {
+func flattenIdentityCenterIdentityProviderCertificate(data interface{}) []interface{} {
+	if data == nil {
 		return nil
 	}
-	curJson := utils.PathSearch("associations|[0].idp_certificate_ids", resp, make([]interface{}, 0))
+	curJson := utils.PathSearch("idp_certificate_ids", data, make([]interface{}, 0))
 	curArray := curJson.([]interface{})
 	certs := make([]interface{}, len(curArray))
 	for i, v := range curArray {
@@ -247,31 +239,30 @@ func resourceIdentityCenterIdentityProviderUpdate(ctx context.Context, d *schema
 	region := cfg.GetRegion(d)
 
 	var (
-		updateExternalIdPConfigurationsForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}"
-		updateExternalIdPConfigurationsForDirectoryProduct = "identitystore"
+		updateHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}"
+		updateProduct = "identitystore"
 	)
-	updateExternalIdPConfigurationsForDirectoryClient, err := cfg.NewServiceClient(updateExternalIdPConfigurationsForDirectoryProduct, region)
+	client, err := cfg.NewServiceClient(updateProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	updateExternalIdPConfigurationsForDirectoryChanges := []string{
+	updateChanges := []string{
 		"entity_id",
 		"login_url",
 	}
 
-	if d.HasChanges(updateExternalIdPConfigurationsForDirectoryChanges...) {
-		updateExternalIdPConfigurationsForDirectoryPath := updateExternalIdPConfigurationsForDirectoryClient.Endpoint + updateExternalIdPConfigurationsForDirectoryHttpUrl
-		updateExternalIdPConfigurationsForDirectoryPath = strings.ReplaceAll(updateExternalIdPConfigurationsForDirectoryPath, "{identity_store_id}",
-			fmt.Sprintf("%v", d.Get("identity_store_id")))
-		updateExternalIdPConfigurationsForDirectoryPath = strings.ReplaceAll(updateExternalIdPConfigurationsForDirectoryPath, "{idp_id}", d.Id())
+	if d.HasChanges(updateChanges...) {
+		updatePath := client.Endpoint + updateHttpUrl
+		updatePath = strings.ReplaceAll(updatePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+		updatePath = strings.ReplaceAll(updatePath, "{idp_id}", d.Id())
 
-		updateExternalIdPConfigurationsForDirectoryOpt := golangsdk.RequestOpts{
+		updateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 			JSONBody:         utils.RemoveNil(buildUpdateExternalIdPConfigurationsForDirectoryBodyParams(d)),
 		}
 
-		_, err = updateExternalIdPConfigurationsForDirectoryClient.Request("PUT", updateExternalIdPConfigurationsForDirectoryPath, &updateExternalIdPConfigurationsForDirectoryOpt)
+		_, err = client.Request("PUT", updatePath, &updateOpt)
 		if err != nil {
 			return diag.Errorf("error updating identity provider: %s", err)
 		}
@@ -293,43 +284,36 @@ func resourceIdentityCenterIdentityProviderDelete(_ context.Context, d *schema.R
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteExternalIdPConfigurationForDirectoryHttpUrl  = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}"
-		disableExternalIdPConfigurationForDirectoryHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/disable"
-		identityStoreProduct                               = "identitystore"
+		deleteHttpUrl        = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}"
+		disableHttpUrl       = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/disable"
+		identityStoreProduct = "identitystore"
 	)
 
-	disableExternalIdPConfigurationForDirectoryClient, err := cfg.NewServiceClient(identityStoreProduct, region)
+	client, err := cfg.NewServiceClient(identityStoreProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	disableExternalIdPConfigurationForDirectoryPath := disableExternalIdPConfigurationForDirectoryClient.Endpoint + disableExternalIdPConfigurationForDirectoryHttpUrl
-	disableExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(disableExternalIdPConfigurationForDirectoryPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	disableExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(disableExternalIdPConfigurationForDirectoryPath, "{idp_id}", d.Id())
+	disablePath := client.Endpoint + disableHttpUrl
+	disablePath = strings.ReplaceAll(disablePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	disablePath = strings.ReplaceAll(disablePath, "{idp_id}", d.Id())
 
-	disableExternalIdPConfigurationForDirectoryOpt := golangsdk.RequestOpts{
+	disableOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = disableExternalIdPConfigurationForDirectoryClient.Request("POST", disableExternalIdPConfigurationForDirectoryPath, &disableExternalIdPConfigurationForDirectoryOpt)
+	_, err = client.Request("POST", disablePath, &disableOpt)
 	if err != nil {
 		return diag.Errorf("error deleting identity provider: %s", err)
 	}
 
-	deleteExternalIdPConfigurationForDirectoryClient, err := cfg.NewServiceClient(identityStoreProduct, region)
-	if err != nil {
-		return diag.Errorf("error creating Identity Center client: %s", err)
-	}
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{idp_id}", d.Id())
 
-	deleteExternalIdPConfigurationForDirectoryPath := deleteExternalIdPConfigurationForDirectoryClient.Endpoint + deleteExternalIdPConfigurationForDirectoryHttpUrl
-	deleteExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(deleteExternalIdPConfigurationForDirectoryPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	deleteExternalIdPConfigurationForDirectoryPath = strings.ReplaceAll(deleteExternalIdPConfigurationForDirectoryPath, "{idp_id}", d.Id())
-
-	deleteExternalIdPConfigurationForDirectoryOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteExternalIdPConfigurationForDirectoryClient.Request("DELETE", deleteExternalIdPConfigurationForDirectoryPath, &deleteExternalIdPConfigurationForDirectoryOpt)
+	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting identity provider: %s", err)
 	}

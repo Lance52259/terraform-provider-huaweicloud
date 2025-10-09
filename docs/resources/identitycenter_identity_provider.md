@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_identity_provider"
-description: |
+description: |-
   Manages an Identity Center identity provider resource within HuaweiCloud.
 ---
 

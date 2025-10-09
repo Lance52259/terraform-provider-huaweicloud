@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_bearer_token"
-description: |
+description: |-
   Manages an Identity Center bearer token resource within HuaweiCloud.
 ---
 
@@ -37,12 +37,6 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID.
-
-* `token` - The bearer token.
-  The [token](#token_struct) structure is documented below.
-
-<a name="token_struct"></a>
-The `token` block supports:
 
 * `creation_time` - The creation time of the bearer token.
 

@@ -19,50 +19,42 @@ func getIdentityCenterIdentityProviderCertificateResourceFunc(cfg *config.Config
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listExternalIdPCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
-		listExternalIdPCertificatesProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
+		listProduct = "identitystore"
 	)
-	listExternalIdPCertificatesClient, err := cfg.NewServiceClient(listExternalIdPCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listExternalIdPCertificatesPath := listExternalIdPCertificatesClient.Endpoint + listExternalIdPCertificatesHttpUrl
-	listExternalIdPCertificatesPath = strings.ReplaceAll(listExternalIdPCertificatesPath, "{identity_store_id}",
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}",
 		state.Primary.Attributes["identity_store_id"])
-	listExternalIdPCertificatesPath = strings.ReplaceAll(listExternalIdPCertificatesPath, "{idp_id}",
+	listPath = strings.ReplaceAll(listPath, "{idp_id}",
 		state.Primary.Attributes["idp_id"])
 
-	listExternalIdPCertificatesOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	certificateId := state.Primary.ID
 
-	listExternalIdPCertificatesResp, err := listExternalIdPCertificatesClient.Request("GET",
-		listExternalIdPCertificatesPath, &listExternalIdPCertificatesOpt)
+	listResp, err := client.Request("GET",
+		listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center identity provider certificate: %s", err)
 	}
 
-	listExternalIdPCertificatesRespBody, err := utils.FlattenResponse(listExternalIdPCertificatesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	certificates := utils.PathSearch("idp_certificates", listExternalIdPCertificatesRespBody, nil)
-
-	if certificates == nil {
+	certificate := utils.PathSearch(fmt.Sprintf("idp_certificates[?certificate_id =='%s']|[0]", certificateId), listRespBody, nil)
+	if certificate == nil {
 		return nil, fmt.Errorf("error get Identity Center identity provider certificate")
 	}
-
-	for _, v := range certificates.([]interface{}) {
-		if certificateId == utils.PathSearch("certificate_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center identity provider certificate")
+	return certificate, nil
 }
 
 func TestAccIdentityProviderCertificate_basic(t *testing.T) {
@@ -90,14 +82,14 @@ func TestAccIdentityProviderCertificate_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "identity_store_id",
 						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.issuer_name"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.not_after"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.not_before"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.public_key"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.serial_number_string"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.subject_name"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.version"),
-					resource.TestCheckResourceAttrSet(rName, "idp_certificate.0.x509_certificate"),
+					resource.TestCheckResourceAttrSet(rName, "issuer_name"),
+					resource.TestCheckResourceAttrSet(rName, "not_after"),
+					resource.TestCheckResourceAttrSet(rName, "not_before"),
+					resource.TestCheckResourceAttrSet(rName, "public_key"),
+					resource.TestCheckResourceAttrSet(rName, "serial_number_string"),
+					resource.TestCheckResourceAttrSet(rName, "subject_name"),
+					resource.TestCheckResourceAttrSet(rName, "version"),
+					resource.TestCheckResourceAttrSet(rName, "signature_algorithm_name"),
 				),
 			},
 			{
@@ -105,7 +97,7 @@ func TestAccIdentityProviderCertificate_basic(t *testing.T) {
 				ImportState:             true,
 				ImportStateVerify:       true,
 				ImportStateIdFunc:       testIdentityCenterIdentityProviderCertificateImportState(rName),
-				ImportStateVerifyIgnore: []string{"x509_certificate_in_pem", "certificate_use"},
+				ImportStateVerifyIgnore: []string{"certificate_use"},
 			},
 		},
 	})

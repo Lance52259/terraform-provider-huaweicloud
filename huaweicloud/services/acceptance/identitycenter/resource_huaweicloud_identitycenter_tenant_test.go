@@ -19,47 +19,39 @@ func getIdentityCenterTenantResourceFunc(cfg *config.Config, state *terraform.Re
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listProvisioningTenantsHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
-		listProvisioningTenantsProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
+		listProduct = "identitystore"
 	)
-	listProvisioningTenantsClient, err := cfg.NewServiceClient(listProvisioningTenantsProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listProvisioningTenantsPath := listProvisioningTenantsClient.Endpoint + listProvisioningTenantsHttpUrl
-	listProvisioningTenantsPath = strings.ReplaceAll(listProvisioningTenantsPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
 
-	listProvisioningTenantsOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	tenantId := state.Primary.ID
 
-	listProvisioningTenantsResp, err := listProvisioningTenantsClient.Request("GET",
-		listProvisioningTenantsPath, &listProvisioningTenantsOpt)
+	listResp, err := client.Request("GET",
+		listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center tenant: %s", err)
 	}
 
-	listProvisioningTenantsRespBody, err := utils.FlattenResponse(listProvisioningTenantsResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	tenants := utils.PathSearch("provisioning_tenants", listProvisioningTenantsRespBody, nil)
-
-	if tenants == nil {
+	tenant := utils.PathSearch(fmt.Sprintf("provisioning_tenants|[?tenant_id =='%s']|[0]", tenantId), listRespBody, nil)
+	if tenant == nil {
 		return nil, fmt.Errorf("error get Identity Center tenant")
 	}
-
-	for _, v := range tenants.([]interface{}) {
-		if tenantId == utils.PathSearch("tenant_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center tenant")
+	return tenant, nil
 }
 
 func TestAccIdentityCenterTenant_basic(t *testing.T) {

@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_identity_provider_certificate"
-description: |
+description: |-
   Manages an Identity Center identity provider certificate resource within HuaweiCloud.
 ---
 
@@ -46,12 +46,6 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID.
 
-* `idp_certificate` - The certificate of the identity provider.
-  The [idp_certificate](#idp_certificate_struct) structure is documented below.
-
-<a name="idp_certificate_struct"></a>
-The `idp_certificate` block supports:
-
 * `issuer_name` - The issuer of the identity provider certificate.
 
 * `not_after` - The validity period of the identity provider certificate.
@@ -68,8 +62,6 @@ The `idp_certificate` block supports:
 
 * `version` - The version of the identity provider certificate.
 
-* `x509_certificate` - The certificate of the identity provider.
-
 ## Import
 
 The IdentityCenter identity provider certificate can be imported using the `identity_store_id`, `idp_id` and `certificate_id` separated by a slash, e.g.
@@ -79,7 +71,7 @@ $ terraform import huaweicloud_identitycenter_identity_provider_certificate.test
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes include: `x509_certificate_in_pem`, `certificate_use`. It is generally
+API response, security or some other reason. The missing attributes include: `certificate_use`. It is generally
 recommended running `terraform plan` after importing an IdentityCenter identity provider certificate. You can then decide if changes should be
 applied to the IdentityCenter identity provider certificate, or the resource definition should be updated to align with the identity provider certificate. Also, you
 can ignore changes as below.
@@ -90,7 +82,6 @@ resource "huaweicloud_identitycenter_identity_provider_certificate" "test" {
 
   lifecycle {
     ignore_changes = [
-      x509_certificate_in_pem,
       certificate_use,
     ]
   }

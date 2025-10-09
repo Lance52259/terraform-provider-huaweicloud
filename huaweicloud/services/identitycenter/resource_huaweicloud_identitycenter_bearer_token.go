@@ -56,21 +56,13 @@ func ResourceIdentityCenterBearerToken() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
 				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
-			"token": {
-				Type:     schema.TypeList,
+			"creation_time": {
+				Type:     schema.TypeString,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"creation_time": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"expiration_time": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
+			},
+			"expiration_time": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 		},
 	}
@@ -81,36 +73,33 @@ func resourceIdentityCenterBearerTokenCreate(ctx context.Context, d *schema.Reso
 	region := cfg.GetRegion(d)
 
 	var (
-		createBearerTokenHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
-		createBearerTokenProduct = "identitystore"
+		createHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
+		createProduct = "identitystore"
 	)
-	createBearerTokenClient, err := cfg.NewServiceClient(createBearerTokenProduct, region)
+	client, err := cfg.NewServiceClient(createProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createBearerTokenPath := createBearerTokenClient.Endpoint + createBearerTokenHttpUrl
-	createBearerTokenPath = strings.ReplaceAll(createBearerTokenPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	createBearerTokenPath = strings.ReplaceAll(createBearerTokenPath, "{tenant_id}",
-		fmt.Sprintf("%v", d.Get("tenant_id")))
+	createPath := client.Endpoint + createHttpUrl
+	createPath = strings.ReplaceAll(createPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	createPath = strings.ReplaceAll(createPath, "{tenant_id}", fmt.Sprintf("%v", d.Get("tenant_id")))
 
-	createBearerTokenOpt := golangsdk.RequestOpts{
+	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	createBearerTokenResp, err := createBearerTokenClient.Request("POST",
-		createBearerTokenPath, &createBearerTokenOpt)
+	createResp, err := client.Request("POST", createPath, &createOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center bearer token: %s", err)
 	}
 
-	createBearerTokenRespBody, err := utils.FlattenResponse(createBearerTokenResp)
+	createRespBody, err := utils.FlattenResponse(createResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	tokenId := utils.PathSearch("token_id", createBearerTokenRespBody, "").(string)
+	tokenId := utils.PathSearch("token_id", createRespBody, "").(string)
 	if tokenId == "" {
 		return diag.Errorf("unable to find the Identity Center bearer token ID from the API response")
 	}
@@ -126,63 +115,43 @@ func resourceIdentityCenterBearerTokenRead(_ context.Context, d *schema.Resource
 	var mErr *multierror.Error
 
 	var (
-		listBearerTokensHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
-		listBearerTokensProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
+		listProduct = "identitystore"
 	)
-	listBearerTokensClient, err := cfg.NewServiceClient(listBearerTokensProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listBearerTokensPath := listBearerTokensClient.Endpoint + listBearerTokensHttpUrl
-	listBearerTokensPath = strings.ReplaceAll(listBearerTokensPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	listBearerTokensPath = strings.ReplaceAll(listBearerTokensPath, "{tenant_id}",
-		fmt.Sprintf("%v", d.Get("tenant_id")))
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	listPath = strings.ReplaceAll(listPath, "{tenant_id}", fmt.Sprintf("%v", d.Get("tenant_id")))
 
-	listBearerTokensOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listBearerTokensResp, err := listBearerTokensClient.Request("GET", listBearerTokensPath, &listBearerTokensOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center bearer token.")
 	}
 
-	listBearerTokensRespBody, err := utils.FlattenResponse(listBearerTokensResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	tokens := flattenBearerTokens(listBearerTokensRespBody, d)
-	if len(tokens) == 0 {
+	token := utils.PathSearch(fmt.Sprintf("bearer_tokens[?token_id =='%s']|[0]", d.Id()), listRespBody, nil)
+	if token == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no bearer token found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("token", tokens),
+		d.Set("creation_time", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("creation_time", token, float64(0)).(float64))/1000, false)),
+		d.Set("expiration_time", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("expiration_time", token, float64(0)).(float64))/1000, false)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
-}
-
-func flattenBearerTokens(resp interface{}, d *schema.ResourceData) []interface{} {
-	if resp == nil {
-		return nil
-	}
-	jsonPath := fmt.Sprintf("bearer_tokens[?token_id =='%s']", d.Id())
-	curJson := utils.PathSearch(jsonPath, resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	tokens := make([]interface{}, len(curArray))
-	for i, v := range curArray {
-		tokens[i] = map[string]interface{}{
-			"creation_time": utils.FormatTimeStampRFC3339(
-				int64(utils.PathSearch("creation_time", v, float64(0)).(float64))/1000, false),
-			"expiration_time": utils.FormatTimeStampRFC3339(
-				int64(utils.PathSearch("expiration_time", v, float64(0)).(float64))/1000, false),
-		}
-	}
-	return tokens
 }
 
 func resourceIdentityCenterBearerTokenUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
@@ -194,26 +163,23 @@ func resourceIdentityCenterBearerTokenDelete(_ context.Context, d *schema.Resour
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteBearerTokenHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token/{token_id}"
-		deleteBearerTokenProduct = "identitystore"
+		deleteHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token/{token_id}"
+		deleteProduct = "identitystore"
 	)
-	deleteBearerTokenClient, err := cfg.NewServiceClient(deleteBearerTokenProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	deleteBearerTokenPath := deleteBearerTokenClient.Endpoint + deleteBearerTokenHttpUrl
-	deleteBearerTokenPath = strings.ReplaceAll(deleteBearerTokenPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	deleteBearerTokenPath = strings.ReplaceAll(deleteBearerTokenPath, "{tenant_id}",
-		fmt.Sprintf("%v", d.Get("tenant_id")))
-	deleteBearerTokenPath = strings.ReplaceAll(deleteBearerTokenPath, "{token_id}", d.Id())
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{tenant_id}", fmt.Sprintf("%v", d.Get("tenant_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{token_id}", d.Id())
 
-	deleteBearerTokenOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteBearerTokenClient.Request("DELETE", deleteBearerTokenPath,
-		&deleteBearerTokenOpt)
+	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center bearer token: %s", err)
 	}

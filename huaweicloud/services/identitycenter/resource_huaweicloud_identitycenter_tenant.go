@@ -69,34 +69,32 @@ func resourceIdentityCenterTenantCreate(ctx context.Context, d *schema.ResourceD
 	region := cfg.GetRegion(d)
 
 	var (
-		createProvisioningTenantHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
-		createProvisioningTenantProduct = "identitystore"
+		createHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
+		createProduct = "identitystore"
 	)
-	createProvisioningTenantClient, err := cfg.NewServiceClient(createProvisioningTenantProduct, region)
+	client, err := cfg.NewServiceClient(createProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createProvisioningTenantPath := createProvisioningTenantClient.Endpoint + createProvisioningTenantHttpUrl
-	createProvisioningTenantPath = strings.ReplaceAll(createProvisioningTenantPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	createPath := client.Endpoint + createHttpUrl
+	createPath = strings.ReplaceAll(createPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
-	createProvisioningTenantOpt := golangsdk.RequestOpts{
+	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	createProvisioningTenantResp, err := createProvisioningTenantClient.Request("POST",
-		createProvisioningTenantPath, &createProvisioningTenantOpt)
+	createResp, err := client.Request("POST", createPath, &createOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center tenant: %s", err)
 	}
 
-	createProvisioningTenantRespBody, err := utils.FlattenResponse(createProvisioningTenantResp)
+	createRespBody, err := utils.FlattenResponse(createResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	tenantId := utils.PathSearch("tenant_id", createProvisioningTenantRespBody, "").(string)
+	tenantId := utils.PathSearch("tenant_id", createRespBody, "").(string)
 	if tenantId == "" {
 		return diag.Errorf("unable to find the Identity Center tenant ID from the API response")
 	}
@@ -112,41 +110,41 @@ func resourceIdentityCenterTenantRead(_ context.Context, d *schema.ResourceData,
 	var mErr *multierror.Error
 
 	var (
-		listProvisioningTenantsHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
-		listProvisioningTenantsProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/provision-tenant"
+		listProduct = "identitystore"
 	)
-	listProvisioningTenantsClient, err := cfg.NewServiceClient(listProvisioningTenantsProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listProvisioningTenantsPath := listProvisioningTenantsClient.Endpoint + listProvisioningTenantsHttpUrl
-	listProvisioningTenantsPath = strings.ReplaceAll(listProvisioningTenantsPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 
-	listProvisioningTenantsOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listProvisioningTenantsResp, err := listProvisioningTenantsClient.Request("GET", listProvisioningTenantsPath, &listProvisioningTenantsOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center provisioning tenant.")
 	}
 
-	listProvisioningTenantsRespBody, err := utils.FlattenResponse(listProvisioningTenantsResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	tenants, _ := utils.PathSearch("provisioning_tenants", listProvisioningTenantsRespBody, make([]interface{}, 0)).([]interface{})
-	if len(tenants) == 0 {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no tenants found.")
+
+	tenant := utils.PathSearch(fmt.Sprintf("provisioning_tenants|[?tenant_id =='%s']|[0]", d.Id()), listRespBody, nil)
+	if tenant == nil {
+		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no tenant found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
 		d.Set("creation_time", utils.FormatTimeStampRFC3339(
-			int64(utils.PathSearch("provisioning_tenants|[0].creation_time", listProvisioningTenantsRespBody, float64(0)).(float64))/1000, false)),
-		d.Set("scim_endpoint", utils.PathSearch("provisioning_tenants|[0].scim_endpoint", listProvisioningTenantsRespBody, nil)),
+			int64(utils.PathSearch("creation_time", tenant, float64(0)).(float64))/1000, false)),
+		d.Set("scim_endpoint", utils.PathSearch("scim_endpoint", tenant, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -161,24 +159,22 @@ func resourceIdentityCenterTenantDelete(_ context.Context, d *schema.ResourceDat
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteProvisioningTenantHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}"
-		deleteProvisioningTenantProduct = "identitystore"
+		deleteHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}"
+		deleteProduct = "identitystore"
 	)
-	deleteProvisioningTenantClient, err := cfg.NewServiceClient(deleteProvisioningTenantProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	deleteProvisioningTenantPath := deleteProvisioningTenantClient.Endpoint + deleteProvisioningTenantHttpUrl
-	deleteProvisioningTenantPath = strings.ReplaceAll(deleteProvisioningTenantPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	deleteProvisioningTenantPath = strings.ReplaceAll(deleteProvisioningTenantPath, "{tenant_id}", d.Id())
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{tenant_id}", d.Id())
 
-	deleteIdentityCenterUserOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteProvisioningTenantClient.Request("DELETE", deleteProvisioningTenantPath,
-		&deleteIdentityCenterUserOpt)
+	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center Tenant: %s", err)
 	}

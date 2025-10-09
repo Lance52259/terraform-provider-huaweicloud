@@ -64,49 +64,37 @@ func ResourceIdentityCenterIdentityProviderCertificate() *schema.Resource {
 				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
 				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
-			"idp_certificate": {
-				Type:     schema.TypeList,
+			"issuer_name": {
+				Type:     schema.TypeString,
 				Computed: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"issuer_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"not_after": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"not_before": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"public_key": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"serial_number_string": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"signature_algorithm_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"subject_name": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"version": {
-							Type:     schema.TypeInt,
-							Computed: true,
-						},
-						"x509_certificate": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-					},
-				},
+			},
+			"not_after": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"not_before": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"public_key": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"serial_number_string": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"signature_algorithm_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"subject_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"version": {
+				Type:     schema.TypeInt,
+				Computed: true,
 			},
 		},
 	}
@@ -117,37 +105,34 @@ func resourceIdentityCenterIdentityProviderCertificateCreate(ctx context.Context
 	region := cfg.GetRegion(d)
 
 	var (
-		importExternalIdPCertificateHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
-		importExternalIdPCertificateProduct = "identitystore"
+		importHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
+		importProduct = "identitystore"
 	)
-	importExternalIdPCertificateClient, err := cfg.NewServiceClient(importExternalIdPCertificateProduct, region)
+	client, err := cfg.NewServiceClient(importProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	importExternalIdPCertificatePath := importExternalIdPCertificateClient.Endpoint + importExternalIdPCertificateHttpUrl
-	importExternalIdPCertificatePath = strings.ReplaceAll(importExternalIdPCertificatePath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	importExternalIdPCertificatePath = strings.ReplaceAll(importExternalIdPCertificatePath, "{idp_id}",
-		fmt.Sprintf("%v", d.Get("idp_id")))
+	importPath := client.Endpoint + importHttpUrl
+	importPath = strings.ReplaceAll(importPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	importPath = strings.ReplaceAll(importPath, "{idp_id}", fmt.Sprintf("%v", d.Get("idp_id")))
 
-	importExternalIdPCertificateOpt := golangsdk.RequestOpts{
+	importOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildImportExternalIdPCertificateBodyParams(d)),
 	}
 
-	importExternalIdPCertificateResp, err := importExternalIdPCertificateClient.Request("POST",
-		importExternalIdPCertificatePath, &importExternalIdPCertificateOpt)
+	importResp, err := client.Request("POST", importPath, &importOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center identity provider certificate: %s", err)
 	}
 
-	importExternalIdPCertificateRespBody, err := utils.FlattenResponse(importExternalIdPCertificateResp)
+	importRespBody, err := utils.FlattenResponse(importResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	certificateId := utils.PathSearch("certificate_id", importExternalIdPCertificateRespBody, "").(string)
+	certificateId := utils.PathSearch("certificate_id", importRespBody, "").(string)
 	if certificateId == "" {
 		return diag.Errorf("unable to find the Identity Center identity provider certificate ID from the API response")
 	}
@@ -158,8 +143,8 @@ func resourceIdentityCenterIdentityProviderCertificateCreate(ctx context.Context
 
 func buildImportExternalIdPCertificateBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"x509_certificate_in_pem": utils.ValueIgnoreEmpty(d.Get("x509_certificate_in_pem")),
-		"certificate_use":         utils.ValueIgnoreEmpty(d.Get("certificate_use")),
+		"x509_certificate_in_pem": d.Get("x509_certificate_in_pem"),
+		"certificate_use":         d.Get("certificate_use"),
 	}
 	return bodyParams
 }
@@ -171,72 +156,51 @@ func resourceIdentityCenterIdentityProviderCertificateRead(_ context.Context, d 
 	var mErr *multierror.Error
 
 	var (
-		listExternalIdPCertificatesHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
-		listExternalIdPCertificatesProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate"
+		listProduct = "identitystore"
 	)
-	listExternalIdPCertificatesClient, err := cfg.NewServiceClient(listExternalIdPCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listExternalIdPCertificatesPath := listExternalIdPCertificatesClient.Endpoint + listExternalIdPCertificatesHttpUrl
-	listExternalIdPCertificatesPath = strings.ReplaceAll(listExternalIdPCertificatesPath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	listExternalIdPCertificatesPath = strings.ReplaceAll(listExternalIdPCertificatesPath, "{idp_id}",
-		fmt.Sprintf("%v", d.Get("idp_id")))
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	listPath = strings.ReplaceAll(listPath, "{idp_id}", fmt.Sprintf("%v", d.Get("idp_id")))
 
-	listExternalIdPCertificatesOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listExternalIdPCertificatesResp, err := listExternalIdPCertificatesClient.Request("GET", listExternalIdPCertificatesPath, &listExternalIdPCertificatesOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center identity provider certificate.")
 	}
 
-	listExternalIdPCertificatesRespBody, err := utils.FlattenResponse(listExternalIdPCertificatesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	certificates := flattenIdpCertificates(listExternalIdPCertificatesRespBody, d)
-
-	if len(certificates) == 0 {
+	certificate := utils.PathSearch(fmt.Sprintf("idp_certificates[?certificate_id=='%s']|[0]", d.Id()), listRespBody, nil)
+	if certificate == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no idp certificates found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("idp_certificate", certificates),
+		d.Set("issuer_name", utils.PathSearch("issuer_name", certificate, nil)),
+		d.Set("not_after", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("not_after", certificate, float64(0)).(float64))/1000, false)),
+		d.Set("not_before", utils.FormatTimeStampRFC3339(int64(utils.PathSearch("not_before", certificate, float64(0)).(float64))/1000, false)),
+		d.Set("public_key", utils.PathSearch("public_key", certificate, nil)),
+		d.Set("serial_number_string", utils.PathSearch("serial_number_string", certificate, nil)),
+		d.Set("subject_name", utils.PathSearch("subject_name", certificate, nil)),
+		d.Set("version", utils.PathSearch("version", certificate, nil)),
+		d.Set("signature_algorithm_name", utils.PathSearch("signature_algorithm_name", certificate, nil)),
+		d.Set("x509_certificate_in_pem", utils.PathSearch("x509_Certificate_in_pem", certificate, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
-}
-
-func flattenIdpCertificates(resp interface{}, d *schema.ResourceData) []interface{} {
-	if resp == nil {
-		return nil
-	}
-	jsonPath := fmt.Sprintf("idp_certificates[?certificate_id =='%s']", d.Id())
-	curJson := utils.PathSearch(jsonPath, resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	certs := make([]interface{}, len(curArray))
-	for i, v := range curArray {
-		certs[i] = map[string]interface{}{
-			"issuer_name": utils.PathSearch("issuer_name", v, nil),
-			"not_after": utils.FormatTimeStampRFC3339(
-				int64(utils.PathSearch("not_after", v, float64(0)).(float64))/1000, false),
-			"not_before": utils.FormatTimeStampRFC3339(
-				int64(utils.PathSearch("not_before", v, float64(0)).(float64))/1000, false),
-			"public_key":               utils.PathSearch("public_key", v, nil),
-			"serial_number_string":     utils.PathSearch("serial_number_string", v, nil),
-			"subject_name":             utils.PathSearch("subject_name", v, nil),
-			"version":                  utils.PathSearch("version", v, nil),
-			"x509_certificate":         utils.PathSearch("x509_Certificate_in_pem", v, nil),
-			"signature_algorithm_name": utils.PathSearch("signature_algorithm_name", v, nil),
-		}
-	}
-	return certs
 }
 
 func resourceIdentityCenterIdentityProviderCertificateUpdate(context.Context, *schema.ResourceData, interface{}) diag.Diagnostics {
@@ -248,26 +212,23 @@ func resourceIdentityCenterIdentityProviderCertificateDelete(_ context.Context, 
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteExternalIdPCertificateHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate/{certificate_id}"
-		deleteExternalIdPCertificateProduct = "identitystore"
+		deleteHttpUrl = "v1/identity-stores/{identity_store_id}/external-idp/{idp_id}/certificate/{certificate_id}"
+		deleteProduct = "identitystore"
 	)
-	deleteExternalIdPCertificateClient, err := cfg.NewServiceClient(deleteExternalIdPCertificateProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	deleteExternalIdPCertificatePath := deleteExternalIdPCertificateClient.Endpoint + deleteExternalIdPCertificateHttpUrl
-	deleteExternalIdPCertificatePath = strings.ReplaceAll(deleteExternalIdPCertificatePath, "{identity_store_id}",
-		fmt.Sprintf("%v", d.Get("identity_store_id")))
-	deleteExternalIdPCertificatePath = strings.ReplaceAll(deleteExternalIdPCertificatePath, "{idp_id}",
-		fmt.Sprintf("%v", d.Get("idp_id")))
-	deleteExternalIdPCertificatePath = strings.ReplaceAll(deleteExternalIdPCertificatePath, "{certificate_id}", d.Id())
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{idp_id}", fmt.Sprintf("%v", d.Get("idp_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{certificate_id}", d.Id())
 
-	deleteBearerTokenOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteExternalIdPCertificateClient.Request("DELETE", deleteExternalIdPCertificatePath,
-		&deleteBearerTokenOpt)
+	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center identity provider certificate: %s", err)
 	}

@@ -19,48 +19,40 @@ func getIdentityCenterBearerTokenResourceFunc(cfg *config.Config, state *terrafo
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listBearerTokensHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
-		listBearerTokensProduct = "identitystore"
+		listHttpUrl = "v1/identity-stores/{identity_store_id}/tenant/{tenant_id}/bearer-token"
+		listProduct = "identitystore"
 	)
-	listBearerTokensClient, err := cfg.NewServiceClient(listBearerTokensProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listBearerTokensPath := listBearerTokensClient.Endpoint + listBearerTokensHttpUrl
-	listBearerTokensPath = strings.ReplaceAll(listBearerTokensPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
-	listBearerTokensPath = strings.ReplaceAll(listBearerTokensPath, "{tenant_id}", state.Primary.Attributes["tenant_id"])
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{identity_store_id}", state.Primary.Attributes["identity_store_id"])
+	listPath = strings.ReplaceAll(listPath, "{tenant_id}", state.Primary.Attributes["tenant_id"])
 
-	listBearerTokensOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	tokenId := state.Primary.ID
 
-	listBearerTokensResp, err := listBearerTokensClient.Request("GET",
-		listBearerTokensPath, &listBearerTokensOpt)
+	listResp, err := client.Request("GET",
+		listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center bearer token: %s", err)
 	}
 
-	listBearerTokensRespBody, err := utils.FlattenResponse(listBearerTokensResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	tokens := utils.PathSearch("bearer_tokens", listBearerTokensRespBody, nil)
-
-	if tokens == nil {
+	token := utils.PathSearch(fmt.Sprintf("bearer_tokens[?token_id =='%s']|[0]", tokenId), listRespBody, nil)
+	if token == nil {
 		return nil, fmt.Errorf("error get Identity Center bearer token")
 	}
-
-	for _, v := range tokens.([]interface{}) {
-		if tokenId == utils.PathSearch("token_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center bearer token")
+	return token, nil
 }
 
 func TestAccIdentityCenterBearerToken_basic(t *testing.T) {
@@ -90,8 +82,8 @@ func TestAccIdentityCenterBearerToken_basic(t *testing.T) {
 						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
 					resource.TestCheckResourceAttrPair(rName, "tenant_id",
 						"huaweicloud_identitycenter_tenant.test", "id"),
-					resource.TestCheckResourceAttrSet(rName, "token.0.creation_time"),
-					resource.TestCheckResourceAttrSet(rName, "token.0.expiration_time"),
+					resource.TestCheckResourceAttrSet(rName, "creation_time"),
+					resource.TestCheckResourceAttrSet(rName, "expiration_time"),
 				),
 			},
 			{

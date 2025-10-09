@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_tenant"
-description: |
+description: |-
   Manages an Identity Center tenant resource within HuaweiCloud.
 ---
 
