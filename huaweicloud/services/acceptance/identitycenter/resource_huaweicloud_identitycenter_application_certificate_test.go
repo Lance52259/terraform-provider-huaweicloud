@@ -29,12 +29,8 @@ func getApplicationCertificateResourceFunc(cfg *config.Config, state *terraform.
 	}
 
 	listApplicationInstanceCertificatesPath := listApplicationInstanceCertificatesClient.Endpoint + listApplicationInstanceCertificatesHttpUrl
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{instance_id}",
-		state.Primary.Attributes["instance_id"])
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{application_instance_id}",
-		state.Primary.Attributes["application_instance_id"])
-
-	listApplicationInstanceCertificatesPath = listApplicationInstanceCertificatesPath + buildGetApplicationCertificateQueryParams("")
+	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{instance_id}", state.Primary.Attributes["instance_id"])
+	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
 
 	listApplicationAssignmentsOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -42,47 +38,21 @@ func getApplicationCertificateResourceFunc(cfg *config.Config, state *terraform.
 
 	certificateId := state.Primary.ID
 
-	for {
-		listApplicationInstanceCertificatesResp, err := listApplicationInstanceCertificatesClient.Request("GET", listApplicationInstanceCertificatesPath, &listApplicationAssignmentsOpt)
-
-		if err != nil {
-			return nil, fmt.Errorf("error retrieving Identity Center application assignment: %s", err)
-		}
-
-		listApplicationInstanceCertificatesRespBody, err := utils.FlattenResponse(listApplicationInstanceCertificatesResp)
-		if err != nil {
-			return nil, err
-		}
-
-		certificates := utils.PathSearch("application_instance_certificates", listApplicationInstanceCertificatesRespBody, nil)
-
-		if certificates == nil {
-			return nil, fmt.Errorf("error get Identity Center application assignment")
-		}
-
-		for _, v := range certificates.([]interface{}) {
-			if certificateId == utils.PathSearch("certificate_id", v, "") {
-				return v, nil
-			}
-		}
-		marker := utils.PathSearch("page_info.next_marker", listApplicationInstanceCertificatesRespBody, nil)
-		if marker == nil {
-			break
-		}
-
-		listApplicationInstanceCertificatesPath = listApplicationInstanceCertificatesPath + buildGetApplicationCertificateQueryParams(marker.(string))
+	listApplicationInstanceCertificatesResp, err := listApplicationInstanceCertificatesClient.Request("GET", listApplicationInstanceCertificatesPath, &listApplicationAssignmentsOpt)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving Identity Center application certificate: %s", err)
 	}
 
-	return nil, fmt.Errorf("error get Identity Center application certificate")
-}
-
-func buildGetApplicationCertificateQueryParams(marker string) string {
-	res := "?limit=100"
-
-	if marker != "" {
-		res = fmt.Sprintf("%s&marker=%v", res, marker)
+	listApplicationInstanceCertificatesRespBody, err := utils.FlattenResponse(listApplicationInstanceCertificatesResp)
+	if err != nil {
+		return nil, err
 	}
-	return res
+
+	certificate := utils.PathSearch(fmt.Sprintf("application_instance_certificates[?certificate_id =='%s']|[0]", certificateId), listApplicationInstanceCertificatesRespBody, nil)
+	if certificate == nil {
+		return nil, fmt.Errorf("error get Identity Center application certificate")
+	}
+	return certificate, nil
 }
 
 func TestAccIdentityCenterApplicationCertificate_basic(t *testing.T) {
@@ -113,22 +83,19 @@ func TestAccIdentityCenterApplicationCertificate_basic(t *testing.T) {
 						"data.huaweicloud_identitycenter_instance.test", "id"),
 					resource.TestCheckResourceAttrPair(rName, "application_instance_id",
 						"huaweicloud_identitycenter_application_instance.test", "id"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.#"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.algorithm"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.certificate"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.certificate_id"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.expiry_date"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.status"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.key_size"),
-					resource.TestCheckResourceAttrSet(rName, "application_instance_certificate.0.issue_date"),
+					resource.TestCheckResourceAttrSet(rName, "algorithm"),
+					resource.TestCheckResourceAttrSet(rName, "certificate"),
+					resource.TestCheckResourceAttrSet(rName, "expiry_date"),
+					resource.TestCheckResourceAttr(rName, "status", "INACTIVE"),
+					resource.TestCheckResourceAttrSet(rName, "key_size"),
+					resource.TestCheckResourceAttrSet(rName, "issue_date"),
 				),
 			},
 			{
-				ResourceName:            rName,
-				ImportState:             true,
-				ImportStateVerify:       true,
-				ImportStateIdFunc:       testIdentityCenterApplicationCertificateImportState(rName),
-				ImportStateVerifyIgnore: []string{"application_certificate_status"},
+				ResourceName:      rName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testIdentityCenterApplicationCertificateImportState(rName),
 			},
 		},
 	})
@@ -139,9 +106,9 @@ func testApplicationCertificate_basic(uuid string) string {
 %[1]s
 
 resource "huaweicloud_identitycenter_application_certificate" "test"{
-  depends_on = [huaweicloud_identitycenter_application_instance.test]
+  depends_on              = [huaweicloud_identitycenter_application_instance.test]
   application_instance_id = huaweicloud_identitycenter_application_instance.test.id
-  instance_id = data.huaweicloud_identitycenter_instance.test.id
+  instance_id             = data.huaweicloud_identitycenter_instance.test.id
 }
 
 `, testApplicationInstance_basic(uuid))
