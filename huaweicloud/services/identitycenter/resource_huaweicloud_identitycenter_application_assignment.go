@@ -25,6 +25,7 @@ var identityCenterApplicationAssignmentNonUpdateParams = []string{"instance_id",
 func ResourceIdentityCenterApplicationAssignment() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityCenterApplicationAssignmentCreate,
+		UpdateContext: resourceIdentityCenterApplicationAssignmentUpdate,
 		ReadContext:   resourceIdentityCenterApplicationAssignmentRead,
 		DeleteContext: resourceIdentityCenterApplicationAssignmentDelete,
 
@@ -80,18 +81,15 @@ func resourceIdentityCenterApplicationAssignmentCreate(ctx context.Context, d *s
 	}
 
 	createApplicationAssignmentPath := createApplicationAssignmentClient.Endpoint + createApplicationAssignmentHttpUrl
-	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{instance_id}",
-		fmt.Sprintf("%v", d.Get("instance_id")))
-	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{application_instance_id}",
-		fmt.Sprintf("%v", d.Get("application_instance_id")))
+	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	createApplicationAssignmentPath = strings.ReplaceAll(createApplicationAssignmentPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
 	createApplicationAssignmentOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildCreateApplicationAssignmentBodyParams(d)),
 	}
 
-	_, err = createApplicationAssignmentClient.Request("POST",
-		createApplicationAssignmentPath, &createApplicationAssignmentOpt)
+	_, err = createApplicationAssignmentClient.Request("POST", createApplicationAssignmentPath, &createApplicationAssignmentOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center application asssignment: %s", err)
 	}
@@ -106,8 +104,8 @@ func resourceIdentityCenterApplicationAssignmentCreate(ctx context.Context, d *s
 
 func buildCreateApplicationAssignmentBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"principal_id":   utils.ValueIgnoreEmpty(d.Get("principal_id")),
-		"principal_type": utils.ValueIgnoreEmpty(d.Get("principal_type")),
+		"principal_id":   d.Get("principal_id"),
+		"principal_type": d.Get("principal_type"),
 	}
 	return bodyParams
 }
@@ -129,10 +127,8 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 	}
 
 	listApplicationAssignmentsPath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}",
-		fmt.Sprintf("%v", d.Get("instance_id")))
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}",
-		fmt.Sprintf("%v", d.Get("application_instance_id")))
+	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
 	listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildListApplicationAssignmentsQueryParams("")
 
@@ -141,13 +137,8 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 	}
 
 	var assignment interface{}
-	parts := strings.Split(d.Id(), "/")
-	if len(parts) != 3 {
-		return diag.Errorf("invalid format of Id: %s", d.Id())
-	}
-	principalId := parts[2]
+	principalId := d.Get("principal_id")
 
-listApplicationAssignmentsLoop:
 	for {
 		listApplicationAssignmentsResp, err := listApplicationAssignmentsClient.Request("GET", listApplicationAssignmentsPath, &listApplicationAssignmentsOpt)
 		if err != nil {
@@ -159,26 +150,20 @@ listApplicationAssignmentsLoop:
 			return diag.FromErr(err)
 		}
 
-		assignments := utils.PathSearch("application_assignments", listApplicationAssignmentsRespBody, nil)
-
-		if assignments == nil {
-			return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "")
+		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listApplicationAssignmentsRespBody, nil)
+		if assignment != nil {
+			break
 		}
 
-		for _, v := range assignments.([]interface{}) {
-			if principalId == utils.PathSearch("principal_id", v, "") {
-				assignment = v
-				break listApplicationAssignmentsLoop
-			}
-		}
 		marker := utils.PathSearch("page_info.next_marker", listApplicationAssignmentsRespBody, nil)
 		if marker == nil {
 			break
 		}
 		listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildListApplicationAssignmentsQueryParams(marker.(string))
 	}
+
 	if assignment == nil {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "")
+		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no application assignment found.")
 	}
 
 	mErr = multierror.Append(
@@ -200,6 +185,10 @@ func buildListApplicationAssignmentsQueryParams(marker string) string {
 	return res
 }
 
+func resourceIdentityCenterApplicationAssignmentUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
+	return nil
+}
+
 func resourceIdentityCenterApplicationAssignmentDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -214,18 +203,15 @@ func resourceIdentityCenterApplicationAssignmentDelete(_ context.Context, d *sch
 	}
 
 	deleteApplicationAssignmentPath := deleteApplicationAssignmentClient.Endpoint + deleteApplicationAssignmentHttpUrl
-	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{instance_id}",
-		fmt.Sprintf("%v", d.Get("instance_id")))
-	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{application_instance_id}",
-		fmt.Sprintf("%v", d.Get("application_instance_id")))
+	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	deleteApplicationAssignmentPath = strings.ReplaceAll(deleteApplicationAssignmentPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
 	deleteApplicationAssignmentOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildCreateApplicationAssignmentBodyParams(d)),
 	}
 
-	_, err = deleteApplicationAssignmentClient.Request("POST", deleteApplicationAssignmentPath,
-		&deleteApplicationAssignmentOpt)
+	_, err = deleteApplicationAssignmentClient.Request("POST", deleteApplicationAssignmentPath, &deleteApplicationAssignmentOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center application assignment: %s", err)
 	}
@@ -236,8 +222,7 @@ func resourceIdentityCenterApplicationAssignmentDelete(_ context.Context, d *sch
 func resourceIdentityCenterApplicationAssignmentImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid id format, must be " +
-			"<instance_id>/<application_instance_id>/<principal_id>")
+		return nil, fmt.Errorf("invalid id format, must be " + "<instance_id>/<application_instance_id>/<principal_id>")
 	}
 
 	d.SetId(fmt.Sprintf("%s/%s/%s", parts[0], parts[1], parts[2]))

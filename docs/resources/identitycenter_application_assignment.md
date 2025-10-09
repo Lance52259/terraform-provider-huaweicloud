@@ -18,10 +18,10 @@ variable "application_instance_id" {}
 variable "principal_id" {}
 
 resource "huaweicloud_identitycenter_application_assignment" "test"{
-  instance_id = var.instance_id
+  instance_id             = var.instance_id
   application_instance_id = var.application_instance_id
-  principal_id = var.principal_id
-  principal_type = "USER"
+  principal_id            = var.principal_id
+  principal_type          = "USER"
 }
 ```
 
@@ -46,7 +46,6 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The resource ID.
 
 * `application_urn` - The urn of the application.
-
 
 ## Import
 

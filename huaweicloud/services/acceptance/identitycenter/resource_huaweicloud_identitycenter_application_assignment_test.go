@@ -30,10 +30,8 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 	}
 
 	listApplicationAssignmentsPath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}",
-		state.Primary.Attributes["instance_id"])
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}",
-		state.Primary.Attributes["application_instance_id"])
+	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}", state.Primary.Attributes["instance_id"])
+	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
 
 	listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildGetApplicationAssignmentQueryParams("")
 
@@ -41,6 +39,7 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 		KeepResponseBody: true,
 	}
 
+	var assignment interface{}
 	principalId := state.Primary.Attributes["principal_id"]
 
 	for {
@@ -54,24 +53,21 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 			return nil, err
 		}
 
-		assignments := utils.PathSearch("application_assignments", listApplicationAssignmentsRespBody, nil)
-		if assignments == nil {
-			return nil, fmt.Errorf("error get Identity Center application assignment")
+		assignment = utils.PathSearch(fmt.Sprintf("application_assignments[?principal_id=='%s']|[0]", principalId), listApplicationAssignmentsRespBody, nil)
+		if assignment != nil {
+			break
 		}
 
-		for _, v := range assignments.([]interface{}) {
-			if principalId == utils.PathSearch("principal_id", v, "") {
-				return v, nil
-			}
-		}
 		marker := utils.PathSearch("page_info.next_marker", listApplicationAssignmentsRespBody, nil)
 		if marker == nil {
 			break
 		}
-
 		listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildGetApplicationAssignmentQueryParams(marker.(string))
 	}
 
+	if assignment != nil {
+		return assignment, nil
+	}
 	return nil, fmt.Errorf("error get Identity Center application assignment")
 }
 
@@ -163,11 +159,11 @@ resource "huaweicloud_identitycenter_application_instance" "test"{
 }
 
 resource "huaweicloud_identitycenter_application_assignment" "test"{
-  depends_on = [huaweicloud_identitycenter_application_instance.test]
+  depends_on              = [huaweicloud_identitycenter_application_instance.test]
   application_instance_id = huaweicloud_identitycenter_application_instance.test.id
-  instance_id = data.huaweicloud_identitycenter_instance.test.id
-  principal_id = huaweicloud_identitycenter_user.test.id
-  principal_type = "USER"
+  instance_id             = data.huaweicloud_identitycenter_instance.test.id
+  principal_id            = huaweicloud_identitycenter_user.test.id
+  principal_type          = "USER"
 }
 
 `, testIdentityCenterUser_basic(name), uuid)
