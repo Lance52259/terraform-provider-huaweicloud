@@ -16,24 +16,24 @@ import (
 
 func getRegisteredRegionResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	region := acceptance.HW_REGION_NAME
-	getRegisteredRegionClient, err := cfg.NewServiceClient("identitycenter", region)
+	client, err := cfg.NewServiceClient("identitycenter", region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	getRegisteredRegionHttpUrl := "v1/registered-regions"
-	getRegisteredRegionPath := getRegisteredRegionClient.Endpoint + getRegisteredRegionHttpUrl
+	httpUrl := "v1/registered-regions"
+	getPath := client.Endpoint + httpUrl
 
-	getRegisteredRegionOpt := golangsdk.RequestOpts{
+	getOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	getRegisteredRegionResp, err := getRegisteredRegionClient.Request("GET", getRegisteredRegionPath, &getRegisteredRegionOpt)
+	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving registered region: %s", err)
 	}
 
-	return utils.FlattenResponse(getRegisteredRegionResp)
+	return utils.FlattenResponse(getResp)
 }
 
 func TestAccRegisteredRegion_basic(t *testing.T) {

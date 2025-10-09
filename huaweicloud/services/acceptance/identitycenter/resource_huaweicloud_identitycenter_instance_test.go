@@ -18,33 +18,33 @@ func getIdentityCenterInstanceFunc(cfg *config.Config, state *terraform.Resource
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listInstancesHttpUrl = "v1/instances"
-		listInstancesProduct = "identitycenter"
+		listHttpUrl = "v1/instances"
+		listProduct = "identitycenter"
 	)
-	listInstancesClient, err := cfg.NewServiceClient(listInstancesProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listInstancesPath := listInstancesClient.Endpoint + listInstancesHttpUrl
+	listPath := client.Endpoint + listHttpUrl
 
-	listInstancesOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	instanceId := state.Primary.ID
 
-	listInstancesResp, err := listInstancesClient.Request("GET", listInstancesPath, &listInstancesOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center instance: %s", err)
 	}
 
-	listInstancesRespBody, err := utils.FlattenResponse(listInstancesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	instance := utils.PathSearch(fmt.Sprintf("instances|[?instance_id =='%s']|[0]", instanceId), listInstancesRespBody, nil)
+	instance := utils.PathSearch(fmt.Sprintf("instances|[?instance_id =='%s']|[0]", instanceId), listRespBody, nil)
 	if instance == nil {
 		return nil, fmt.Errorf("error get Identity Center instance")
 	}

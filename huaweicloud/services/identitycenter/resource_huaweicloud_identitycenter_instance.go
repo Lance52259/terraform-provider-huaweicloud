@@ -146,25 +146,25 @@ func buildCreateAliasBodyParams(d *schema.ResourceData) map[string]interface{} {
 
 func identityCenterServiceStatusRefreshFunc(getRequestStatusHttpUrl, searchExpression string, client *golangsdk.ServiceClient) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		getIdentityCenterServiceStatusPath := client.Endpoint + getRequestStatusHttpUrl
+		getPath := client.Endpoint + getRequestStatusHttpUrl
 
-		getIdentityCenterServiceStatusOpt := golangsdk.RequestOpts{
+		getOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 		}
-		getIdentityCenterServiceStatusResp, err := client.Request("GET", getIdentityCenterServiceStatusPath, &getIdentityCenterServiceStatusOpt)
+		getResp, err := client.Request("GET", getPath, &getOpt)
 		if err != nil {
 			return nil, "", err
 		}
-		getIdentityCenterServiceStatusRespBody, err := utils.FlattenResponse(getIdentityCenterServiceStatusResp)
+		getRespBody, err := utils.FlattenResponse(getResp)
 		if err != nil {
 			return nil, "", err
 		}
 
-		status := utils.PathSearch(searchExpression, getIdentityCenterServiceStatusRespBody, "").(string)
+		status := utils.PathSearch(searchExpression, getRespBody, "").(string)
 		if status == "enable" {
-			return getIdentityCenterServiceStatusRespBody, status, nil
+			return getRespBody, status, nil
 		}
-		return getIdentityCenterServiceStatusRespBody, "disable", nil
+		return getRespBody, "disable", nil
 	}
 }
 
@@ -173,34 +173,34 @@ func resourceIdentityCenterInstanceRead(_ context.Context, d *schema.ResourceDat
 	region := cfg.GetRegion(d)
 
 	var (
-		listInstancesHttpUrl = "v1/instances"
-		listInstancesProduct = "identitycenter"
+		listHttpUrl = "v1/instances"
+		listProduct = "identitycenter"
 	)
 
 	var mErr *multierror.Error
 
-	listInstancesClient, err := cfg.NewServiceClient(listInstancesProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listInstancesPath := listInstancesClient.Endpoint + listInstancesHttpUrl
+	listPath := client.Endpoint + listHttpUrl
 
-	listInstancesOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listInstancesResp, err := listInstancesClient.Request("GET", listInstancesPath, &listInstancesOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center Instance")
 	}
 
-	listInstancesRespBody, err := utils.FlattenResponse(listInstancesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	instance := utils.PathSearch(fmt.Sprintf("instances[?instance_id =='%s']|[0]", d.Id()), listInstancesRespBody, nil)
+	instance := utils.PathSearch(fmt.Sprintf("instances[?instance_id =='%s']|[0]", d.Id()), listRespBody, nil)
 
 	if instance == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no instance found.")
@@ -221,17 +221,17 @@ func resourceIdentityCenterInstanceUpdate(ctx context.Context, d *schema.Resourc
 	region := cfg.GetRegion(d)
 
 	var (
-		createAliasHttpUrl    = "v1/instances/{instance_id}/alias"
-		identityCenterProduct = "identitycenter"
+		httpUrl = "v1/instances/{instance_id}/alias"
+		product = "identitycenter"
 	)
 
 	if d.HasChange("alias") {
-		client, err := cfg.NewServiceClient(identityCenterProduct, region)
+		client, err := cfg.NewServiceClient(product, region)
 		if err != nil {
 			return diag.Errorf("error creating Identity Center Client: %s", err)
 		}
 
-		createAliasPath := client.Endpoint + createAliasHttpUrl
+		createAliasPath := client.Endpoint + httpUrl
 		createAliasPath = strings.ReplaceAll(createAliasPath, "{instance_id}", d.Id())
 		createAliasOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -253,20 +253,20 @@ func resourceIdentityCenterInstanceDelete(_ context.Context, d *schema.ResourceD
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteIdentityCenterHttpUrl = "v1/service/delete"
-		deleteIdentityCenterProduct = "identitycenter"
+		deleteHttpUrl = "v1/service/delete"
+		deleteProduct = "identitycenter"
 	)
-	deleteIdentityCenterClient, err := cfg.NewServiceClient(deleteIdentityCenterProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating IdentityCenter client: %s", err)
 	}
 
-	deleteIdentityCenterPath := deleteIdentityCenterClient.Endpoint + deleteIdentityCenterHttpUrl
+	deletePath := client.Endpoint + deleteHttpUrl
 
-	deleteIdentityCenterOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	_, err = deleteIdentityCenterClient.Request("POST", deleteIdentityCenterPath, &deleteIdentityCenterOpt)
+	_, err = client.Request("POST", deletePath, &deleteOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error deleting IdentityCenter instance")
 	}

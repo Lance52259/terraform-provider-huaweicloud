@@ -2,6 +2,7 @@ package identitycenter
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -53,22 +54,22 @@ func resourceIdentityCenterRegisteredRegionCreate(ctx context.Context, d *schema
 	regionId := d.Get("region_id").(string)
 
 	var (
-		registerRegionHttpUrl = "v1/register-regions"
-		registerRegionProduct = "identitycenter"
+		httpUrl = "v1/register-regions"
+		product = "identitycenter"
 	)
-	client, err := cfg.NewServiceClient(registerRegionProduct, region)
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating IdentityCenter client: %s", err)
 	}
 
-	registerRegionPath := client.Endpoint + registerRegionHttpUrl
+	registerPath := client.Endpoint + httpUrl
 
-	registerRegionOpt := golangsdk.RequestOpts{
+	registerOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         utils.RemoveNil(buildRegisterRegionBodyParams(d)),
 	}
 
-	_, err = client.Request("POST", registerRegionPath, &registerRegionOpt)
+	_, err = client.Request("POST", registerPath, &registerOpt)
 	if err != nil {
 		return diag.Errorf("error registering IdentityCenter region: %s", err)
 	}
@@ -92,38 +93,38 @@ func resourceIdentityCenterRegisteredRegionRead(_ context.Context, d *schema.Res
 	var mErr *multierror.Error
 
 	var (
-		describeRegisteredRegionsHttpUrl = "v1/registered-regions"
-		describeRegisteredRegionsProduct = "identitycenter"
+		getHttpUrl = "v1/registered-regions"
+		product    = "identitycenter"
 	)
-	describeRegisteredRegionsClient, err := cfg.NewServiceClient(describeRegisteredRegionsProduct, region)
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	describeRegisteredRegionsPath := describeRegisteredRegionsClient.Endpoint + describeRegisteredRegionsHttpUrl
+	getPath := client.Endpoint + getHttpUrl
 
-	describeRegisteredRegionsOpt := golangsdk.RequestOpts{
+	getOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	describeRegisteredRegionsResp, err := describeRegisteredRegionsClient.Request("GET", describeRegisteredRegionsPath, &describeRegisteredRegionsOpt)
+	getResp, err := client.Request("GET", getPath, &getOpt)
 
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center registered region")
 	}
 
-	describeRegisteredRegionsRespBody, err := utils.FlattenResponse(describeRegisteredRegionsResp)
+	getRespBody, err := utils.FlattenResponse(getResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	regions, _ := utils.PathSearch("regions", describeRegisteredRegionsRespBody, make([]interface{}, 0)).([]interface{})
-	if len(regions) == 0 {
+	regions := utils.PathSearch(fmt.Sprintf("regions|[?region_id =='%s']|[0]", d.Id()), getRespBody, nil)
+	if regions == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no region found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
-		d.Set("region_id", utils.PathSearch("regions|[0].region_id", describeRegisteredRegionsRespBody, nil)),
+		d.Set("region_id", utils.PathSearch("region_id", regions, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
