@@ -112,7 +112,7 @@ func flattenCatalogList(catalogBody []interface{}) []map[string]interface{} {
 	catalog := make([]map[string]interface{}, len(catalogBody))
 	for i, c := range catalogBody {
 		catalog[i] = map[string]interface{}{
-			"endpoints": flattenEndpointsList(utils.PathSearch("endpoints", c, make([]interface{}, 0)).([]interface{})),
+			"endpoints": flattenEndpointsLists(utils.PathSearch("endpoints", c, make([]interface{}, 0)).([]interface{})),
 			"name":      utils.PathSearch("name", c, ""),
 			"id":        utils.PathSearch("id", c, ""),
 			"type":      utils.PathSearch("type", c, ""),
@@ -121,7 +121,7 @@ func flattenCatalogList(catalogBody []interface{}) []map[string]interface{} {
 	return catalog
 }
 
-func flattenEndpointsList(endpointsBody []interface{}) []map[string]interface{} {
+func flattenEndpointsLists(endpointsBody []interface{}) []map[string]interface{} {
 	endpoints := make([]map[string]interface{}, len(endpointsBody))
 	for i, endpoint := range endpointsBody {
 		endpoints[i] = map[string]interface{}{
