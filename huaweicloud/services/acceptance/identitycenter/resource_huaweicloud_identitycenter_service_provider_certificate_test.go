@@ -36,8 +36,7 @@ func getServiceProviderCertificateResourceFunc(cfg *config.Config, state *terraf
 
 	certificateId := state.Primary.ID
 
-	getSpCertificatesResp, err := client.Request("GET",
-		getSpCertificatesPath, &getSpCertificatesOpt)
+	getSpCertificatesResp, err := client.Request("GET", getSpCertificatesPath, &getSpCertificatesOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center service provider certificate: %s", err)
 	}
