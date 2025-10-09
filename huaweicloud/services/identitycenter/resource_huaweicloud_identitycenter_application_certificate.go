@@ -85,50 +85,50 @@ func resourceIdentityCenterApplicationCertificateCreate(ctx context.Context, d *
 	region := cfg.GetRegion(d)
 
 	var (
-		createApplicationInstanceCertificateHttpUrl       = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
-		updateApplicationInstanceActiveCertificateHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
-		createApplicationInstanceCertificateProduct       = "identitycenter"
+		createHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
+		updateHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
+		product       = "identitycenter"
 	)
 
-	client, err := cfg.NewServiceClient(createApplicationInstanceCertificateProduct, region)
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createApplicationInstanceCertificatePath := client.Endpoint + createApplicationInstanceCertificateHttpUrl
-	createApplicationInstanceCertificatePath = strings.ReplaceAll(createApplicationInstanceCertificatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	createApplicationInstanceCertificatePath = strings.ReplaceAll(createApplicationInstanceCertificatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	createPath := client.Endpoint + createHttpUrl
+	createPath = strings.ReplaceAll(createPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	createPath = strings.ReplaceAll(createPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	createApplicationInstanceCertificateOpt := golangsdk.RequestOpts{
+	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	createApplicationInstanceCertificateResp, err := client.Request("POST", createApplicationInstanceCertificatePath, &createApplicationInstanceCertificateOpt)
+	createResp, err := client.Request("POST", createPath, &createOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center application certificate: %s", err)
 	}
 
-	createApplicationInstanceCertificateRespBody, err := utils.FlattenResponse(createApplicationInstanceCertificateResp)
+	createRespBody, err := utils.FlattenResponse(createResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	certificateId := utils.PathSearch("application_instance_certificate.certificate_id", createApplicationInstanceCertificateRespBody, "").(string)
+	certificateId := utils.PathSearch("application_instance_certificate.certificate_id", createRespBody, "").(string)
 	if certificateId == "" {
 		return diag.Errorf("unable to find the Identity Center application certificate ID from the API response")
 	}
 	d.SetId(certificateId)
 
 	if status, ok := d.GetOk("status"); ok && status == "ACTIVE" {
-		updateApplicationInstanceActiveCertificatePath := client.Endpoint + updateApplicationInstanceActiveCertificateHttpUrl
-		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
-		updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{certificate_id}", d.Id())
+		updatePath := client.Endpoint + updateHttpUrl
+		updatePath = strings.ReplaceAll(updatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+		updatePath = strings.ReplaceAll(updatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+		updatePath = strings.ReplaceAll(updatePath, "{certificate_id}", d.Id())
 
-		updateApplicationInstanceActiveCertificateOpt := golangsdk.RequestOpts{
+		updateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 		}
-		_, err = client.Request("PUT", updateApplicationInstanceActiveCertificatePath, &updateApplicationInstanceActiveCertificateOpt)
+		_, err = client.Request("PUT", updatePath, &updateOpt)
 		if err != nil {
 			return diag.Errorf("error updating Identity Center application certificate status: %s", err)
 		}
@@ -144,34 +144,34 @@ func resourceIdentityCenterApplicationCertificateRead(_ context.Context, d *sche
 	var mErr *multierror.Error
 
 	var (
-		listApplicationInstanceCertificatesHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
-		listApplicationInstanceCertificatesProduct = "identitycenter"
+		listHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
+		product     = "identitycenter"
 	)
 
-	listApplicationInstanceCertificatesClient, err := cfg.NewServiceClient(listApplicationInstanceCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listApplicationInstanceCertificatesPath := listApplicationInstanceCertificatesClient.Endpoint + listApplicationInstanceCertificatesHttpUrl
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	listPath = strings.ReplaceAll(listPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	listApplicationInstanceCertificatesOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	listApplicationInstanceCertificatesResp, err := listApplicationInstanceCertificatesClient.Request("GET", listApplicationInstanceCertificatesPath, &listApplicationInstanceCertificatesOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center service provider certificate.")
 	}
 
-	listApplicationInstanceCertificatesRespBody, err := utils.FlattenResponse(listApplicationInstanceCertificatesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	certificate := utils.PathSearch(fmt.Sprintf("application_instance_certificates[?certificate_id =='%s']|[0]", d.Id()), listApplicationInstanceCertificatesRespBody, nil)
+	certificate := utils.PathSearch(fmt.Sprintf("application_instance_certificates[?certificate_id =='%s']|[0]", d.Id()), listRespBody, nil)
 
 	if certificate == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no application certificate found.")
@@ -195,29 +195,26 @@ func resourceIdentityCenterApplicationCertificateUpdate(ctx context.Context, d *
 	region := cfg.GetRegion(d)
 
 	var (
-		updateApplicationInstanceActiveCertificateHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
-		updateApplicationInstanceActiveCertificateProduct = "identitycenter"
+		updateHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
+		updateProduct = "identitycenter"
 	)
 
 	if d.HasChange("status") {
 		if d.Get("status").(string) == "ACTIVE" {
-			updateApplicationInstanceActiveCertificateClient, err := cfg.NewServiceClient(updateApplicationInstanceActiveCertificateProduct, region)
+			client, err := cfg.NewServiceClient(updateProduct, region)
 			if err != nil {
 				return diag.Errorf("error creating Identity Center Client: %s", err)
 			}
 
-			updateApplicationInstanceActiveCertificatePath := updateApplicationInstanceActiveCertificateClient.Endpoint + updateApplicationInstanceActiveCertificateHttpUrl
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{instance_id}",
-				fmt.Sprintf("%v", d.Get("instance_id")))
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{application_instance_id}",
-				fmt.Sprintf("%v", d.Get("application_instance_id")))
-			updateApplicationInstanceActiveCertificatePath = strings.ReplaceAll(updateApplicationInstanceActiveCertificatePath, "{certificate_id}", d.Id())
+			updatePath := client.Endpoint + updateHttpUrl
+			updatePath = strings.ReplaceAll(updatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+			updatePath = strings.ReplaceAll(updatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+			updatePath = strings.ReplaceAll(updatePath, "{certificate_id}", d.Id())
 
-			updateApplicationInstanceActiveCertificateOpt := golangsdk.RequestOpts{
+			updateOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
 			}
-			_, err = updateApplicationInstanceActiveCertificateClient.Request("PUT", updateApplicationInstanceActiveCertificatePath,
-				&updateApplicationInstanceActiveCertificateOpt)
+			_, err = client.Request("PUT", updatePath, &updateOpt)
 			if err != nil {
 				return diag.Errorf("error updating Identity Center application certificate status: %s", err)
 			}
@@ -234,25 +231,25 @@ func resourceIdentityCenterApplicationCertificateDelete(_ context.Context, d *sc
 	region := cfg.GetRegion(d)
 
 	var (
-		deleteApplicationInstanceCertificateHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
-		deleteApplicationInstanceCertificateProduct = "identitycenter"
+		deleteHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}"
+		deleteProduct = "identitycenter"
 	)
 
-	deleteApplicationInstanceCertificateClient, err := cfg.NewServiceClient(deleteApplicationInstanceCertificateProduct, region)
+	client, err := cfg.NewServiceClient(deleteProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	deleteApplicationInstanceCertificatePath := deleteApplicationInstanceCertificateClient.Endpoint + deleteApplicationInstanceCertificateHttpUrl
-	deleteApplicationInstanceCertificatePath = strings.ReplaceAll(deleteApplicationInstanceCertificatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	deleteApplicationInstanceCertificatePath = strings.ReplaceAll(deleteApplicationInstanceCertificatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
-	deleteApplicationInstanceCertificatePath = strings.ReplaceAll(deleteApplicationInstanceCertificatePath, "{certificate_id}", d.Id())
+	deletePath := client.Endpoint + deleteHttpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	deletePath = strings.ReplaceAll(deletePath, "{certificate_id}", d.Id())
 
-	deleteApplicationInstanceCertificateOpt := golangsdk.RequestOpts{
+	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
-	_, err = deleteApplicationInstanceCertificateClient.Request("DELETE", deleteApplicationInstanceCertificatePath, &deleteApplicationInstanceCertificateOpt)
+	_, err = client.Request("DELETE", deletePath, &deleteOpt)
 	if err != nil {
 		return diag.Errorf("error deleting Identity Center application certificate: %s", err)
 	}

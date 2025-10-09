@@ -20,35 +20,35 @@ func getApplicationCertificateResourceFunc(cfg *config.Config, state *terraform.
 	region := acceptance.HW_REGION_NAME
 
 	var (
-		listApplicationInstanceCertificatesHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
-		listApplicationInstanceCertificatesProduct = "identitycenter"
+		listHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates"
+		listProduct = "identitycenter"
 	)
-	listApplicationInstanceCertificatesClient, err := cfg.NewServiceClient(listApplicationInstanceCertificatesProduct, region)
+	client, err := cfg.NewServiceClient(listProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listApplicationInstanceCertificatesPath := listApplicationInstanceCertificatesClient.Endpoint + listApplicationInstanceCertificatesHttpUrl
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{instance_id}", state.Primary.Attributes["instance_id"])
-	listApplicationInstanceCertificatesPath = strings.ReplaceAll(listApplicationInstanceCertificatesPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
+	listPath := client.Endpoint + listHttpUrl
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", state.Primary.Attributes["instance_id"])
+	listPath = strings.ReplaceAll(listPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
 
-	listApplicationAssignmentsOpt := golangsdk.RequestOpts{
+	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 
 	certificateId := state.Primary.ID
 
-	listApplicationInstanceCertificatesResp, err := listApplicationInstanceCertificatesClient.Request("GET", listApplicationInstanceCertificatesPath, &listApplicationAssignmentsOpt)
+	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center application certificate: %s", err)
 	}
 
-	listApplicationInstanceCertificatesRespBody, err := utils.FlattenResponse(listApplicationInstanceCertificatesResp)
+	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
 		return nil, err
 	}
 
-	certificate := utils.PathSearch(fmt.Sprintf("application_instance_certificates[?certificate_id =='%s']|[0]", certificateId), listApplicationInstanceCertificatesRespBody, nil)
+	certificate := utils.PathSearch(fmt.Sprintf("application_instance_certificates[?certificate_id =='%s']|[0]", certificateId), listRespBody, nil)
 	if certificate == nil {
 		return nil, fmt.Errorf("error get Identity Center application certificate")
 	}
