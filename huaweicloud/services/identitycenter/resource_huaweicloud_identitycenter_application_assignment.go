@@ -126,11 +126,11 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	listApplicationAssignmentsPath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-	listApplicationAssignmentsPath = strings.ReplaceAll(listApplicationAssignmentsPath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+	listApplicationAssignmentsBasePath := listApplicationAssignmentsClient.Endpoint + listApplicationAssignmentsHttpUrl
+	listApplicationAssignmentsBasePath = strings.ReplaceAll(listApplicationAssignmentsBasePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+	listApplicationAssignmentsBasePath = strings.ReplaceAll(listApplicationAssignmentsBasePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
 
-	listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildListApplicationAssignmentsQueryParams("")
+	listApplicationAssignmentsPath := listApplicationAssignmentsBasePath + buildListApplicationAssignmentsQueryParams("")
 
 	listApplicationAssignmentsOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -159,7 +159,7 @@ func resourceIdentityCenterApplicationAssignmentRead(_ context.Context, d *schem
 		if marker == nil {
 			break
 		}
-		listApplicationAssignmentsPath = listApplicationAssignmentsPath + buildListApplicationAssignmentsQueryParams(marker.(string))
+		listApplicationAssignmentsPath = listApplicationAssignmentsBasePath + buildListApplicationAssignmentsQueryParams(marker.(string))
 	}
 
 	if assignment == nil {
@@ -225,7 +225,6 @@ func resourceIdentityCenterApplicationAssignmentImport(_ context.Context, d *sch
 		return nil, fmt.Errorf("invalid id format, must be " + "<instance_id>/<application_instance_id>/<principal_id>")
 	}
 
-	d.SetId(fmt.Sprintf("%s/%s/%s", parts[0], parts[1], parts[2]))
 	mErr := multierror.Append(nil,
 		d.Set("instance_id", parts[0]),
 		d.Set("application_instance_id", parts[1]),
