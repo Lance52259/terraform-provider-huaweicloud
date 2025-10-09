@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_registered_region"
-description: |
+description: |-
   Manages an Identity Center registered region resource within HuaweiCloud.
 ---
 

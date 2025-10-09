@@ -34,8 +34,7 @@ func getIdentityCenterInstanceFunc(cfg *config.Config, state *terraform.Resource
 
 	instanceId := state.Primary.ID
 
-	listInstancesResp, err := listInstancesClient.Request("GET",
-		listInstancesPath, &listInstancesOpt)
+	listInstancesResp, err := listInstancesClient.Request("GET", listInstancesPath, &listInstancesOpt)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving Identity Center instance: %s", err)
 	}
@@ -45,19 +44,11 @@ func getIdentityCenterInstanceFunc(cfg *config.Config, state *terraform.Resource
 		return nil, err
 	}
 
-	instances := utils.PathSearch("instances", listInstancesRespBody, nil)
-
-	if instances == nil {
+	instance := utils.PathSearch(fmt.Sprintf("instances|[?instance_id =='%s']|[0]", instanceId), listInstancesRespBody, nil)
+	if instance == nil {
 		return nil, fmt.Errorf("error get Identity Center instance")
 	}
-
-	for _, v := range instances.([]interface{}) {
-		if instanceId == utils.PathSearch("instance_id", v, "") {
-			return v, nil
-		}
-	}
-
-	return nil, fmt.Errorf("error get Identity Center instance")
+	return instance, nil
 }
 
 func TestAccIdentityCenterInstance_basic(t *testing.T) {
@@ -84,7 +75,6 @@ func TestAccIdentityCenterInstance_basic(t *testing.T) {
 				Config: testIdentityCenterInstance_basic(region),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(rName, "instance_id"),
 					resource.TestCheckResourceAttrSet(rName, "identity_store_id"),
 					resource.TestCheckResourceAttrSet(rName, "instance_urn"),
 					resource.TestCheckResourceAttr(rName, "alias", ""),
@@ -94,7 +84,6 @@ func TestAccIdentityCenterInstance_basic(t *testing.T) {
 				Config: testIdentityCenterInstance_basic_update(region),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(rName, "instance_id"),
 					resource.TestCheckResourceAttrSet(rName, "identity_store_id"),
 					resource.TestCheckResourceAttrSet(rName, "instance_urn"),
 					resource.TestCheckResourceAttr(rName, "alias", "test"),

@@ -2,6 +2,7 @@ package identitycenter
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -34,17 +35,13 @@ func ResourceIdentityCenterInstance() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"identity_store_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"instance_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"alias": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+			},
+			"identity_store_id": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"instance_urn": {
@@ -102,18 +99,12 @@ func resourceIdentityCenterInstanceCreate(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("error waiting for creating IAM Identity Center instance to complete: %s", err)
 	}
 
-	listInstancesClient, err := cfg.NewServiceClient(identityCenterProduct, region)
-	if err != nil {
-		return diag.Errorf("error creating Identity Center Client: %s", err)
-	}
-
-	listInstancesPath := listInstancesClient.Endpoint + listInstancesHttpUrl
+	listInstancesPath := client.Endpoint + listInstancesHttpUrl
 
 	listInstancesOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listInstancesResp, err := listInstancesClient.Request("GET",
-		listInstancesPath, &listInstancesOpt)
+	listInstancesResp, err := client.Request("GET", listInstancesPath, &listInstancesOpt)
 
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center Instance")
@@ -124,22 +115,14 @@ func resourceIdentityCenterInstanceCreate(ctx context.Context, d *schema.Resourc
 		return diag.FromErr(err)
 	}
 
-	instances, _ := utils.PathSearch("instances", listInstancesRespBody, make([]interface{}, 0)).([]interface{})
-	if len(instances) == 0 {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no instance found.")
+	instanceId := utils.PathSearch("instances|[0].instance_id", listInstancesRespBody, "").(string)
+	if instanceId == "" {
+		return diag.Errorf("unable to find the Identity Center instance ID from the API response")
 	}
-
-	instanceId := utils.PathSearch("instances|[0].instance_id", listInstancesRespBody, nil).(string)
-
 	d.SetId(instanceId)
 
 	if _, ok := d.GetOk("alias"); ok {
-		createAliasClient, err := cfg.NewServiceClient(identityCenterProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating IdentityCenter client: %s", err)
-		}
-
-		createAliasPath := createAliasClient.Endpoint + createAliasHttpUrl
+		createAliasPath := client.Endpoint + createAliasHttpUrl
 		createAliasPath = strings.ReplaceAll(createAliasPath, "{instance_id}", instanceId)
 		createAliasOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -161,8 +144,7 @@ func buildCreateAliasBodyParams(d *schema.ResourceData) map[string]interface{} {
 	return bodyParams
 }
 
-func identityCenterServiceStatusRefreshFunc(getRequestStatusHttpUrl, searchExpression string,
-	client *golangsdk.ServiceClient) resource.StateRefreshFunc {
+func identityCenterServiceStatusRefreshFunc(getRequestStatusHttpUrl, searchExpression string, client *golangsdk.ServiceClient) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getIdentityCenterServiceStatusPath := client.Endpoint + getRequestStatusHttpUrl
 
@@ -207,8 +189,7 @@ func resourceIdentityCenterInstanceRead(_ context.Context, d *schema.ResourceDat
 	listInstancesOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	listInstancesResp, err := listInstancesClient.Request("GET",
-		listInstancesPath, &listInstancesOpt)
+	listInstancesResp, err := listInstancesClient.Request("GET", listInstancesPath, &listInstancesOpt)
 
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center Instance")
@@ -219,21 +200,17 @@ func resourceIdentityCenterInstanceRead(_ context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	instances, _ := utils.PathSearch("instances", listInstancesRespBody, make([]interface{}, 0)).([]interface{})
-	if len(instances) == 0 {
+	instance := utils.PathSearch(fmt.Sprintf("instances[?instance_id =='%s']|[0]", d.Id()), listInstancesRespBody, nil)
+
+	if instance == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no instance found.")
 	}
 
 	mErr = multierror.Append(
 		mErr,
-		d.Set("identity_store_id", utils.PathSearch("instances|[0].identity_store_id",
-			listInstancesRespBody, nil)),
-		d.Set("instance_urn", utils.PathSearch("instances|[0].instance_urn",
-			listInstancesRespBody, nil)),
-		d.Set("alias", utils.PathSearch("instances|[0].alias",
-			listInstancesRespBody, nil)),
-		d.Set("instance_id", utils.PathSearch("instances|[0].instance_id",
-			listInstancesRespBody, nil)),
+		d.Set("identity_store_id", utils.PathSearch("identity_store_id", instance, nil)),
+		d.Set("instance_urn", utils.PathSearch("instance_urn", instance, nil)),
+		d.Set("alias", utils.PathSearch("alias", instance, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -245,53 +222,23 @@ func resourceIdentityCenterInstanceUpdate(ctx context.Context, d *schema.Resourc
 
 	var (
 		createAliasHttpUrl    = "v1/instances/{instance_id}/alias"
-		listInstancesHttpUrl  = "v1/instances"
 		identityCenterProduct = "identitycenter"
 	)
 
 	if d.HasChange("alias") {
-		listInstancesClient, err := cfg.NewServiceClient(identityCenterProduct, region)
+		client, err := cfg.NewServiceClient(identityCenterProduct, region)
 		if err != nil {
 			return diag.Errorf("error creating Identity Center Client: %s", err)
 		}
 
-		listInstancesPath := listInstancesClient.Endpoint + listInstancesHttpUrl
-
-		listInstancesOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-		}
-		listInstancesResp, err := listInstancesClient.Request("GET",
-			listInstancesPath, &listInstancesOpt)
-
-		if err != nil {
-			return common.CheckDeletedDiag(d, err, "error retrieving Identity Center Instance")
-		}
-
-		listInstancesRespBody, err := utils.FlattenResponse(listInstancesResp)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-
-		instances, _ := utils.PathSearch("instances", listInstancesRespBody, make([]interface{}, 0)).([]interface{})
-		if len(instances) == 0 {
-			return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "no instance found.")
-		}
-
-		instanceId := utils.PathSearch("instances|[0].instance_id", listInstancesRespBody, nil).(string)
-
-		createAliasClient, err := cfg.NewServiceClient(identityCenterProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating IdentityCenter client: %s", err)
-		}
-
-		createAliasPath := createAliasClient.Endpoint + createAliasHttpUrl
-		createAliasPath = strings.ReplaceAll(createAliasPath, "{instance_id}", instanceId)
+		createAliasPath := client.Endpoint + createAliasHttpUrl
+		createAliasPath = strings.ReplaceAll(createAliasPath, "{instance_id}", d.Id())
 		createAliasOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 			JSONBody:         utils.RemoveNil(buildCreateAliasBodyParams(d)),
 		}
 
-		_, err = createAliasClient.Request("POST", createAliasPath, &createAliasOpt)
+		_, err = client.Request("POST", createAliasPath, &createAliasOpt)
 
 		if err != nil {
 			return diag.Errorf("error creating IdentityCenter instance alias: %s", err)

@@ -2,7 +2,7 @@
 subcategory: "IAM Identity Center"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identitycenter_instance"
-description: |
+description: |-
   Manages an Identity Center instance resource within HuaweiCloud.
 ---
 
@@ -29,8 +29,6 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The resource ID.
 
 * `identity_store_id` - The ID of the identity store.
-
-* `instance_id` - The ID of the instance.
 
 * `instance_urn` - The urn of the instance.
 

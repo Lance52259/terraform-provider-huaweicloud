@@ -105,8 +105,7 @@ func resourceIdentityCenterRegisteredRegionRead(_ context.Context, d *schema.Res
 	describeRegisteredRegionsOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-	describeRegisteredRegionsResp, err := describeRegisteredRegionsClient.Request("GET",
-		describeRegisteredRegionsPath, &describeRegisteredRegionsOpt)
+	describeRegisteredRegionsResp, err := describeRegisteredRegionsClient.Request("GET", describeRegisteredRegionsPath, &describeRegisteredRegionsOpt)
 
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error retrieving Identity Center registered region")
@@ -124,8 +123,7 @@ func resourceIdentityCenterRegisteredRegionRead(_ context.Context, d *schema.Res
 
 	mErr = multierror.Append(
 		mErr,
-		d.Set("region_id", utils.PathSearch("regions|[0].region_id",
-			describeRegisteredRegionsRespBody, nil)),
+		d.Set("region_id", utils.PathSearch("regions|[0].region_id", describeRegisteredRegionsRespBody, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
