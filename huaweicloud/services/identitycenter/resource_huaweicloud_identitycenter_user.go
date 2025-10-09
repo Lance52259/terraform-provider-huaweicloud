@@ -229,12 +229,12 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 		disableUserHttpUrl              = "v1/identity-stores/{identity_store_id}/users/{user_id}/disable"
 		createIdentityCenterUserProduct = "identitystore"
 	)
-	createIdentityCenterUserClient, err := cfg.NewServiceClient(createIdentityCenterUserProduct, region)
+	client, err := cfg.NewServiceClient(createIdentityCenterUserProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	createIdentityCenterUserPath := createIdentityCenterUserClient.Endpoint + createIdentityCenterUserHttpUrl
+	createIdentityCenterUserPath := client.Endpoint + createIdentityCenterUserHttpUrl
 	createIdentityCenterUserPath = strings.ReplaceAll(createIdentityCenterUserPath, "{identity_store_id}",
 		fmt.Sprintf("%v", d.Get("identity_store_id")))
 
@@ -242,7 +242,7 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 		KeepResponseBody: true,
 	}
 	createIdentityCenterUserOpt.JSONBody = utils.RemoveNil(buildCreateIdentityCenterUserBodyParams(d))
-	createIdentityCenterUserResp, err := createIdentityCenterUserClient.Request("POST",
+	createIdentityCenterUserResp, err := client.Request("POST",
 		createIdentityCenterUserPath, &createIdentityCenterUserOpt)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center User: %s", err)
@@ -260,14 +260,14 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 	d.SetId(userId)
 
 	if !d.Get("enabled").(bool) {
-		disableUserPath := createIdentityCenterUserClient.Endpoint + disableUserHttpUrl
+		disableUserPath := client.Endpoint + disableUserHttpUrl
 		disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 		disableUserPath = strings.ReplaceAll(disableUserPath, "{user_id}", d.Id())
 
 		disableUserOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 		}
-		_, err = createIdentityCenterUserClient.Request("POST", disableUserPath, &disableUserOpt)
+		_, err = client.Request("POST", disableUserPath, &disableUserOpt)
 		if err != nil {
 			return diag.Errorf("error disabling Identity Center User: %s", err)
 		}
@@ -435,12 +435,12 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 		disableUserHttpUrl              = "v1/identity-stores/{identity_store_id}/users/{user_id}/disable"
 		updateIdentityCenterUserProduct = "identitystore"
 	)
-	updateIdentityCenterUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
+	client, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	updateIdentityCenterUserPath := updateIdentityCenterUserClient.Endpoint + updateIdentityCenterUserHttpUrl
+	updateIdentityCenterUserPath := client.Endpoint + updateIdentityCenterUserHttpUrl
 	updateIdentityCenterUserPath = strings.ReplaceAll(updateIdentityCenterUserPath, "{identity_store_id}",
 		fmt.Sprintf("%v", d.Get("identity_store_id")))
 	updateIdentityCenterUserPath = strings.ReplaceAll(updateIdentityCenterUserPath, "{user_id}", d.Id())
@@ -453,7 +453,7 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 		ops := params["operations"]
 		if ops != nil && len(ops.([]map[string]interface{})) > 0 {
 			updateIdentityCenterUserOpt.JSONBody = params
-			_, err = updateIdentityCenterUserClient.Request("PUT", updateIdentityCenterUserPath, &updateIdentityCenterUserOpt)
+			_, err = client.Request("PUT", updateIdentityCenterUserPath, &updateIdentityCenterUserOpt)
 			if err != nil {
 				return diag.Errorf("error updating Identity Center User: %s", err)
 			}
@@ -473,7 +473,7 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 			action = "disabling"
 		}
 
-		actionPath = updateIdentityCenterUserClient.Endpoint + actionHttpUrl
+		actionPath = client.Endpoint + actionHttpUrl
 		actionPath = strings.ReplaceAll(actionPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 		actionPath = strings.ReplaceAll(actionPath, "{user_id}", d.Id())
 
@@ -481,7 +481,7 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 			KeepResponseBody: true,
 		}
 
-		_, err = updateIdentityCenterUserClient.Request("POST", actionPath, &actionOpt)
+		_, err = client.Request("POST", actionPath, &actionOpt)
 		if err != nil {
 			return diag.Errorf("error %s Identity Center User: %s", action, err)
 		}
