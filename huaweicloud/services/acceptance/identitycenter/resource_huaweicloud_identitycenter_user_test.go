@@ -100,7 +100,6 @@ func TestAccIdentityCenterUser_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(rName, "updated_by"),
 					resource.TestCheckResourceAttrSet(rName, "email_verified"),
 					resource.TestCheckResourceAttr(rName, "enabled", "false"),
-					resource.TestCheckResourceAttr(rName, "user_status", "disabled"),
 				),
 			},
 			{
@@ -139,7 +138,6 @@ func TestAccIdentityCenterUser_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(rName, "updated_by"),
 					resource.TestCheckResourceAttrSet(rName, "email_verified"),
 					resource.TestCheckResourceAttr(rName, "enabled", "true"),
-					resource.TestCheckResourceAttr(rName, "user_status", "enabled"),
 				),
 			},
 			{
@@ -168,7 +166,7 @@ resource "huaweicloud_identitycenter_user" "test" {
   phone_number      = "13600000000"
   user_type         = "test_user_type"
   title             = "test_title"
-  user_status       = "disabled"
+  enabled           = "false"
 
   addresses {
     country        = "test_country"
@@ -207,7 +205,7 @@ resource "huaweicloud_identitycenter_user" "test" {
   phone_number      = "13600000001"
   user_type         = "test_user_type_update"
   title             = "test_title_update"
-  user_status       = "enabled"
+  enabled           = "true"
 
   addresses {
     country        = "test_country_update"

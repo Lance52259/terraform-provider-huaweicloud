@@ -66,9 +66,9 @@ The following arguments are supported:
 * `enterprise` - (Optional, List) Specifies the enterprise information of the user.
   The [enterprise](#enterprise_struct) structure is documented below.
 
-* `user_status` - (Optional, String) Specifies the status of the user. Value options:
-  + **enabled**
-  + **disabled**
+* `enabled` - (Optional, Bool) Whether the user is enabled. Value options:
+  + **true**
+  + **false**
 
 <a name="addresses_struct"></a>
 The `addresses` block supports:
@@ -116,8 +116,6 @@ In addition to all arguments above, the following attributes are exported:
 
 * `email_verified` - Whether the email is verified.
 
-* `enabled` - Whether the user is enabled.
-
 ## Import
 
 The IdentityCenter user can be imported using the `identity_store_id` and `id` separated by a slash, e.g.
@@ -127,7 +125,7 @@ $ terraform import huaweicloud_identitycenter_user.test <identity_store_id>/<id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes include: `password_mode`,`user_status`. It is generally
+API response, security or some other reason. The missing attributes include: `password_mode`. It is generally
 recommended running `terraform plan` after importing an IdentityCenter user. You can then decide if changes should be
 applied to the IdentityCenter user, or the resource definition should be updated to align with the instance. Also, you
 can ignore changes as below.
@@ -139,7 +137,6 @@ resource "huaweicloud_identitycenter_user" "user" {
   lifecycle {
     ignore_changes = [
       password_mode,
-      user_status,
     ]
   }
 }

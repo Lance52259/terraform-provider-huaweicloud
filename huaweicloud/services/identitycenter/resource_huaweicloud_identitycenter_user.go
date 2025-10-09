@@ -135,12 +135,9 @@ func ResourceIdentityCenterUser() *schema.Resource {
 			},
 			"enabled": {
 				Type:        schema.TypeBool,
+				Optional:    true,
 				Computed:    true,
 				Description: `Whether the user is enabled.`,
-			},
-			"user_status": {
-				Type:     schema.TypeString,
-				Optional: true,
 			},
 		},
 	}
@@ -262,22 +259,15 @@ func resourceIdentityCenterUserCreate(ctx context.Context, d *schema.ResourceDat
 	}
 	d.SetId(userId)
 
-	if status, ok := d.GetOk("user_status"); ok && status == "disabled" {
-		disableUserClient, err := cfg.NewServiceClient(createIdentityCenterUserProduct, region)
-		if err != nil {
-			return diag.Errorf("error creating Identity Center Client: %s", err)
-		}
-
-		disableUserPath := disableUserClient.Endpoint + disableUserHttpUrl
-		disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}",
-			fmt.Sprintf("%v", d.Get("identity_store_id")))
+	if !d.Get("enabled").(bool) {
+		disableUserPath := createIdentityCenterUserClient.Endpoint + disableUserHttpUrl
+		disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
 		disableUserPath = strings.ReplaceAll(disableUserPath, "{user_id}", d.Id())
 
 		disableUserOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 		}
-		_, err = disableUserClient.Request("POST", disableUserPath,
-			&disableUserOpt)
+		_, err = createIdentityCenterUserClient.Request("POST", disableUserPath, &disableUserOpt)
 		if err != nil {
 			return diag.Errorf("error disabling Identity Center User: %s", err)
 		}
@@ -463,55 +453,40 @@ func resourceIdentityCenterUserUpdate(ctx context.Context, d *schema.ResourceDat
 		ops := params["operations"]
 		if ops != nil && len(ops.([]map[string]interface{})) > 0 {
 			updateIdentityCenterUserOpt.JSONBody = params
-			_, err = updateIdentityCenterUserClient.Request("PUT", updateIdentityCenterUserPath,
-				&updateIdentityCenterUserOpt)
+			_, err = updateIdentityCenterUserClient.Request("PUT", updateIdentityCenterUserPath, &updateIdentityCenterUserOpt)
 			if err != nil {
 				return diag.Errorf("error updating Identity Center User: %s", err)
 			}
 		}
 	}
 
-	if d.HasChange("user_status") {
-		if d.Get("user_status").(string) == "enabled" {
-			enableUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
-			if err != nil {
-				return diag.Errorf("error creating Identity Center Client: %s", err)
-			}
+	if d.HasChange("enabled") {
+		var actionPath string
+		var actionHttpUrl string
+		var action string
 
-			enableUserPath := enableUserClient.Endpoint + enableUserHttpUrl
-			enableUserPath = strings.ReplaceAll(enableUserPath, "{identity_store_id}",
-				fmt.Sprintf("%v", d.Get("identity_store_id")))
-			enableUserPath = strings.ReplaceAll(enableUserPath, "{user_id}", d.Id())
+		if d.Get("enabled").(bool) {
+			actionHttpUrl = enableUserHttpUrl
+			action = "enabling"
+		} else {
+			actionHttpUrl = disableUserHttpUrl
+			action = "disabling"
+		}
 
-			enableUserOpt := golangsdk.RequestOpts{
-				KeepResponseBody: true,
-			}
-			_, err = enableUserClient.Request("POST", enableUserPath,
-				&enableUserOpt)
-			if err != nil {
-				return diag.Errorf("error enabling Identity Center User: %s", err)
-			}
-		} else if d.Get("user_status").(string) == "disabled" {
-			disableUserClient, err := cfg.NewServiceClient(updateIdentityCenterUserProduct, region)
-			if err != nil {
-				return diag.Errorf("error creating Identity Center Client: %s", err)
-			}
+		actionPath = updateIdentityCenterUserClient.Endpoint + actionHttpUrl
+		actionPath = strings.ReplaceAll(actionPath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+		actionPath = strings.ReplaceAll(actionPath, "{user_id}", d.Id())
 
-			disableUserPath := disableUserClient.Endpoint + disableUserHttpUrl
-			disableUserPath = strings.ReplaceAll(disableUserPath, "{identity_store_id}",
-				fmt.Sprintf("%v", d.Get("identity_store_id")))
-			disableUserPath = strings.ReplaceAll(disableUserPath, "{user_id}", d.Id())
+		actionOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
 
-			disableUserOpt := golangsdk.RequestOpts{
-				KeepResponseBody: true,
-			}
-			_, err = disableUserClient.Request("POST", disableUserPath,
-				&disableUserOpt)
-			if err != nil {
-				return diag.Errorf("error disabling Identity Center User: %s", err)
-			}
+		_, err = updateIdentityCenterUserClient.Request("POST", actionPath, &actionOpt)
+		if err != nil {
+			return diag.Errorf("error %s Identity Center User: %s", action, err)
 		}
 	}
+
 	return resourceIdentityCenterUserRead(ctx, d, meta)
 }
 
