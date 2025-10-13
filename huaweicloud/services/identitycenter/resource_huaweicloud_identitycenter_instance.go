@@ -226,12 +226,12 @@ func resourceIdentityCenterInstanceUpdate(ctx context.Context, d *schema.Resourc
 
 		updateAliasPath := client.Endpoint + httpUrl
 		updateAliasPath = strings.ReplaceAll(updateAliasPath, "{instance_id}", d.Id())
-		createAliasOpt := golangsdk.RequestOpts{
+		updateAliasOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 			JSONBody:         utils.RemoveNil(buildCreateAliasBodyParams(d)),
 		}
 
-		_, err = client.Request("POST", updateAliasPath, &createAliasOpt)
+		_, err = client.Request("POST", updateAliasPath, &updateAliasOpt)
 
 		if err != nil {
 			return diag.Errorf("error creating IdentityCenter instance alias: %s", err)
