@@ -29,7 +29,7 @@ The following arguments are supported:
 * `identity_store_id` - (Required, String, NonUpdatable) Specifies the ID of the identity store.
 
 * `state` - (Optional, String) Specifies the state of the service provider certificate. Value options: 
-   **ACTIVE**
+   **ACTIVE**.
 
 ## Attribute Reference
 
