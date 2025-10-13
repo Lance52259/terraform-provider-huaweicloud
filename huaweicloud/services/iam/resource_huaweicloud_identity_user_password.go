@@ -59,9 +59,9 @@ func resourceIdentityUserPasswordCreate(ctx context.Context, d *schema.ResourceD
 			},
 		},
 	}
-	response, err := iamClient.Request("POST", updateUserPasswordPath, &options)
+	_, err = iamClient.Request("POST", updateUserPasswordPath, &options)
 	if err != nil {
-		return diag.Errorf("error updateUserPassword: %d, %s", response.StatusCode, err)
+		return diag.Errorf("error updateUserPassword: %s", err)
 	}
 	d.SetId(userId)
 	return nil
