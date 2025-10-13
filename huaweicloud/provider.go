@@ -2419,6 +2419,10 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_access_control_attribute_configuration": identitycenter.ResourceAccessControlAttributeConfiguration(),
 			"huaweicloud_identitycenter_provision_permission_set":               identitycenter.ResourceProvisionPermissionSet(),
 			"huaweicloud_identitycenter_application_instance":                   identitycenter.ResourceIdentityCenterApplicationInstance(),
+			"huaweicloud_identitycenter_identity_provider":                      identitycenter.ResourceIdentityCenterIdentityProvider(),
+			"huaweicloud_identitycenter_identity_provider_certificate":          identitycenter.ResourceIdentityCenterIdentityProviderCertificate(),
+			"huaweicloud_identitycenter_tenant":                                 identitycenter.ResourceIdentityCenterTenant(),
+			"huaweicloud_identitycenter_bearer_token":                           identitycenter.ResourceIdentityCenterBearerToken(),
 
 			"huaweicloud_iec_eip":                 iec.ResourceEip(),
 			"huaweicloud_iec_keypair":             iec.ResourceKeypair(),
