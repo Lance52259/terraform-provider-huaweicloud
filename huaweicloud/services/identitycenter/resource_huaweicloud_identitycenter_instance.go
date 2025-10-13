@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -77,12 +76,6 @@ func resourceIdentityCenterInstanceCreate(ctx context.Context, d *schema.Resourc
 	if err != nil {
 		return diag.Errorf("error creating IdentityCenter instance: %s", err)
 	}
-
-	uuId, err := uuid.GenerateUUID()
-	if err != nil {
-		return diag.Errorf("unable to generate ID: %s", err)
-	}
-	d.SetId(uuId)
 
 	stateConf := &resource.StateChangeConf{
 		Pending: []string{"disable"},
@@ -231,14 +224,14 @@ func resourceIdentityCenterInstanceUpdate(ctx context.Context, d *schema.Resourc
 			return diag.Errorf("error creating Identity Center Client: %s", err)
 		}
 
-		createAliasPath := client.Endpoint + httpUrl
-		createAliasPath = strings.ReplaceAll(createAliasPath, "{instance_id}", d.Id())
+		updateAliasPath := client.Endpoint + httpUrl
+		updateAliasPath = strings.ReplaceAll(updateAliasPath, "{instance_id}", d.Id())
 		createAliasOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
 			JSONBody:         utils.RemoveNil(buildCreateAliasBodyParams(d)),
 		}
 
-		_, err = client.Request("POST", createAliasPath, &createAliasOpt)
+		_, err = client.Request("POST", updateAliasPath, &createAliasOpt)
 
 		if err != nil {
 			return diag.Errorf("error creating IdentityCenter instance alias: %s", err)
