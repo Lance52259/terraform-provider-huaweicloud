@@ -2415,6 +2415,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_system_policy_attachment":               identitycenter.ResourceSystemPolicyAttachment(),
 			"huaweicloud_identitycenter_system_identity_policy_attachment":      identitycenter.ResourceSystemIdentityPolicyAttachment(),
 			"huaweicloud_identitycenter_account_assignment":                     identitycenter.ResourceIdentityCenterAccountAssignment(),
+			"huaweicloud_identitycenter_application_certificate":                identitycenter.ResourceIdentityCenterApplicationCertificate(),
 			"huaweicloud_identitycenter_custom_policy_attachment":               identitycenter.ResourceCustomPolicyAttachment(),
 			"huaweicloud_identitycenter_custom_role_attachment":                 identitycenter.ResourceCustomRoleAttachment(),
 			"huaweicloud_identitycenter_access_control_attribute_configuration": identitycenter.ResourceAccessControlAttributeConfiguration(),
