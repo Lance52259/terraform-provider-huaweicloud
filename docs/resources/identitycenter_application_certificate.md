@@ -31,7 +31,7 @@ The following arguments are supported:
 * `application_instance_id` - (Required, String, NonUpdatable) Specifies the ID of the application instance.
 
 * `status` - (Optional, String) Whether if you need to create an active certificate. Value options:
-  **ACTIVE**
+  **ACTIVE**.
 
 ## Attribute Reference
 
