@@ -29,11 +29,11 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 		return nil, fmt.Errorf("error creating Identity Center Client: %s", err)
 	}
 
-	listPath := client.Endpoint + listHttpUrl
-	listPath = strings.ReplaceAll(listPath, "{instance_id}", state.Primary.Attributes["instance_id"])
-	listPath = strings.ReplaceAll(listPath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
+	listBasePath := client.Endpoint + listHttpUrl
+	listBasePath = strings.ReplaceAll(listBasePath, "{instance_id}", state.Primary.Attributes["instance_id"])
+	listBasePath = strings.ReplaceAll(listBasePath, "{application_instance_id}", state.Primary.Attributes["application_instance_id"])
 
-	listPath = listPath + buildGetApplicationAssignmentQueryParams("")
+	listPath := listBasePath + buildGetApplicationAssignmentQueryParams("")
 
 	listOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -62,7 +62,7 @@ func getApplicationAssignmentResourceFunc(cfg *config.Config, state *terraform.R
 		if marker == nil {
 			break
 		}
-		listPath = listPath + buildGetApplicationAssignmentQueryParams(marker.(string))
+		listPath = listBasePath + buildGetApplicationAssignmentQueryParams(marker.(string))
 	}
 
 	if assignment != nil {
@@ -136,24 +136,24 @@ data "huaweicloud_identitycenter_application_templates" "test"{
 }
 
 resource "huaweicloud_identitycenter_application_instance" "test"{
-  depends_on = [huaweicloud_identitycenter_user.test]
-  name = "%[2]s"
-  template_id = data.huaweicloud_identitycenter_application_templates.test.application_templates[0].template_id
-  instance_id = data.huaweicloud_identitycenter_instance.test.id
-  display_name = "create"
-  description = "create"
-  response_schema_config = "{\"properties\":{\"key1\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"},\"key2\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\",\"include\":\"YES\"},\"key5\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"},\"key3\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:uri\",\"include\":\"YES\"},\"key4\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"}},\"subject\":{\"name_id_format\":\"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress\",\"include\":\"REQUIRED\"},\"supported_name_id_formats\":[]}"
-  response_config = "{\"properties\":{\"key1\":{\"source\":[\"$${user:email}\"]},\"key2\":{\"source\":[\"$${user:familyName}\"]},\"key5\":{\"source\":[\"$${user:preferredUsername}\"]},\"key3\":{\"source\":[\"$${user:givenName}\"]},\"key4\":{\"source\":[\"$${user:familyName}\"]}},\"subject\":{\"source\":[\"$${user:name}\"]},\"relay_state\":null,\"ttl\":\"PT1H\"}"
+  depends_on                  = [huaweicloud_identitycenter_user.test]
+  name                        = "%[2]s"
+  template_id                 = data.huaweicloud_identitycenter_application_templates.test.application_templates[0].template_id
+  instance_id                 = data.huaweicloud_identitycenter_instance.test.id
+  display_name                = "create"
+  description                 = "create"
+  response_schema_config      = "{\"properties\":{\"key1\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"},\"key2\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\",\"include\":\"YES\"},\"key5\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"},\"key3\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:uri\",\"include\":\"YES\"},\"key4\":{\"attr_name_format\":\"urn:oasis:names:tc:SAML:2.0:attrname-format:basic\",\"include\":\"YES\"}},\"subject\":{\"name_id_format\":\"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress\",\"include\":\"REQUIRED\"},\"supported_name_id_formats\":[]}"
+  response_config             = "{\"properties\":{\"key1\":{\"source\":[\"$${user:email}\"]},\"key2\":{\"source\":[\"$${user:familyName}\"]},\"key5\":{\"source\":[\"$${user:preferredUsername}\"]},\"key3\":{\"source\":[\"$${user:givenName}\"]},\"key4\":{\"source\":[\"$${user:familyName}\"]}},\"subject\":{\"source\":[\"$${user:name}\"]},\"relay_state\":null,\"ttl\":\"PT1H\"}"
   security_config {
-    ttl = "P9M"
+    ttl                       = "P9M"
   }
   service_provider_config {
-    audience = "https://create.com"
+    audience                  = "https://create.com"
     require_request_signature = false
-    consumers{
-        binding = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
-        default_value = true
-        location = "https://create.com"
+    consumers {
+        binding               = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+        default_value         = true
+        location              = "https://create.com"
     }
   }
 }
