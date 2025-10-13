@@ -30,7 +30,7 @@ resource "huaweicloud_identity_agency" "agency" {
   all_resources_roles = ["Server Administrator"]
   enterprise_project_roles {
     enterprise_project = "test_enterprise_project"
-    roles   = ["CCE ReadOnlyAccess"]
+    roles              = ["CCE ReadOnlyAccess"]
   }
 }
 ```
@@ -65,7 +65,7 @@ The following arguments are supported:
 
 -> **NOTE**
 At least one of `project_role`, `domain_roles`, `all_resources_roles` and `enterprise_project_roles` must be specified 
-when creating an agency. We can get all **System-Defined Roles** form
+when creating an agency. We can get all **System-Defined Roles** from
 [HuaweiCloud](https://support.huaweicloud.com/intl/en-us/usermanual-permissions/iam_01_0001.html).
 
 The `project_role` block supports:

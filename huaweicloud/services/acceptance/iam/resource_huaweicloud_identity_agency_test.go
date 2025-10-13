@@ -109,7 +109,7 @@ resource "huaweicloud_identity_agency" "test" {
   ]
   enterprise_project_roles {
     enterprise_project = "%s"
-    roles   = ["CCE ReadOnlyAccess"]
+    roles              = ["CCE ReadOnlyAccess"]
   }
 }
 `, rName, acceptance.HW_DOMAIN_NAME, acceptance.HW_REGION_NAME, acceptance.HW_ENTERPRISE_PROJECT_NAME)
@@ -137,7 +137,7 @@ resource "huaweicloud_identity_agency" "test" {
   ]
   enterprise_project_roles {
     enterprise_project = "%s"
-    roles   = ["RDS ReadOnlyAccess"]
+    roles              = ["RDS ReadOnlyAccess"]
   }
 }
 `, rName, duration, acceptance.HW_DOMAIN_NAME, acceptance.HW_REGION_NAME, acceptance.HW_ENTERPRISE_PROJECT_NAME)
