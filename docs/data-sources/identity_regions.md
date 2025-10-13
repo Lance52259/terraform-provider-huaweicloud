@@ -13,8 +13,7 @@ Use this data source to query the region list within HuaweiCloud.
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identity_regions" "test1" {
-}
+data "huaweicloud_identity_regions" "test1" {}
 
 data "huaweicloud_identity_regions" "test2" {
   region_id = "cn-north-4"
