@@ -80,9 +80,9 @@ func flattenProjects(projectsModel []interface{}) []map[string]interface{} {
 	projects := make([]map[string]interface{}, 0, len(projectsModel))
 	for _, project := range projectsModel {
 		projects = append(projects, map[string]interface{}{
-			"id":      utils.PathSearch("id", project, ""),
-			"name":    utils.PathSearch("name", project, ""),
-			"enabled": utils.PathSearch("enabled", project, ""),
+			"id":      utils.PathSearch("id", project, nil),
+			"name":    utils.PathSearch("name", project, nil),
+			"enabled": utils.PathSearch("enabled", project, nil),
 		})
 	}
 	return projects
