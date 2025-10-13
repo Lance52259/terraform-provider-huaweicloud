@@ -143,7 +143,7 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
 	if err = d.Set("role_assignments", res); err != nil {
-		return diag.Errorf("error setting total_num fields: %s", err)
+		return diag.Errorf("error setting role assignmnets: %s", err)
 	}
 	return nil
 }
