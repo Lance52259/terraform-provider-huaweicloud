@@ -66,27 +66,43 @@ resource "huaweicloud_identity_agency" "test" {
   ]
 }
 
+data "huaweicloud_identity_role" "role_1" {
+  display_name = "Server Administrator"
+}
+
+data "huaweicloud_identity_role" "role_2" {
+  display_name = "CCE Administrator"
+}
+
+data "huaweicloud_identity_role" "role_3" {
+  display_name = "VPC Administrator"
+}
+
+data "huaweicloud_identity_role" "role_4" {
+  display_name = "AAD FullAccess"
+}
+
 data "huaweicloud_identity_check_agency_role_assignment" "test_domain" {
-  agency_id  = huaweicloud_identity_agency.test.id
-  role_id   = "61f48a1c78b64ed9b966cb1747337488"
+  agency_id = huaweicloud_identity_agency.test.id
+  role_id   = data.huaweicloud_identity_role.role_1.id
   domain_id = "%s"
 }
 
 data "huaweicloud_identity_check_agency_role_assignment" "test_project" {
-  agency_id   = huaweicloud_identity_agency.test.id
-  role_id    = "45c78aba7ad541c4a4e3d64085fc0339"
+  agency_id  = huaweicloud_identity_agency.test.id
+  role_id    = data.huaweicloud_identity_role.role_2.id
   project_id = "%s"
 }
 
 data "huaweicloud_identity_check_agency_role_assignment" "test_project_all" {
-  agency_id   = huaweicloud_identity_agency.test.id
-  role_id    = "3e36e08c3bc049289790f496797b312b"
+  agency_id  = huaweicloud_identity_agency.test.id
+  role_id    = data.huaweicloud_identity_role.role_3.id
   project_id = "all"
 }
 
 data "huaweicloud_identity_check_agency_role_assignment" "test_domain_not" {
-  agency_id  = huaweicloud_identity_agency.test.id
-  role_id   = "3383644449894377b248351f66bf0f85"
+  agency_id = huaweicloud_identity_agency.test.id
+  role_id   = data.huaweicloud_identity_role.role_4.id
   domain_id = "%s"
 }
 `, agencyName, acceptance.HW_DOMAIN_NAME, acceptance.HW_REGION_NAME,

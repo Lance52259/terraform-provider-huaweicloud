@@ -52,27 +52,43 @@ resource "huaweicloud_identity_group" "test" {
   name = "%s"
 }
 
+data "huaweicloud_identity_role" "role_1" {
+  display_name = "AAD FullAccess"
+}
+
+data "huaweicloud_identity_role" "role_2" {
+  display_name = "AAD ReadOnlyAccess"
+}
+
+data "huaweicloud_identity_role" "role_3" {
+  display_name = "ADN ReadOnlyAccess"
+}
+
+data "huaweicloud_identity_role" "role_4" {
+  display_name = "APIG Administrator"
+}
+
 resource "huaweicloud_identity_group_role_assignment" "test_domain" {
   group_id  = huaweicloud_identity_group.test.id
-  role_id   = "3383644449894377b248351f66bf0f85"
+  role_id   = data.huaweicloud_identity_role.role_1.id
   domain_id = "%s"
 }
 
 resource "huaweicloud_identity_group_role_assignment" "test_project" {
   group_id   = huaweicloud_identity_group.test.id
-  role_id    = "10017524de564f6cb32ad7b6a8aa0241"
+  role_id    = data.huaweicloud_identity_role.role_2.id
   project_id = "%s"
 }
 
 resource "huaweicloud_identity_group_role_assignment" "test_project_all" {
   group_id   = huaweicloud_identity_group.test.id
-  role_id    = "0aa17b1746e14695b53c358cd59efd9c"
+  role_id    = data.huaweicloud_identity_role.role_3.id
   project_id = "all"
 }
 
 data "huaweicloud_identity_check_group_role_assignment" "test_domain" {
   group_id  = huaweicloud_identity_group.test.id
-  role_id   = "3383644449894377b248351f66bf0f85"
+  role_id   = data.huaweicloud_identity_role.role_1.id
   domain_id = "%s"
 
   depends_on = [huaweicloud_identity_group_role_assignment.test_domain]
@@ -80,7 +96,7 @@ data "huaweicloud_identity_check_group_role_assignment" "test_domain" {
 
 data "huaweicloud_identity_check_group_role_assignment" "test_project" {
   group_id   = huaweicloud_identity_group.test.id
-  role_id    = "10017524de564f6cb32ad7b6a8aa0241"
+  role_id    = data.huaweicloud_identity_role.role_2.id
   project_id = "%s"
 
   depends_on = [huaweicloud_identity_group_role_assignment.test_project]
@@ -88,7 +104,7 @@ data "huaweicloud_identity_check_group_role_assignment" "test_project" {
 
 data "huaweicloud_identity_check_group_role_assignment" "test_project_all" {
   group_id   = huaweicloud_identity_group.test.id
-  role_id    = "0aa17b1746e14695b53c358cd59efd9c"
+  role_id    = data.huaweicloud_identity_role.role_3.id
   project_id = "all"
 
   depends_on = [huaweicloud_identity_group_role_assignment.test_project_all]
@@ -96,7 +112,7 @@ data "huaweicloud_identity_check_group_role_assignment" "test_project_all" {
 
 data "huaweicloud_identity_check_group_role_assignment" "test_domain_not" {
   group_id  = huaweicloud_identity_group.test.id
-  role_id   = "7b2db53d1def4b8c8d3b7da2ffc689fe"
+  role_id   = data.huaweicloud_identity_role.role_4.id
   domain_id = "%s"
 }
 `, groupName, acceptance.HW_DOMAIN_ID, acceptance.HW_PROJECT_ID,
