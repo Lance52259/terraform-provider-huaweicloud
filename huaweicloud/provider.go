@@ -1152,6 +1152,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_security_compliance":          iam.DataSourceIdentitySecurityCompliance(),
 			"huaweicloud_identity_access_key":                   iam.DataSourceIdentityAccessKey(),
 			"huaweicloud_identity_endpoints":                    iam.DataSourceIdentityEndpoints(),
+			"huaweicloud_identity_catalog":                      iam.DataSourceIdentityCatalog(),
 
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
