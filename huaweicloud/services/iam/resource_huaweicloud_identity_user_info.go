@@ -62,9 +62,9 @@ func resourceIdentityUserInfoCreate(ctx context.Context, d *schema.ResourceData,
 		OkCodes:  []int{204},
 		JSONBody: map[string]interface{}{"user": user},
 	}
-	response, err := iamClient.Request("PUT", updateUserInfoPath, &options)
+	_, err = iamClient.Request("PUT", updateUserInfoPath, &options)
 	if err != nil {
-		return diag.Errorf("error updateUserInfo: %d, %s", response.StatusCode, err)
+		return diag.Errorf("error updateUserInfo: %s", err)
 	}
 	d.SetId(userId)
 	return nil
