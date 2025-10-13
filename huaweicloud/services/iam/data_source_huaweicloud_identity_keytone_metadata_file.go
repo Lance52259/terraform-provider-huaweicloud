@@ -59,7 +59,7 @@ func dataSourceIdentityKeystoneMetadataFileRead(_ context.Context, d *schema.Res
 		return diag.FromErr(err)
 	}
 	if err = d.Set("metadata_file", string(body)); err != nil {
-		return diag.Errorf("error set metadata_file filed: %s", err)
+		return diag.Errorf("error set metadata_file field: %s", err)
 	}
 	return nil
 }

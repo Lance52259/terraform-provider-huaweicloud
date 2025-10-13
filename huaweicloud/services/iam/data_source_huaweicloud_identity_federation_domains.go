@@ -94,10 +94,10 @@ func flattenDomains(domainsBody []interface{}) []map[string]interface{} {
 	domains := make([]map[string]interface{}, 0, len(domainsBody))
 	for _, domain := range domainsBody {
 		domains = append(domains, map[string]interface{}{
-			"id":          utils.PathSearch("id", domain, ""),
-			"name":        utils.PathSearch("name", domain, ""),
-			"description": utils.PathSearch("description", domain, ""),
-			"enabled":     utils.PathSearch("enabled", domain, ""),
+			"id":          utils.PathSearch("id", domain, nil),
+			"name":        utils.PathSearch("name", domain, nil),
+			"description": utils.PathSearch("description", domain, nil),
+			"enabled":     utils.PathSearch("enabled", domain, nil),
 		})
 	}
 	return domains
