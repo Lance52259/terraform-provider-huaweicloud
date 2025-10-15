@@ -1,0 +1,262 @@
+package iam
+
+import (
+	"context"
+	"strings"
+
+	"github.com/chnsz/golangsdk"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+)
+
+// @API IAM PUT /v3.0/OS-USER/users/{user_id}/login-protect
+
+// @API IAM POST /v5/users
+// @API IAM GET /v5/users/{user_id}
+// @API IAM PUT /v5/users/{user_id}
+// @API IAM DELETE /v5/users/{user_id}
+// @API IAM GET /v5/users/{user_id}/last-login
+func ResourceIdentityUserV5() *schema.Resource {
+	return &schema.Resource{
+		CreateContext: resourceIdentityUserV5Create,
+		ReadContext:   resourceIdentityUserV5Read,
+		UpdateContext: resourceIdentityUserV5Update,
+		DeleteContext: resourceIdentityUserV5Delete,
+
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
+
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"description": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"user_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"user_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"is_root_user": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"created_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"urn": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"tags": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"tag_key": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"tag_value": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"last_login_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+		},
+	}
+}
+
+func resourceIdentityUserV5Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
+	}
+
+	if cfg.DomainID == "" {
+		return diag.Errorf("the domain_id must be specified in the provider configuration")
+	}
+
+	createUserHttpUrl := "v5/users"
+	createUserPath := iamClient.Endpoint + createUserHttpUrl
+	createUserOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody:         utils.RemoveNil(buildCreateUserBodyParams(d)),
+	}
+	createUserResp, err := iamClient.Request("POST", createUserPath, &createUserOpt)
+	if err != nil {
+		return diag.Errorf("error creating IAM User: %s", err)
+	}
+	createUserBody, err := utils.FlattenResponse(createUserResp)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	id := utils.PathSearch("user.user_id", createUserBody, "").(string)
+	if id == "" {
+		return diag.Errorf("error creating IAM user: user_id is not found in API response")
+	}
+	d.SetId(id)
+	return resourceIdentityUserV5Read(ctx, d, meta)
+}
+
+func buildCreateUserBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"name":        d.Get("name").(string),
+		"enabled":     utils.ValueIgnoreEmpty(d.Get("enabled")),
+		"description": utils.ValueIgnoreEmpty(d.Get("description")),
+	}
+	return bodyParams
+}
+
+func resourceIdentityUserV5Read(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
+	}
+
+	getUserHttpUrl := "v5/users/{user_id}"
+	getUserPath := iamClient.Endpoint + getUserHttpUrl
+	getUserPath = strings.ReplaceAll(getUserPath, "{user_id}", d.Id())
+	getUserOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	getUserResp, err := iamClient.Request("GET", getUserPath, &getUserOpt)
+	if err != nil {
+		return diag.Errorf("error get IAM User: %s", err)
+	}
+	getUserRespBody, err := utils.FlattenResponse(getUserResp)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	user := utils.PathSearch("user", getUserRespBody, nil)
+	if user == nil {
+		return diag.Errorf("error getting IAM user: user is not found in API response")
+	}
+
+	tags := listUserTagInfo(user)
+	getLastLoginHttpUrl := "v5/users/{user_id}/last-login"
+	getLastLoginPath := iamClient.Endpoint + getLastLoginHttpUrl
+	getLastLoginPath = strings.ReplaceAll(getLastLoginPath, "{user_id}", d.Id())
+	getLastLoginOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	getLastLoginResp, err := iamClient.Request("GET", getLastLoginPath, &getLastLoginOpt)
+	if err != nil {
+		return diag.Errorf("error get IAM User last login time: %s", err)
+	}
+	userLastLogin, err := utils.FlattenResponse(getLastLoginResp)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	mErr := multierror.Append(nil,
+		d.Set("user_name", utils.PathSearch("user_name", user, nil)),
+		d.Set("description", utils.PathSearch("description", user, nil)),
+		d.Set("is_root_user", utils.PathSearch("is_root_user", user, nil)),
+		d.Set("created_at", utils.PathSearch("created_at", user, nil)),
+		d.Set("user_id", utils.PathSearch("user_id", user, nil)),
+		d.Set("urn", utils.PathSearch("urn", user, nil)),
+		d.Set("enabled", utils.PathSearch("enabled", user, nil)),
+		d.Set("last_login_at", utils.PathSearch("last_login_at", userLastLogin, nil)),
+		d.Set("tags", tags),
+	)
+
+	if err = mErr.ErrorOrNil(); err != nil {
+		return diag.Errorf("error setting IAM user fields: %s", err)
+	}
+	return nil
+}
+
+func listUserTagInfo(user interface{}) []interface{} {
+	if user == nil {
+		return nil
+	}
+	curJson := utils.PathSearch("tags", user, make([]interface{}, 0))
+	curArray := curJson.([]interface{})
+	results := make([]interface{}, 0, len(curArray))
+	for _, tag := range curArray {
+		results = append(results, map[string]interface{}{
+			"tag_key":   utils.PathSearch("tag_key", tag, nil),
+			"tag_value": utils.PathSearch("tag_value", tag, nil),
+		})
+	}
+	return results
+}
+
+func resourceIdentityUserV5Update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
+	}
+
+	updateChanges := []string{
+		"name",
+		"description",
+		"enabled",
+	}
+	if d.HasChanges(updateChanges...) {
+		updateUserHttpUrl := "v5/users/{user_id}"
+		updateUserPath := iamClient.Endpoint + updateUserHttpUrl
+		updateUserPath = strings.ReplaceAll(updateUserPath, "{user_id}", d.Id())
+		updateUserOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			JSONBody: map[string]interface{}{
+				"new_user_name":   d.Get("name"),
+				"new_description": d.Get("description"),
+				"enabled":         d.Get("enabled"),
+			},
+		}
+		_, err := iamClient.Request("PUT", updateUserPath, &updateUserOpt)
+		if err != nil {
+			return diag.Errorf("error updating IAM user: %s", err)
+		}
+	}
+
+	return resourceIdentityUserV5Read(ctx, d, meta)
+}
+
+func resourceIdentityUserV5Delete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
+	}
+
+	deleteUserHttpUrl := "v5/users/{user_id}"
+	deleteUserPath := iamClient.Endpoint + deleteUserHttpUrl
+	deleteUserPath = strings.ReplaceAll(deleteUserPath, "{user_id}", d.Id())
+	deleteUserOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+
+	_, err = iamClient.Request("DELETE", deleteUserPath, &deleteUserOpt)
+	if err != nil {
+		return diag.Errorf("error deleting IAM user: %s", err)
+	}
+
+	return nil
+}
