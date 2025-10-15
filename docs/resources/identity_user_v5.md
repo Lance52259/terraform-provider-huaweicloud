@@ -8,21 +8,11 @@ description: |-
 
 # huaweicloud_identity_user_v5
 
+Manages an IAM user v5 resource within HuaweiCloud.
+
+-> NOTE: You must have admin privileges to use this resource.
+
 ## Example Usage
-
-### Create IAM User
-
-```hcl
-variable "name" {}
-
-resource "huaweicloud_identity_user_v5" "user" {
-  name        = var.name
-  enabled     = true
-  description = "tested by terraform"
-}
-```
- 
-### Update IAM User
 
 ```hcl
 variable "name" {}
@@ -50,7 +40,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `user_name` - Indicates the IAM username.
+* `name` - Indicates the IAM username.
 
 * `is_root_user` - Indicates whether the user is root user or user.
 
@@ -72,4 +62,6 @@ The `tags` block contains:
 
 * `tag_value` - Indicates the service ID.
 
-
+```bash
+$ terraform import huaweicloud_identity_user_v5.user 89c60255-9bd6-460c-822a-e2b959ede9d2
+```

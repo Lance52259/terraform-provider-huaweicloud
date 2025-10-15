@@ -13,8 +13,6 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API IAM PUT /v3.0/OS-USER/users/{user_id}/login-protect
-
 // @API IAM POST /v5/users
 // @API IAM GET /v5/users/{user_id}
 // @API IAM PUT /v5/users/{user_id}
@@ -39,14 +37,11 @@ func ResourceIdentityUserV5() *schema.Resource {
 			"enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-			},
-			"user_name": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 			"user_id": {
 				Type:     schema.TypeString,
@@ -173,7 +168,7 @@ func resourceIdentityUserV5Read(_ context.Context, d *schema.ResourceData, meta 
 		return diag.FromErr(err)
 	}
 	mErr := multierror.Append(nil,
-		d.Set("user_name", utils.PathSearch("user_name", user, nil)),
+		d.Set("name", utils.PathSearch("user_name", user, nil)),
 		d.Set("description", utils.PathSearch("description", user, nil)),
 		d.Set("is_root_user", utils.PathSearch("is_root_user", user, nil)),
 		d.Set("created_at", utils.PathSearch("created_at", user, nil)),
@@ -224,11 +219,7 @@ func resourceIdentityUserV5Update(ctx context.Context, d *schema.ResourceData, m
 		updateUserPath = strings.ReplaceAll(updateUserPath, "{user_id}", d.Id())
 		updateUserOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			JSONBody: map[string]interface{}{
-				"new_user_name":   d.Get("name"),
-				"new_description": d.Get("description"),
-				"enabled":         d.Get("enabled"),
-			},
+			JSONBody:         utils.RemoveNil(buildUpdateUserBodyParams(d)),
 		}
 		_, err := iamClient.Request("PUT", updateUserPath, &updateUserOpt)
 		if err != nil {
@@ -237,6 +228,15 @@ func resourceIdentityUserV5Update(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	return resourceIdentityUserV5Read(ctx, d, meta)
+}
+
+func buildUpdateUserBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"new_user_name":   d.Get("name").(string),
+		"enabled":         utils.ValueIgnoreEmpty(d.Get("enabled")),
+		"new_description": utils.ValueIgnoreEmpty(d.Get("description")),
+	}
+	return bodyParams
 }
 
 func resourceIdentityUserV5Delete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

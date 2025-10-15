@@ -50,6 +50,7 @@ func TestAccIdentityUserV5_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckAdminOnly(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -58,18 +59,33 @@ func TestAccIdentityUserV5_basic(t *testing.T) {
 				Config: testAccIdentityUserV5_basic(userName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "user_name", userName),
+					resource.TestCheckResourceAttr(resourceName, "name", userName),
 					resource.TestCheckResourceAttr(resourceName, "description", "tested by terraform"),
 					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+					resource.TestCheckResourceAttrSet(resourceName, "is_root_user"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "user_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "urn"),
+					resource.TestCheckResourceAttrSet(resourceName, "tags.#"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
 			},
 			{
 				Config: testAccIdentityUserV5_update(userNameUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "user_name", userNameUpdate),
+					resource.TestCheckResourceAttr(resourceName, "name", userNameUpdate),
 					resource.TestCheckResourceAttr(resourceName, "description", "update by terraform"),
-					resource.TestCheckResourceAttr(resourceName, "enabled", "true"),
+					resource.TestCheckResourceAttr(resourceName, "enabled", "false"),
+					resource.TestCheckResourceAttrSet(resourceName, "is_root_user"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "user_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "urn"),
+					resource.TestCheckResourceAttrSet(resourceName, "tags.#"),
 				),
 			},
 		},
@@ -80,7 +96,6 @@ func testAccIdentityUserV5_basic(name string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_user_v5" "user_1" {
  name        = "%[1]s"
- enabled     = true
  description = "tested by terraform"
 }
 `, name)
@@ -90,7 +105,7 @@ func testAccIdentityUserV5_update(name string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identity_user_v5" "user_1" {
   name        = "%[1]s"
-  enabled     = true
+  enabled     = false
   description = "update by terraform"
 }
 `, name)
