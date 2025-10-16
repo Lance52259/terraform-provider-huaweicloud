@@ -1,6 +1,6 @@
 # Create a Kubernetes namespace under the CCE environment
 
-This example provides best practice code for using Terraform to create a namespace (via Kubenetes provider) under the
+This example provides best practice code for using Terraform to create a namespace (via Kubernetes provider) under the
 CCE (Cloud Container Engine) environment (The cluster with a node, and enable the public EIP access) in HuaweiCloud.
 
 For the Kubernetes provider authentication, this example demonstrates how to configure the Kubernetes provider to
@@ -147,15 +147,6 @@ The example creates a Kubernetes namespace with the following features:
 * **Namespace Management**: Creates a dedicated namespace for application deployment
 * **Dependency Management**: Ensures the namespace is created after the node is ready
 * **Integration**: Seamless integration with the CCE cluster
-
-### Storage Configuration
-
-The example supports flexible storage configuration:
-
-* **Root Volume**: System volume for the node
-* **Data Volumes**: Additional volumes for application data
-* **Volume Types**: Support for different volume types (SSD, SATA, etc.)
-* **Size Configuration**: Flexible volume size configuration
 
 ## Note
 
