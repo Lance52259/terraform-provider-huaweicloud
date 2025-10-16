@@ -18,12 +18,12 @@ import (
 // @API IAM PUT /v5/users/{user_id}
 // @API IAM DELETE /v5/users/{user_id}
 // @API IAM GET /v5/users/{user_id}/last-login
-func ResourceIdentityUserV5() *schema.Resource {
+func ResourceIdentityV5User() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: resourceIdentityUserV5Create,
-		ReadContext:   resourceIdentityUserV5Read,
-		UpdateContext: resourceIdentityUserV5Update,
-		DeleteContext: resourceIdentityUserV5Delete,
+		CreateContext: resourceIdentityV5UserCreate,
+		ReadContext:   resourceIdentityV5UserRead,
+		UpdateContext: resourceIdentityV5UserUpdate,
+		DeleteContext: resourceIdentityV5UserDelete,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -83,7 +83,7 @@ func ResourceIdentityUserV5() *schema.Resource {
 	}
 }
 
-func resourceIdentityUserV5Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
 	if err != nil {
@@ -114,7 +114,7 @@ func resourceIdentityUserV5Create(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating IAM user: user_id is not found in API response")
 	}
 	d.SetId(id)
-	return resourceIdentityUserV5Read(ctx, d, meta)
+	return resourceIdentityV5UserRead(ctx, d, meta)
 }
 
 func buildCreateUserBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -126,7 +126,7 @@ func buildCreateUserBodyParams(d *schema.ResourceData) map[string]interface{} {
 	return bodyParams
 }
 
-func resourceIdentityUserV5Read(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
 	if err != nil {
@@ -178,7 +178,6 @@ func resourceIdentityUserV5Read(_ context.Context, d *schema.ResourceData, meta 
 		d.Set("last_login_at", utils.PathSearch("last_login_at", userLastLogin, nil)),
 		d.Set("tags", tags),
 	)
-
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting IAM user fields: %s", err)
 	}
@@ -201,13 +200,12 @@ func listUserTagInfo(user interface{}) []interface{} {
 	return results
 }
 
-func resourceIdentityUserV5Update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-
 	updateChanges := []string{
 		"name",
 		"description",
@@ -219,44 +217,40 @@ func resourceIdentityUserV5Update(ctx context.Context, d *schema.ResourceData, m
 		updateUserPath = strings.ReplaceAll(updateUserPath, "{user_id}", d.Id())
 		updateUserOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			JSONBody:         utils.RemoveNil(buildUpdateUserBodyParams(d)),
+			JSONBody:         buildUpdateUserBodyParams(d),
 		}
 		_, err := iamClient.Request("PUT", updateUserPath, &updateUserOpt)
 		if err != nil {
 			return diag.Errorf("error updating IAM user: %s", err)
 		}
 	}
-
-	return resourceIdentityUserV5Read(ctx, d, meta)
+	return resourceIdentityV5UserRead(ctx, d, meta)
 }
 
 func buildUpdateUserBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"new_user_name":   d.Get("name").(string),
-		"enabled":         utils.ValueIgnoreEmpty(d.Get("enabled")),
-		"new_description": utils.ValueIgnoreEmpty(d.Get("description")),
+		"enabled":         d.Get("enabled"),
+		"new_description": d.Get("description").(string),
 	}
 	return bodyParams
 }
 
-func resourceIdentityUserV5Delete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-
 	deleteUserHttpUrl := "v5/users/{user_id}"
 	deleteUserPath := iamClient.Endpoint + deleteUserHttpUrl
 	deleteUserPath = strings.ReplaceAll(deleteUserPath, "{user_id}", d.Id())
 	deleteUserOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
-
 	_, err = iamClient.Request("DELETE", deleteUserPath, &deleteUserOpt)
 	if err != nil {
 		return diag.Errorf("error deleting IAM user: %s", err)
 	}
-
 	return nil
 }

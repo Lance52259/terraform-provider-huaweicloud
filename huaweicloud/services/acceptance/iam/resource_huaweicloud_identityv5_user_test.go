@@ -34,12 +34,12 @@ func getIdentityUserResourceFuncV5(cfg *config.Config, state *terraform.Resource
 	return utils.FlattenResponse(getUserResp)
 }
 
-func TestAccIdentityUserV5_basic(t *testing.T) {
+func TestAccIdentityV5User_basic(t *testing.T) {
 	var user users.User
 	userName := acceptance.RandomAccResourceName()
 	userNameUpdate := acceptance.RandomAccResourceName()
 
-	resourceName := "huaweicloud_identity_user_v5.user_1"
+	resourceName := "huaweicloud_identityv5_user.user_1"
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
@@ -56,7 +56,7 @@ func TestAccIdentityUserV5_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccIdentityUserV5_basic(userName),
+				Config: testAccIdentityV5User_basic(userName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", userName),
@@ -75,7 +75,7 @@ func TestAccIdentityUserV5_basic(t *testing.T) {
 				ImportStateVerify: true,
 			},
 			{
-				Config: testAccIdentityUserV5_update(userNameUpdate),
+				Config: testAccIdentityV5User_update(userNameUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", userNameUpdate),
@@ -92,18 +92,18 @@ func TestAccIdentityUserV5_basic(t *testing.T) {
 	})
 }
 
-func testAccIdentityUserV5_basic(name string) string {
+func testAccIdentityV5User_basic(name string) string {
 	return fmt.Sprintf(`
-resource "huaweicloud_identity_user_v5" "user_1" {
+resource "huaweicloud_identityv5_user" "user_1" {
  name        = "%[1]s"
  description = "tested by terraform"
 }
 `, name)
 }
 
-func testAccIdentityUserV5_update(name string) string {
+func testAccIdentityV5User_update(name string) string {
 	return fmt.Sprintf(`
-resource "huaweicloud_identity_user_v5" "user_1" {
+resource "huaweicloud_identityv5_user" "user_1" {
   name        = "%[1]s"
   enabled     = false
   description = "update by terraform"

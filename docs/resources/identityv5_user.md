@@ -1,12 +1,12 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identity_user_v5"
+page_title: "HuaweiCloud: huaweicloud_identityv5_user"
 description: |-
   Manages an IAM user v5 resource within HuaweiCloud.
 ---
 
-# huaweicloud_identity_user_v5
+# huaweicloud_identityv5_user
 
 Manages an IAM user v5 resource within HuaweiCloud.
 
@@ -17,7 +17,7 @@ Manages an IAM user v5 resource within HuaweiCloud.
 ```hcl
 variable "name" {}
 
-resource "huaweicloud_identity_user_v5" "user" {
+resource "huaweicloud_identityv5_user" "user" {
   name        = var.name
   enabled     = true
   description = "tested by terraform"
@@ -53,9 +53,9 @@ In addition to all arguments above, the following attributes are exported:
 * `user_id` - Indicates the IAM user ID.
 
 * `tags` - Indicates the Custom Tag List.
-  The [tags](#IdentityUserV5_Tags) structure is documented below.
+  The [tags](#IdentityV5User_Tags) structure is documented below.
 
-<a name="IdentityUserV5_Tags"></a>
+<a name="IdentityV5User_Tags"></a>
 The `tags` block contains:
 
 * `tag_key` - Indicates Tag keys which contain any combination of letters, numbers, spaces, and the symbols "_", ".", 
@@ -67,5 +67,5 @@ The `tags` block contains:
   and 64 characters.
 
 ```bash
-$ terraform import huaweicloud_identity_user_v5.user user_id
+$ terraform import huaweicloud_identityv5_user.user user_id
 ```
