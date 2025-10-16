@@ -1566,6 +1566,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_vpc_subnet_ip_availabilities":    vpc.DataSourceVpcSubnetIpAvailabilities(),
 			"huaweicloud_vpc_network_interfaces":          vpc.DataSourceVpcNetworkInterfaces(),
 			"huaweicloud_vpc_network_interface_tags":      vpc.DataSourceVpcNetworkInterfaceTags(),
+			"huaweicloud_vpc_network_interfaces_by_tags":  vpc.DataSourceNetworkInterfacesByTags(),
 
 			"huaweicloud_vpcep_endpoints":           vpcep.DataSourceVPCEPEndpoints(),
 			"huaweicloud_vpcep_public_services":     vpcep.DataSourceVPCEPPublicServices(),
