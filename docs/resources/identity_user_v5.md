@@ -58,10 +58,14 @@ In addition to all arguments above, the following attributes are exported:
 <a name="IdentityUserV5_Tags"></a>
 The `tags` block contains:
 
-* `tag_key` - Indicates the service ID.
+* `tag_key` - Indicates Tag keys which contain any combination of letters, numbers, spaces, and the symbols "_", ".", 
+  ":","=", "-", "@", but cannot start or end with a space, and cannot begin with "sys". The length must be between 1 
+  and 64 characters.
 
-* `tag_value` - Indicates the service ID.
+* `tag_value` - Indicates Tag keys can contain any combination of letters, numbers, spaces, and the symbols "_", ".", 
+  ":", "=", "-", "@", but cannot start or end with a space, and cannot begin with "sys". The length must be between 1 
+  and 64 characters.
 
 ```bash
-$ terraform import huaweicloud_identity_user_v5.user 89c60255-9bd6-460c-822a-e2b959ede9d2
+$ terraform import huaweicloud_identity_user_v5.user user_id
 ```
