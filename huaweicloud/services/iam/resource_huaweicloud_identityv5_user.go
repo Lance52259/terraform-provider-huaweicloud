@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -42,10 +43,6 @@ func ResourceIdentityV5User() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-			},
-			"user_id": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 			"is_root_user": {
 				Type:     schema.TypeBool,
@@ -89,11 +86,6 @@ func resourceIdentityV5UserCreate(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-
-	if cfg.DomainID == "" {
-		return diag.Errorf("the domain_id must be specified in the provider configuration")
-	}
-
 	createUserHttpUrl := "v5/users"
 	createUserPath := iamClient.Endpoint + createUserHttpUrl
 	createUserOpt := golangsdk.RequestOpts{
@@ -102,7 +94,7 @@ func resourceIdentityV5UserCreate(ctx context.Context, d *schema.ResourceData, m
 	}
 	createUserResp, err := iamClient.Request("POST", createUserPath, &createUserOpt)
 	if err != nil {
-		return diag.Errorf("error creating IAM User: %s", err)
+		return common.CheckDeletedDiag(d, err, "error get IAM user")
 	}
 	createUserBody, err := utils.FlattenResponse(createUserResp)
 	if err != nil {
@@ -111,7 +103,7 @@ func resourceIdentityV5UserCreate(ctx context.Context, d *schema.ResourceData, m
 
 	id := utils.PathSearch("user.user_id", createUserBody, "").(string)
 	if id == "" {
-		return diag.Errorf("error creating IAM user: user_id is not found in API response")
+		return common.CheckDeletedDiag(d, err, "error getting IAM user: user is not found in API response")
 	}
 	d.SetId(id)
 	return resourceIdentityV5UserRead(ctx, d, meta)
@@ -172,7 +164,6 @@ func resourceIdentityV5UserRead(_ context.Context, d *schema.ResourceData, meta 
 		d.Set("description", utils.PathSearch("description", user, nil)),
 		d.Set("is_root_user", utils.PathSearch("is_root_user", user, nil)),
 		d.Set("created_at", utils.PathSearch("created_at", user, nil)),
-		d.Set("user_id", utils.PathSearch("user_id", user, nil)),
 		d.Set("urn", utils.PathSearch("urn", user, nil)),
 		d.Set("enabled", utils.PathSearch("enabled", user, nil)),
 		d.Set("last_login_at", utils.PathSearch("last_login_at", userLastLogin, nil)),

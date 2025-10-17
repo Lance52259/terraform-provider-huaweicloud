@@ -3,12 +3,12 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identityv5_user"
 description: |-
-  Manages an IAM user v5 resource within HuaweiCloud.
+  Manages an IAM v5 user resource within HuaweiCloud.
 ---
 
 # huaweicloud_identityv5_user
 
-Manages an IAM user v5 resource within HuaweiCloud.
+Manages an IAM v5 user resource within HuaweiCloud.
 
 -> NOTE: You must have admin privileges to use this resource.
 
@@ -50,7 +50,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `last_login_at` - Indicates the last login time of the IAM user. If null, it indicates that they have never logged in.
 
-* `user_id` - Indicates the IAM user ID.
+* `id` - Indicates the IAM user ID.
 
 * `tags` - Indicates the Custom Tag List.
   The [tags](#IdentityV5User_Tags) structure is documented below.
@@ -66,6 +66,10 @@ The `tags` block contains:
   ":", "=", "-", "@", but cannot start or end with a space, and cannot begin with "sys". The length must be between 1 
   and 64 characters.
 
+## Import
+
+The IAM v5 user can be imported using the id, e.g:
+
 ```bash
-$ terraform import huaweicloud_identityv5_user.user user_id
+$ terraform import huaweicloud_identityv5_user.test <id>
 ```
