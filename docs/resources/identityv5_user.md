@@ -40,6 +40,8 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
+* `id` - The resource ID in UUID format.
+
 * `name` - Indicates the IAM username.
 
 * `is_root_user` - Indicates whether the user is root user or user.
@@ -49,8 +51,6 @@ In addition to all arguments above, the following attributes are exported:
 * `urn` - Indicates the uniform resource name.
 
 * `last_login_at` - Indicates the last login time of the IAM user. If null, it indicates that they have never logged in.
-
-* `id` - Indicates the IAM user ID.
 
 * `tags` - Indicates the Custom Tag List.
   The [tags](#IdentityV5User_Tags) structure is documented below.
