@@ -133,7 +133,7 @@ func resourceIdentityV5UserRead(_ context.Context, d *schema.ResourceData, meta 
 	}
 	getUserResp, err := iamClient.Request("GET", getUserPath, &getUserOpt)
 	if err != nil {
-		return diag.Errorf("error get IAM User: %s", err)
+		return common.CheckDeletedDiag(d, err, "error get IAM user")
 	}
 	getUserRespBody, err := utils.FlattenResponse(getUserResp)
 	if err != nil {
@@ -141,7 +141,7 @@ func resourceIdentityV5UserRead(_ context.Context, d *schema.ResourceData, meta 
 	}
 	user := utils.PathSearch("user", getUserRespBody, nil)
 	if user == nil {
-		return diag.Errorf("error getting IAM user: user is not found in API response")
+		return common.CheckDeletedDiag(d, err, "error getting IAM user: user is not found in API response")
 	}
 
 	tags := listUserTagInfo(user)
