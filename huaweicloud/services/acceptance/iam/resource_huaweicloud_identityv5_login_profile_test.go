@@ -38,7 +38,7 @@ func TestAccIdentityV5LoginProfile_basic(t *testing.T) {
 	var user users.User
 	userName := acceptance.RandomAccResourceName()
 
-	resourceName := "huaweicloud_identityv5_login_profile.login_profile"
+	resourceName := "huaweicloud_identityv5_login_profile.login_profile_11"
 
 	rc := acceptance.InitResourceCheck(
 		resourceName,
@@ -88,10 +88,10 @@ resource "huaweicloud_identityv5_user" "user" {
  name = "%[1]s"
 }
 
-resource "huaweicloud_identityv5_login_profile" "login_profile" {
+resource "huaweicloud_identityv5_login_profile" "login_profile_11" {
   user_id                 = huaweicloud_identityv5_user.user.id
-  password                = "default888"
-  password_reset_required = true
+  password                = "default8881"
+  password_reset_required = false
 }
 `, name)
 }
@@ -102,10 +102,10 @@ resource "huaweicloud_identityv5_user" "user" {
  name = "%[1]s"
 }
 
-resource "huaweicloud_identityv5_login_profile" "login_profile" {
+resource "huaweicloud_identityv5_login_profile" "login_profile_11" {
   user_id                 = huaweicloud_identityv5_user.user.id
-  password                = "default999"
-  password_reset_required = true
+  password                = "default8881"
+  password_reset_required = false
 }
 `, name)
 }

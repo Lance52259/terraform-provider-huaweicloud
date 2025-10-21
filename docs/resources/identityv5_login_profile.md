@@ -38,17 +38,25 @@ The following arguments are supported:
 
 * `password` - (Optional, String) Specifies the password of the user login.
 
-* `password_reset_required` - (Optional, Bool) Specifies whether the IAM user need to change their password when next time they log in.
+* `password_reset_required` - (Optional, Bool) Specifies whether the IAM user need to change their password when next time they log in. The value can be:
+    * **true**: 
+    * **false**: 
+
+      Default: **true**.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The resource ID in UUID format.
+* `id` - Indicates the ID of the user.
 
 * `user_id` - Indicates the ID of the user.
 
-* `password_reset_required` - Indicates whether the IAM user need to change their password when next time they log in.
+* `password_reset_required` - Indicates whether the IAM user need to change their password when next time they log in. The value can be:
+    * **true**:
+    * **false**:
+
+      Default: **true**.
 
 * `password_expires_at` - Indicates IAM user password expiration time.
 

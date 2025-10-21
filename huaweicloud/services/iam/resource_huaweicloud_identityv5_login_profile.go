@@ -18,7 +18,6 @@ import (
 // @API IAM GET /v5/users/{user_id}/login-profile
 // @API IAM PUT /v5/users/{user_id}/login-profile
 // @API IAM DELETE /v5/users/{user_id}/login-profile
-
 func ResourceIdentityV5LoginProfile() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityV5LoginProfileCreate,
@@ -41,8 +40,10 @@ func ResourceIdentityV5LoginProfile() *schema.Resource {
 				Computed: true,
 			},
 			"password": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"password_expires_at": {
 				Type:     schema.TypeString,
@@ -62,10 +63,16 @@ func resourceIdentityV5LoginProfileCreate(ctx context.Context, d *schema.Resourc
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
-	user_id := d.Get("user_id").(string)
+	userId := d.Get("user_id").(string)
+	if password := d.Get("password"); password == nil {
+		return diag.Errorf("error getting regions fields password : %s", password)
+	}
+	if required := d.Get("password_reset_required"); required == nil {
+		return diag.Errorf("error getting regions fields password_reset_required : %t", required)
+	}
 	createLoginProfileHttpUrl := "v5/users/{user_id}/login-profile"
 	createLoginProfilePath := iamClient.Endpoint + createLoginProfileHttpUrl
-	createLoginProfilePath = strings.ReplaceAll(createLoginProfilePath, "{user_id}", user_id)
+	createLoginProfilePath = strings.ReplaceAll(createLoginProfilePath, "{user_id}", userId)
 	createLoginProfileOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody:         buildCreateLoginProfileBodyParams(d),
@@ -146,9 +153,16 @@ func resourceIdentityV5LoginProfileUpdate(ctx context.Context, d *schema.Resourc
 		updateLoginProfileHttpUrl := "v5/users/{user_id}/login-profile"
 		updateLoginProfilePath := iamClient.Endpoint + updateLoginProfileHttpUrl
 		updateLoginProfilePath = strings.ReplaceAll(updateLoginProfilePath, "{user_id}", d.Id())
+		baseBody := map[string]interface{}{}
+		if d.HasChange("password") {
+			baseBody["password"] = d.Get("password").(string)
+		}
+		if d.HasChange("password_reset_required") {
+			baseBody["password_reset_required"] = d.Get("password_reset_required")
+		}
 		updateLoginProfileOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			JSONBody:         buildUpdateLoginProfileBodyParams(d),
+			JSONBody:         baseBody,
 		}
 		_, err := iamClient.Request("PUT", updateLoginProfilePath, &updateLoginProfileOpt)
 		if err != nil {
@@ -156,14 +170,6 @@ func resourceIdentityV5LoginProfileUpdate(ctx context.Context, d *schema.Resourc
 		}
 	}
 	return resourceIdentityV5LoginProfileRead(ctx, d, meta)
-}
-
-func buildUpdateLoginProfileBodyParams(d *schema.ResourceData) map[string]interface{} {
-	bodyParams := map[string]interface{}{
-		"password":                d.Get("password").(string),
-		"password_reset_required": d.Get("password_reset_required"),
-	}
-	return bodyParams
 }
 
 func resourceIdentityV5LoginProfileDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
