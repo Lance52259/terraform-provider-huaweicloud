@@ -23,7 +23,7 @@ func TestAccDataSourceVpcSubnetTags_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceDataSourceVpcSubnetTags_basic(randName, randCidr, randGatewayIp),
+				Config: testDataSourceVpcSubnetTags_basic(randName, randCidr, randGatewayIp),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckOutput("is_results_not_empty", "true"),
@@ -33,7 +33,7 @@ func TestAccDataSourceVpcSubnetTags_basic(t *testing.T) {
 	})
 }
 
-func testDataSourceDataSourceVpcSubnetTags_basic(rName, cidr, gatewayIp string) string {
+func testDataSourceVpcSubnetTags_basic(rName, cidr, gatewayIp string) string {
 	return fmt.Sprintf(`
 %s
 
@@ -44,5 +44,5 @@ data "huaweicloud_vpc_subnet_tags" "test" {
 output "is_results_not_empty" {
   value = length(data.huaweicloud_vpc_subnet_tags.test.tags) > 0
 }
-`, testAccVpcSubnetsDataSource_Basic(rName, cidr, gatewayIp))
+`, testAccVpcSubnetsDataSource_Base(rName, cidr, gatewayIp))
 }
