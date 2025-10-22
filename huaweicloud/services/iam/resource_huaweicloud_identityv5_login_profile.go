@@ -18,12 +18,16 @@ import (
 // @API IAM GET /v5/users/{user_id}/login-profile
 // @API IAM PUT /v5/users/{user_id}/login-profile
 // @API IAM DELETE /v5/users/{user_id}/login-profile
+var loginProfileNonUpdatableParams = []string{"user_id"}
+
 func ResourceIdentityV5LoginProfile() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityV5LoginProfileCreate,
 		ReadContext:   resourceIdentityV5LoginProfileRead,
 		UpdateContext: resourceIdentityV5LoginProfileUpdate,
 		DeleteContext: resourceIdentityV5LoginProfileDelete,
+
+		CustomizeDiff: config.FlexibleForceNew(loginProfileNonUpdatableParams),
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -64,12 +68,6 @@ func resourceIdentityV5LoginProfileCreate(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	userId := d.Get("user_id").(string)
-	if password := d.Get("password"); password == nil {
-		return diag.Errorf("error getting regions fields password : %s", password)
-	}
-	if required := d.Get("password_reset_required"); required == nil {
-		return diag.Errorf("error getting regions fields password_reset_required : %t", required)
-	}
 	createLoginProfileHttpUrl := "v5/users/{user_id}/login-profile"
 	createLoginProfilePath := iamClient.Endpoint + createLoginProfileHttpUrl
 	createLoginProfilePath = strings.ReplaceAll(createLoginProfilePath, "{user_id}", userId)
@@ -88,7 +86,7 @@ func resourceIdentityV5LoginProfileCreate(ctx context.Context, d *schema.Resourc
 
 	id := utils.PathSearch("login_profile.user_id", createLoginProfileBody, "").(string)
 	if id == "" {
-		return common.CheckDeletedDiag(d, err, "error getting IAM login profile: profile is not found in API response")
+		return diag.Errorf("error creating IAM login profile: user_id is not found in API response: %s", err)
 	}
 	d.SetId(id)
 	return resourceIdentityV5LoginProfileRead(ctx, d, meta)
@@ -117,7 +115,7 @@ func resourceIdentityV5LoginProfileRead(_ context.Context, d *schema.ResourceDat
 	}
 	getLoginProfileResp, err := iamClient.Request("GET", getLoginProfilePath, &getLoginProfileOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error get IAM login profile")
+		return common.CheckDeletedDiag(d, err, "error getting IAM login profile")
 	}
 	getLoginProfileRespBody, err := utils.FlattenResponse(getLoginProfileResp)
 	if err != nil {
