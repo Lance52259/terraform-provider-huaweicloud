@@ -860,6 +860,12 @@ func TestAccPreCheckRGCTemplate(t *testing.T) {
 	}
 }
 
+func TestAccPreCheckRGCAccountID(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID must be set for acceptance tests")
+	}
+}
+
 // lintignore:AT003
 func TestAccPreCheckSDRSDeleteNic(t *testing.T) {
 	if HW_SDRS_PROTECTION_INSTANCE_ID == "" || HW_SDRS_NIC_ID == "" {
