@@ -1156,6 +1156,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_role_assignments":             iam.DataSourceIdentityRoleAssignments(),
 			"huaweicloud_identity_services":                     iam.DataSourceIdentityServices(),
 
+			"huaweicloud_identitycenter_user_sessions":                           identitycenter.DataSourceIdentityCenterUserSessions(),
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
 			"huaweicloud_identitycenter_groups":                                  identitycenter.DataSourceIdentityCenterGroups(),
@@ -2409,6 +2410,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_policy":                       iam.ResourceIdentityPolicy(),
 			"huaweicloud_identity_policy_agency_attach":         iam.ResourceIdentityPolicyAgencyAttach(),
 
+			"huaweicloud_identitycenter_user_session_delete":                    identitycenter.ResourceIdentityCenterUserSessionDelete(),
 			"huaweicloud_identitycenter_instance":                               identitycenter.ResourceIdentityCenterInstance(),
 			"huaweicloud_identitycenter_registered_region":                      identitycenter.ResourceIdentityCenterRegisteredRegion(),
 			"huaweicloud_identitycenter_user":                                   identitycenter.ResourceIdentityCenterUser(),
