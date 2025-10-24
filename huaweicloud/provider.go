@@ -1328,6 +1328,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_ram_resource_share_associated_permissions": ram.DataSourceAssociatedPermissions(),
 			"huaweicloud_ram_resource_shares":                       ram.DataSourceRAMShares(),
 			"huaweicloud_ram_resource_types":                        ram.DataSourceResourceTypes(),
+			"huaweicloud_ram_tags":                                  ram.DataSourceTags(),
 
 			"huaweicloud_rgc_home_region":                    rgc.DataSourceHomeRegion(),
 			"huaweicloud_rgc_pre_launch_check":               rgc.DataSourcePreLaunchCheck(),

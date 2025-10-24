@@ -26,7 +26,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `resource_types` - The list of resource types
+* `resource_types` - The list of resource types.
 
   The [resource_types](#resource_types) structure is documented below.
 
