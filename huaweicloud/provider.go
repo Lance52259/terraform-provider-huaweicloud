@@ -1334,6 +1334,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_pre_launch_check":               rgc.DataSourcePreLaunchCheck(),
 			"huaweicloud_rgc_landing_zone_available_updates": rgc.DataSourceLandingZoneAvailableUpdates(),
 			"huaweicloud_rgc_landing_zone_configuration":     rgc.DataSourceLandingZoneConfiguration(),
+			"huaweicloud_rgc_landing_zone_identity_center":   rgc.DataSourceLandingZoneIdentityCenter(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
