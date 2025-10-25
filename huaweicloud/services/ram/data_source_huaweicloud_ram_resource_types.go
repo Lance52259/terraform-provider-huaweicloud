@@ -79,7 +79,7 @@ func dataSourceResourceTypesRead(_ context.Context, d *schema.ResourceData, meta
 			return diag.FromErr(err)
 		}
 
-		onePageResourceTypes := FlattenResourceTypesResp(listResourceTypesRespBody)
+		onePageResourceTypes := flattenResourceTypesResp(listResourceTypesRespBody)
 		ResourceTypes = append(ResourceTypes, onePageResourceTypes...)
 		marker = utils.PathSearch("page_info.next_marker", listResourceTypesRespBody, "").(string)
 		if marker == "" {
@@ -111,7 +111,7 @@ func buildListResourceTypesQueryParams(marker string) string {
 	return res
 }
 
-func FlattenResourceTypesResp(resp interface{}) []interface{} {
+func flattenResourceTypesResp(resp interface{}) []interface{} {
 	if resp == nil {
 		return nil
 	}

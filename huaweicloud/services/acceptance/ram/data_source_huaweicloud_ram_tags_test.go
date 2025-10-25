@@ -20,7 +20,7 @@ func TestAccDataSourceRAMListTags_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceRAMListTagss_basic(),
+				Config: testDataSourceRAMListTags_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "tags.#"),
@@ -32,7 +32,7 @@ func TestAccDataSourceRAMListTags_basic(t *testing.T) {
 	})
 }
 
-func testDataSourceRAMListTagss_basic() string {
+func testDataSourceRAMListTags_basic() string {
 	return fmt.Sprintf(`
 data "huaweicloud_ram_tags" "test" {}
 `)
