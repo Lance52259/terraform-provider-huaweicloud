@@ -1,9 +1,9 @@
 ---
 subcategory: "Virtual Private Cloud (VPC)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_vpc_network_acl_tags"
+page_title: "HuaweiCloud: huaweicloud_vpc_network_interface_tags"
 description: |-
-  Use this data source to get the list of network ACL project tags.
+  Use this data source to get the list of network interface project tags.
 ---
 
 # huaweicloud_vpc_network_interface_tags
