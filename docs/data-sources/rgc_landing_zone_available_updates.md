@@ -26,6 +26,8 @@ data "huaweicloud_rgc_landing_zone_available_updates" "test" {
 
 In addition to all arguments above, the following attributes are exported:
 
+* `id` - The data source ID.
+
 * `baseline_update_available` - Check if the basic configuration of the Landing Zone is available.
 
 * `control_update_available` - Check if there are any new control policies under the current account.

@@ -25,4 +25,6 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
+* `id` - The data source ID.
+
 * `pre_launch_check` - Check if the current region can be set up for landing zone.
