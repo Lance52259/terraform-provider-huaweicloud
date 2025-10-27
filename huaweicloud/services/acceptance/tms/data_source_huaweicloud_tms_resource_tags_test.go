@@ -67,7 +67,7 @@ func testDataSourceTmsResourceTags_basic(name string) string {
 
 data "huaweicloud_tms_resource_tags" "test" {
   resource_types = "vpc"
-  project_id = data.huaweicloud_identity_projects.test.projects[0].id
+  project_id     = data.huaweicloud_identity_projects.test.projects[0].id
 }
 output "huaweicloud_tms_resource_tags_length" {
   value = length(data.huaweicloud_tms_resource_tags.test.tags) >= 3

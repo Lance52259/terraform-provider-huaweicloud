@@ -15,7 +15,7 @@ Use this data source to get the list of tags by resource type.
 ```hcl
 data "huaweicloud_tms_resource_tags" "test" {
   resource_types = "test_resource_type"
-  project_id = "test_project_id"
+  project_id     = "test_project_id"
 }
 ```
 
