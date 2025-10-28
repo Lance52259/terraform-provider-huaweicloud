@@ -30,7 +30,7 @@ func ResourceIdentityV5Group() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"group_name": {
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -80,7 +80,7 @@ func resourceIdentityV5GroupCreate(ctx context.Context, d *schema.ResourceData, 
 
 func buildCreateGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"group_name":  d.Get("group_name").(string),
+		"group_name":  d.Get("name").(string),
 		"description": utils.ValueIgnoreEmpty(d.Get("description")),
 	}
 	return bodyParams
@@ -113,7 +113,7 @@ func resourceIdentityV5GroupRead(_ context.Context, d *schema.ResourceData, meta
 
 	mErr := multierror.Append(nil,
 		d.Set("description", utils.PathSearch("description", group, nil)),
-		d.Set("group_name", utils.PathSearch("group_name", group, nil)),
+		d.Set("name", utils.PathSearch("group_name", group, nil)),
 		d.Set("created_at", utils.PathSearch("created_at", group, nil)),
 		d.Set("urn", utils.PathSearch("urn", group, nil)),
 	)
@@ -130,7 +130,7 @@ func resourceIdentityV5GroupUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	updateChanges := []string{
-		"group_name",
+		"name",
 		"description",
 	}
 	if d.HasChanges(updateChanges...) {
@@ -151,7 +151,7 @@ func resourceIdentityV5GroupUpdate(ctx context.Context, d *schema.ResourceData, 
 
 func buildUpdateGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"new_group_name":        d.Get("group_name").(string),
+		"new_group_name":        d.Get("name").(string),
 		"new_group_description": d.Get("description").(string),
 	}
 	return bodyParams

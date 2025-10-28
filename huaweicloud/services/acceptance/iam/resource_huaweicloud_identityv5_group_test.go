@@ -58,9 +58,9 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
-					resource.TestCheckResourceAttrSet(resourceName, "description"),
-					resource.TestCheckResourceAttrSet(resourceName, "group_name"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
+					resource.TestCheckResourceAttr(resourceName, "description", "kkkkkstring"),
+					resource.TestCheckResourceAttr(resourceName, "name", "kkkkk4"),
 				),
 			},
 			{
@@ -74,9 +74,20 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
-					resource.TestCheckResourceAttrSet(resourceName, "description"),
-					resource.TestCheckResourceAttrSet(resourceName, "group_name"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
+					resource.TestCheckResourceAttr(resourceName, "description", "kkkkkstringupdate"),
+					resource.TestCheckResourceAttr(resourceName, "name", "kkkkkupdate"),
+				),
+			},
+			{
+				Config: testAccIdentityV5Group_noDescription(),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttrSet(resourceName, "urn"),
+					resource.TestCheckResourceAttr(resourceName, "description", ""),
+					resource.TestCheckResourceAttr(resourceName, "name", "kkkkkupdate1"),
 				),
 			},
 		},
@@ -86,7 +97,7 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 func testAccIdentityV5Group_basic() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_group" "group" {
-	group_name  = "kkkkk"
+	name  = "kkkkk4"
 	description = "kkkkkstring"
 }
 `)
@@ -95,8 +106,16 @@ resource "huaweicloud_identityv5_group" "group" {
 func testAccIdentityV5Group_update() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_group" "group" {
- 	group_name  = "kkkkkupdate"
+ 	name  = "kkkkkupdate"
 	description = "kkkkkstringupdate"
+}
+`)
+}
+
+func testAccIdentityV5Group_noDescription() string {
+	return fmt.Sprintf(`
+resource "huaweicloud_identityv5_group" "group" {
+ 	name  = "kkkkkupdate1"
 }
 `)
 }

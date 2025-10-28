@@ -15,11 +15,11 @@ Manages an IAM v5 group resource within HuaweiCloud.
 ## Example Usage
 
 ```hcl
-variable "group_name" {}
+variable "name" {}
 variable "description" {}
 
 resource "huaweicloud_identityv5_group" "group" {
-	group_name  = var.group_name
+	group_name  = var.name
 	description = var.description
 }
 ```
@@ -28,7 +28,7 @@ resource "huaweicloud_identityv5_group" "group" {
 
 The following arguments are supported:
 
-* `group_name` - (Required, String) Specifies the name of the group. The username consists of `1` to `128` characters. It can
+* `name` - (Required, String) Specifies the name of the group. The username consists of `1` to `128` characters. It can
 contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
 digit.
 
