@@ -56,7 +56,6 @@ resource "huaweicloud_vpc_subnet" "test" {
 resource "huaweicloud_vpc_network_interface" "test1" {
   name        = "%[1]s-1"
   subnet_id   = huaweicloud_vpc_subnet.test.id
-
   tags = {
     foo = "%[1]s"
     key = "%[1]s_1"
@@ -66,7 +65,6 @@ resource "huaweicloud_vpc_network_interface" "test1" {
 resource "huaweicloud_vpc_network_interface" "test2" {
   name        = "%[1]s-2"
   subnet_id   = huaweicloud_vpc_subnet.test.id
-
   tags = {
     foo = "%[1]s"
     key = "%[1]s_2"

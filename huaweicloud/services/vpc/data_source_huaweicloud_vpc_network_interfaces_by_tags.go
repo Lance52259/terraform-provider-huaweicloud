@@ -86,10 +86,6 @@ func DataSourceNetworkInterfacesByTags() *schema.Resource {
 					},
 				},
 			},
-			"total_count": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 		},
 	}
 }
