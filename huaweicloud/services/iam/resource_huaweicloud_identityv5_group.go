@@ -18,12 +18,16 @@ import (
 // @API IAM GET /v5/groups/{group_id}
 // @API IAM PUT /v5/groups/{group_id}
 // @API IAM DELETE /v5/groups/{group_id}
+var groupNonUpdatableParams = []string{"group_id"}
+
 func ResourceIdentityV5Group() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityV5GroupCreate,
 		ReadContext:   resourceIdentityV5GroupRead,
 		UpdateContext: resourceIdentityV5GroupUpdate,
 		DeleteContext: resourceIdentityV5GroupDelete,
+
+		CustomizeDiff: config.FlexibleForceNew(groupNonUpdatableParams),
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
