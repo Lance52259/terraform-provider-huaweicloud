@@ -94,6 +94,22 @@ func ResourceIdentityV5LoginPolicy() *schema.Resource {
 					},
 				},
 			},
+			"allow_ip_ranges_ipv6": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"ip_range": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -119,6 +135,7 @@ func resourceIdentityV5LoginPolicyUpdate(_ context.Context, d *schema.ResourceDa
 			"show_recent_login_info":     d.Get("show_recent_login_info"),
 			"allow_address_netmasks":     d.Get("allow_address_netmasks"),
 			"allow_ip_ranges":            d.Get("allow_ip_ranges"),
+			"allow_ip_ranges_ipv6":       d.Get("allow_ip_ranges_ipv6"),
 		},
 	}
 
@@ -161,6 +178,7 @@ func resourceIdentityV5LoginPolicyRead(_ context.Context, d *schema.ResourceData
 		d.Set("show_recent_login_info", utils.PathSearch("login_policy.show_recent_login_info", getLoginPolicyRespBody, nil)),
 		d.Set("allow_address_netmasks", utils.PathSearch("login_policy.allow_address_netmasks", getLoginPolicyRespBody, nil)),
 		d.Set("allow_ip_ranges", utils.PathSearch("login_policy.allow_ip_ranges", getLoginPolicyRespBody, nil)),
+		d.Set("allow_ip_ranges_ipv6", utils.PathSearch("login_policy.allow_ip_ranges_ipv6", getLoginPolicyRespBody, nil)),
 	)
 	if mErr.ErrorOrNil() != nil {
 		return diag.Errorf("error saving IAM login policy resource (%s) fields: %s", d.Id(), mErr)
@@ -182,6 +200,11 @@ func resourceIdentityV5LoginPolicyDelete(_ context.Context, d *schema.ResourceDa
 		"ip_range":    "0.0.0.0-255.255.255.255",
 		"description": "",
 	}
+	allowIpRangesIpv6 := make([]map[string]interface{}, 1)
+	allowIpRangesIpv6[0] = map[string]interface{}{
+		"ip_range":    "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF",
+		"description": "",
+	}
 	deleteLoginPolicyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		JSONBody: map[string]interface{}{
@@ -194,6 +217,7 @@ func resourceIdentityV5LoginPolicyDelete(_ context.Context, d *schema.ResourceDa
 			"show_recent_login_info":     false,
 			"allow_address_netmasks":     make([]map[string]interface{}, 0),
 			"allow_ip_ranges":            allowIpRanges,
+			"allow_ip_ranges_ipv6":       allowIpRangesIpv6,
 		},
 	}
 

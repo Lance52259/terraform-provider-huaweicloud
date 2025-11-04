@@ -40,6 +40,9 @@ func TestAccV5LoginPolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "allow_address_netmasks.0.address_netmask", "255.0.0.0/1"),
 					resource.TestCheckResourceAttr(resourceName, "allow_address_netmasks.0.description", "terraform test"),
 					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges.#", "2"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.0.ip_range", "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFF0"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.0.description", "terraform test"),
 				),
 			},
 			{
@@ -58,6 +61,9 @@ func TestAccV5LoginPolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges.0.ip_range", "0.0.0.0-255.255.255.100"),
 					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges.0.description", "terraform test"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.0.ip_range", "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFF1"),
+					resource.TestCheckResourceAttr(resourceName, "allow_ip_ranges_ipv6.0.description", "terraform test"),
 				),
 			},
 			{
@@ -139,7 +145,10 @@ func testAccV5CheckLoginPolicyDestroy(s *terraform.State) error {
 			utils.PathSearch("length(login_policy.allow_address_netmasks)", getLoginPolicyRespBody, float64(0)).(float64) != 0 ||
 			utils.PathSearch("length(login_policy.allow_ip_ranges)", getLoginPolicyRespBody, float64(0)).(float64) != 1 ||
 			utils.PathSearch("login_policy.allow_ip_ranges[0].ip_range", getLoginPolicyRespBody, "").(string) != "0.0.0.0-255.255.255.255" ||
-			utils.PathSearch("login_policy.allow_ip_ranges[0].description", getLoginPolicyRespBody, "").(string) != "" {
+			utils.PathSearch("login_policy.allow_ip_ranges[0].description", getLoginPolicyRespBody, "").(string) != "" ||
+			utils.PathSearch("length(login_policy.allow_ip_ranges_ipv6)", getLoginPolicyRespBody, float64(0)).(float64) != 1 ||
+			utils.PathSearch("login_policy.allow_ip_ranges_ipv6[0].ip_range", getLoginPolicyRespBody, "").(string) != "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF" ||
+			utils.PathSearch("login_policy.allow_ip_ranges_ipv6[0].description", getLoginPolicyRespBody, "").(string) != "" {
 			return fmt.Errorf("the login policy failed to reset to defaults")
 		}
 	}
@@ -168,6 +177,10 @@ resource "huaweicloud_identityv5_login_policy" "test" {
     ip_range    = "0.0.0.0-255.255.255.100"
     description = "terraform test2"
   }
+  allow_ip_ranges_ipv6 {
+    ip_range    = "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFF0"
+    description = "terraform test"
+  }
 }
 `
 }
@@ -188,6 +201,10 @@ resource "huaweicloud_identityv5_login_policy" "test" {
   }
   allow_ip_ranges {
     ip_range    = "0.0.0.0-255.255.255.100"
+    description = "terraform test"
+  }
+  allow_ip_ranges_ipv6 {
+    ip_range    = "0000:0000:0000:0000:0000:0000:0000:0000-FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFF1"
     description = "terraform test"
   }
 }
