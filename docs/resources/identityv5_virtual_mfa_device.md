@@ -32,7 +32,7 @@ The following arguments are supported:
 contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
 digit.
 
-* `user_id` - (Optional, String) Specifies the ID of the user.
+* `user_id` - (Required, String) Specifies the ID of the user.
 
 ## Attribute Reference
 
