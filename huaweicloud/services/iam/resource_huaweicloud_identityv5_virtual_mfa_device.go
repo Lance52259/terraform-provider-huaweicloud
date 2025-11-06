@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -17,36 +18,43 @@ import (
 // @API IAM POST /v5/virtual-mfa-devices
 // @API IAM DELETE /v5/virtual-mfa-devices
 // @API IAM GET /v5/mfa-devices
+var virtualMFADeviceNonUpdatableParams = []string{"user_id", "name", "base32_string_seed", "enabled"}
+
 func ResourceIdentityV5VirtualMFADevice() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityV5MFACreate,
 		ReadContext:   resourceIdentityV5MFARead,
+		UpdateContext: resourceIdentityV5MFAUpdate,
 		DeleteContext: resourceIdentityV5MFADelete,
 
 		Importer: &schema.ResourceImporter{
 			StateContext: resourceMFAImportStateV5,
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(virtualMFADeviceNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"user_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"base32_string_seed": {
 				Type:     schema.TypeString,
 				Computed: true,
-				ForceNew: true,
 			},
 			"enabled": {
 				Type:     schema.TypeBool,
 				Computed: true,
-				ForceNew: true,
+			},
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
 		},
 	}
@@ -104,24 +112,28 @@ func resourceIdentityV5MFARead(_ context.Context, d *schema.ResourceData, meta i
 	}
 	response, err := iamClient.Request("GET", getPath, &getMFAOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error UserMFADevices")
+		return common.CheckDeletedDiag(d, err, "error retrieving IAM virtual MFA device")
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "error flatten UserMFADevices")
 	}
-	mfa := utils.PathSearch("mfa_devices", respBody, nil).([]interface{})
-	if len(mfa) < 1 {
+	mfa := utils.PathSearch("mfa_devices[0]", respBody, nil)
+	if mfa == nil {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "error")
 	}
-	id := utils.PathSearch("serial_number", mfa[0], nil)
-	if id == nil {
-		return diag.Errorf("error set UserMFADevices ID : %s", err)
+	id := utils.PathSearch("serial_number", mfa, "").(string)
+	if id == "" {
+		return diag.Errorf("error found serial_number in the response")
 	}
-	d.SetId(id.(string))
-	if err = d.Set("enabled", utils.PathSearch("enabled", mfa[0], nil)); err != nil {
+	d.SetId(id)
+	if err = d.Set("enabled", utils.PathSearch("enabled", mfa, nil)); err != nil {
 		return diag.Errorf("error setting mfa devices: %s", err)
 	}
+	return nil
+}
+
+func resourceIdentityV5MFAUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 

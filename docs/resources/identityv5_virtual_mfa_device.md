@@ -10,8 +10,6 @@ description: |-
 
 Manages an IAM v5 virtual mfa device resource within HuaweiCloud.
 
--> NOTE: You must have admin privileges to use this resource.
-
 ## Example Usage
 
 ```hcl
@@ -28,11 +26,11 @@ resource "huaweicloud_identityv5_virtual_mfa_device" "test" {
 
 The following arguments are supported:
 
-* `name` - (Required, String) Specifies the name of the user. The username consists of `1` to `64` characters. It can
-contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
-digit.
+* `name` - (Required, String， NonUpdatable) Specifies the name of the user. The username consists of 1 to 64 characters. It can
+  contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
+  digit.
 
-* `user_id` - (Required, String) Specifies the ID of the user.
+* `user_id` - (Required, String, NonUpdatable) Specifies the ID of the user.
 
 ## Attribute Reference
 

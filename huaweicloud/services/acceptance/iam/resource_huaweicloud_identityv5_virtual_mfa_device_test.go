@@ -30,13 +30,13 @@ func getIdentityV5VirtualMFADeviceResourceFunc(conf *config.Config, state *terra
 	}
 	respBody, err := utils.FlattenResponse(getMFAResp)
 	if err != nil {
-		return nil, fmt.Errorf("error flatten UserMFADevices: %s", err)
+		return nil, fmt.Errorf("error flatten IAM virtual MFA device: %s", err)
 	}
-	check := utils.PathSearch("mfa_devices", respBody, nil).([]interface{})
-	if len(check) < 1 {
+	check := utils.PathSearch("mfa_devices[0]", respBody, nil)
+	if check == nil {
 		return nil, fmt.Errorf("error retrieving IAM virtual MFA device: %s", err)
 	}
-	return check[0], nil
+	return check, nil
 }
 
 func TestAccIdentityV5VirtualMFADevice_basic(t *testing.T) {
