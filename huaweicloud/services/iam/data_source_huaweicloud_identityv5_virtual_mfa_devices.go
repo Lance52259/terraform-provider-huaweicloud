@@ -3,7 +3,6 @@ package iam
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
@@ -27,6 +26,10 @@ func DataSourceIdentityV5VirtualMfaDevices() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The ID of the IAM user.",
+			},
+			"marker": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"devices": {
 				Type:     schema.TypeList,
@@ -60,13 +63,9 @@ func dataSourceIdentityV5VirtualMfaDevicesRead(_ context.Context, d *schema.Reso
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	userID := d.Get("user_id").(string)
-
 	var allDevices []interface{}
-	var nextMarker string
-
 	for {
-		listOpts := buildListMfaDevicesV5Opts(userID, nextMarker)
+		listOpts := buildListMfaDevicesV5Params(d)
 		resp, err := listMfaDevicesV5(client, listOpts)
 		if err != nil {
 			return diag.Errorf("error retrieving virtual MFA devices: %s", err)
@@ -75,60 +74,48 @@ func dataSourceIdentityV5VirtualMfaDevicesRead(_ context.Context, d *schema.Reso
 		devices := flattenListMfaDevicesV5Response(resp)
 		allDevices = append(allDevices, devices...)
 
-		nextMarker = utils.PathSearch("page_info.next_marker", resp, "").(string)
+		nextMarker := utils.PathSearch("page_info.next_marker", resp, "").(string)
 		if nextMarker == "" {
 			break
 		}
+		if err = d.Set("marker", nextMarker); err != nil {
+			return diag.Errorf("error setting nextmarker: %s", err)
+		}
 	}
-
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-
 	mErr := multierror.Append(nil,
 		d.Set("devices", allDevices),
 	)
-
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting virtual MFA devices fields: %s", err)
 	}
-
 	return nil
 }
 
-func buildListMfaDevicesV5Opts(userID string, marker string) map[string]interface{} {
-	opts := make(map[string]interface{})
-	if userID != "" {
-		opts["user_id"] = userID
+func buildListMfaDevicesV5Params(d *schema.ResourceData) string {
+	res := ""
+	if v, ok := d.GetOk("user_id"); ok {
+		res = fmt.Sprintf("%s&user_id=%v", res, v)
 	}
-	if marker != "" {
-		opts["marker"] = marker
-		opts["limit"] = limit
+	if v, ok := d.GetOk("marker"); ok {
+		res = fmt.Sprintf("%s&marker=%v", res, v)
+		res += fmt.Sprintf("limit=%v", limit)
 	}
-	return opts
+	if res != "" {
+		res = "?" + res[1:]
+	}
+	return res
 }
 
-func listMfaDevicesV5(client *golangsdk.ServiceClient, opts map[string]interface{}) (interface{}, error) {
-	queryParams := ""
-	if len(opts) > 0 {
-		var params []string
-		for k, v := range opts {
-			params = append(params, fmt.Sprintf("%s=%v", k, v))
-		}
-		if len(params) > 0 {
-			queryParams = "?" + strings.Join(params, "&")
-		}
-	}
-
-	url := fmt.Sprintf("%sv5/mfa-devices%s", client.Endpoint, queryParams)
+func listMfaDevicesV5(client *golangsdk.ServiceClient, param string) (interface{}, error) {
+	url := fmt.Sprintf("%sv5/mfa-devices%s", client.Endpoint, param)
 	reqOpt := &golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
 	r, err := client.Request("GET", url, reqOpt)
 	if err != nil {
 		return nil, err
-	}
-	if r.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP error: %d", r.StatusCode)
 	}
 	respBody, err := utils.FlattenResponse(r)
 	return respBody, err
@@ -144,9 +131,9 @@ func flattenListMfaDevicesV5Response(resp interface{}) []interface{} {
 	for i, device := range devices {
 		deviceMap := device.(map[string]interface{})
 		result[i] = map[string]interface{}{
-			"enabled":       utils.PathSearch("enabled", deviceMap, false),
-			"serial_number": utils.PathSearch("serial_number", deviceMap, ""),
-			"user_id":       utils.PathSearch("user_id", deviceMap, ""),
+			"enabled":       utils.PathSearch("enabled", deviceMap, nil),
+			"serial_number": utils.PathSearch("serial_number", deviceMap, nil),
+			"user_id":       utils.PathSearch("user_id", deviceMap, nil),
 		}
 	}
 	return result

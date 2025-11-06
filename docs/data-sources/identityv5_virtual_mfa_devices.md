@@ -3,12 +3,12 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_token_info"
 description: |-
-  Provides a list of virtual MFA devices in the Identity  and Access Management V5 service.
+  Use this data source to get the list of virtual MFA devices in the Identity and Access Management V5 service.
 ---
 
 # huaweicloud_identityv5_virtual_mfa_devices
 
-Provides a list of virtual MFA devices in the Identity and Access Management V5 service.
+Use this data source to get the list of virtual MFA devices in the Identity and Access Management V5 service.
 
 ## Example Usage
 
@@ -26,7 +26,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `devices` - The list of virtual MFA devices. Structure is documented below.
+* `devices` - Indicates the list of virtual MFA devices. Structure is documented below.
   The [devices](#IdentityMFA_Devices) structure is documented below.
 
 <a name="IdentityMFA_Devices"></a>
@@ -34,8 +34,8 @@ The `devices` block supports:
 
 * `enabled` - Indicates whether the MFA device is enabled.
 
-* `serial_number` - The serial number of the MFA device.
+* `serial_number` - Indicates the serial number of the MFA device.
 
-* `user_id` - The ID of the IAM user.
+* `user_id` - Indicates the ID of the IAM user.
 
 
