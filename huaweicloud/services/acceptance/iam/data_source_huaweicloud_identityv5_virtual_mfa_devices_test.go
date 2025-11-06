@@ -30,7 +30,6 @@ func TestAccDataSourceIdentityV5VirtualMfaDevices_basic(t *testing.T) {
 
 func testAccDataSourceIdentityV5VirtualMfaDevices_basic() string {
 	return `
-data "huaweicloud_identityv5_virtual_mfa_devices" "test" {
-}
+data "huaweicloud_identityv5_virtual_mfa_devices" "test" {}
 `
 }

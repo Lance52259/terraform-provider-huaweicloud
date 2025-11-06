@@ -3,12 +3,12 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_token_info"
 description: |-
-  Provides a list of virtual MFA devices in the Identity V5 and Access Management service.
+  Provides a list of virtual MFA devices in the Identity  and Access Management V5 service.
 ---
 
 # huaweicloud_identityv5_virtual_mfa_devices
 
-Provides a list of virtual MFA devices in the Identity v5 and Access Management service.
+Provides a list of virtual MFA devices in the Identity and Access Management V5 service.
 
 ## Example Usage
 
