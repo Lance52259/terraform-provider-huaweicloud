@@ -9,13 +9,19 @@ import (
 )
 
 func TestAccDataSourceIdentityV5AuthorizationSchema_basic(t *testing.T) {
+	dataSourceName := "data.huaweicloud_identityv5_authorization_schema.schema"
+	dc := acceptance.InitDataSourceCheck(dataSourceName)
 	resource.Test(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckAdminOnly(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceIdentityV5AuthorizationSchema_basic(),
 				Check: resource.ComposeTestCheckFunc(
+					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet("data.huaweicloud_identityv5_authorization_schema.schema", "actions.#"),
 					resource.TestCheckResourceAttrSet("data.huaweicloud_identityv5_authorization_schema.schema", "conditions.#"),
 					resource.TestCheckResourceAttrSet("data.huaweicloud_identityv5_authorization_schema.schema", "operations.#"),
