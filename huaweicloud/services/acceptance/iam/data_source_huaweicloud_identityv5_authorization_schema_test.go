@@ -29,6 +29,8 @@ func TestAccDataSourceIdentityV5AuthorizationSchema_basic(t *testing.T) {
 
 func testAccDataSourceIdentityV5AuthorizationSchema_basic() string {
 	return `
-data "huaweicloud_identityv5_authorization_schema" "schema" {}
+data "huaweicloud_identityv5_authorization_schema" "schema" {
+	service_code = "iam"	
+}
 `
 }
