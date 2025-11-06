@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+//GET IAM /v5/authorization-schemas/services/{service_code}
 func DataSourceIdentityV5AuthorizationSchema() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5AuthorizationSchemaRead,
@@ -21,7 +22,7 @@ func DataSourceIdentityV5AuthorizationSchema() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"service_code": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"actions": {
 				Type:     schema.TypeList,
@@ -179,9 +180,6 @@ func dataSourceIdentityV5AuthorizationSchemaRead(_ context.Context, d *schema.Re
 	}
 
 	serviceCode := d.Get("service_code").(string)
-	if serviceCode == "" {
-		return diag.Errorf("need param service code : %s", err)
-	}
 
 	createLoginProfileHttpUrl := "v5/authorization-schemas/services/{service_code}"
 	createLoginProfilePath := iamClient.Endpoint + createLoginProfileHttpUrl
@@ -201,7 +199,10 @@ func dataSourceIdentityV5AuthorizationSchemaRead(_ context.Context, d *schema.Re
 		return diag.FromErr(err)
 	}
 
-	id, _ := uuid.GenerateUUID()
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return diag.Errorf("error generate uuid: %s", err)
+	}
 	d.SetId(id)
 
 	mErr := multierror.Append(nil,
