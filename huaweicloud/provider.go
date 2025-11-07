@@ -2428,6 +2428,7 @@ func Provider() *schema.Provider {
 
 			"huaweicloud_identityv5_user":          iam.ResourceIdentityV5User(),
 			"huaweicloud_identityv5_login_profile": iam.ResourceIdentityV5LoginProfile(),
+			"huaweicloud_identityv5_access_key":    iam.ResourceIdentityAccessKey(),
 
 			"huaweicloud_identitycenter_instance":                               identitycenter.ResourceIdentityCenterInstance(),
 			"huaweicloud_identitycenter_registered_region":                      identitycenter.ResourceIdentityCenterRegisteredRegion(),
