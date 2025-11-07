@@ -18,7 +18,7 @@ import (
 // @API IAM POST /v5/virtual-mfa-devices
 // @API IAM DELETE /v5/virtual-mfa-devices
 // @API IAM GET /v5/mfa-devices
-var virtualMFADeviceNonUpdatableParams = []string{"user_id", "name", "base32_string_seed", "enabled"}
+var virtualMFADeviceNonUpdatableParams = []string{"user_id", "name"}
 
 func ResourceIdentityV5VirtualMFADevice() *schema.Resource {
 	return &schema.Resource{
@@ -116,7 +116,7 @@ func resourceIdentityV5MFARead(_ context.Context, d *schema.ResourceData, meta i
 	}
 	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error flatten UserMFADevices")
+		return common.CheckDeletedDiag(d, err, "error flatten user MFA device")
 	}
 	mfa := utils.PathSearch("mfa_devices[0]", respBody, nil)
 	if mfa == nil {
