@@ -14,7 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-//GET IAM /v5/authorization-schemas/services/{service_code}
+// @API IAM GET /v5/authorization-schemas/services/{service_code}
 func DataSourceIdentityV5AuthorizationSchema() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5AuthorizationSchemaRead,
