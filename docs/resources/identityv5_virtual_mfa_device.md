@@ -26,7 +26,7 @@ resource "huaweicloud_identityv5_virtual_mfa_device" "test" {
 
 The following arguments are supported:
 
-* `name` - (Required, String， NonUpdatable) Specifies the name of the user. The username consists of 1 to 64 characters. It can
+* `name` - (Required, String, NonUpdatable) Specifies the name of the user. The username consists of 1 to 64 characters. It can
   contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
   digit.
 
