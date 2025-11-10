@@ -16,8 +16,6 @@ import (
 )
 
 // @API GET /v5/mfa-devices
-const limit = 100
-
 func DataSourceIdentityV5VirtualMfaDevices() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5VirtualMfaDevicesRead,
