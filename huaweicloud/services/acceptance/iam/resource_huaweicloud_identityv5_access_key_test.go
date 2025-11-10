@@ -78,6 +78,12 @@ func TestAccIdentityV5AccessKey_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "status", "inactive"),
 				),
 			},
+			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{""},
+			},
 		},
 	})
 }
