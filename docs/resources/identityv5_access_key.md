@@ -21,7 +21,7 @@ resource "huaweicloud_identityv5_user" "user_1" {
 }
 
 resource "huaweicloud_identityv5_access_key" "key_1" {
-  user_id     = huaweicloud_identityv5_user.user_1.id
+  user_id = huaweicloud_identityv5_user.user_1.id
 }
 ```
 
@@ -35,17 +35,20 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `access_key_id` - Indicates permanent access key ID, also known as AK.
+* `id` - The access key ID.
 
 * `status` - Indicates the status of the access key can be *active* or *inactive*.
 
-* `created_at` - Indicates access key creation time..
+* `created_at` - Indicates access key creation time.
 
 * `last_used_at` - Indicates the last usage time of the access key. If it does not exist, it indicates that it has never been used.
+
+* `secret_access_key` - Indicates the access secret key.  
+* 
 ## Import
 
-The IAM v5 login profile can be imported using the id, e.g:
+The IAM v5 access key can be imported using the id, e.g:
 
 ```bash
-$ terraform import huaweicloud_identityv5_access_key.access_key <user_id>
+$ terraform import huaweicloud_identityv5_access_key.access_key <id>
 ```

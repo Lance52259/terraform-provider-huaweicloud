@@ -23,7 +23,7 @@ func getIdentityAccessKeyResourceFuncV5(cfg *config.Config, state *terraform.Res
 	}
 	getAccessKeyHttpUrl := "v5/users/{user_id}/access-keys"
 	getAccessKeyPath := client.Endpoint + getAccessKeyHttpUrl
-	getAccessKeyPath = strings.ReplaceAll(getAccessKeyPath, "{user_id}", state.Primary.ID)
+	getAccessKeyPath = strings.ReplaceAll(getAccessKeyPath, "{user_id}", state.Primary.Attributes["user_id"])
 	getAccessKeyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
@@ -35,8 +35,13 @@ func getIdentityAccessKeyResourceFuncV5(cfg *config.Config, state *terraform.Res
 	if err != nil {
 		return nil, err
 	}
-	accessKey := utils.PathSearch("access_keys", getAccessKeyRespBody, nil).([]interface{})
-	return accessKey[0], nil
+	accessKeys := utils.PathSearch("access_keys", getAccessKeyRespBody, nil).([]interface{})
+	for _, access := range accessKeys {
+		if state.Primary.ID == utils.PathSearch("access_key_id", access, nil).(string) {
+			return access, nil
+		}
+	}
+	return nil, nil
 }
 
 func TestAccIdentityV5AccessKey_basic(t *testing.T) {
@@ -64,7 +69,7 @@ func TestAccIdentityV5AccessKey_basic(t *testing.T) {
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "status", "active"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
-					resource.TestCheckResourceAttrSet(resourceName, "access_key_id"),
+					resource.TestCheckResourceAttrSet(resourceName, "secret_access_key"),
 				),
 			},
 			{
@@ -85,7 +90,7 @@ resource "huaweicloud_identityv5_user" "user_1" {
 }
 
 resource "huaweicloud_identityv5_access_key" "key_1" {
-  user_id     = huaweicloud_identityv5_user.user_1.id
+  user_id = huaweicloud_identityv5_user.user_1.id
 }
 `, userName)
 }

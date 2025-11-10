@@ -19,7 +19,7 @@ import (
 // @API IAM GET /v5/users/{user_id}/access-keys
 // @API IAM GET /v5/users/{user_id}/access-keys/{access_key_id}/last-used
 // @API IAM PUT /v5/users/{user_id}/access-keys/{access_key_id}
-//var accessKeyNonUpdatableParams = []string{"user_id"}
+var accessKeyV5NonUpdatableParams = []string{"user_id"}
 
 func ResourceIdentityAccessKey() *schema.Resource {
 	return &schema.Resource{
@@ -28,7 +28,7 @@ func ResourceIdentityAccessKey() *schema.Resource {
 		UpdateContext: resourceIdentityV5AccessKeyUpdate,
 		DeleteContext: resourceIdentityV5AccessKeyDelete,
 
-		//CustomizeDiff: config.FlexibleForceNew(accessKeyNonUpdatableParams),
+		CustomizeDiff: config.FlexibleForceNew(accessKeyV5NonUpdatableParams),
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -37,11 +37,6 @@ func ResourceIdentityAccessKey() *schema.Resource {
 			"user_id": {
 				Type:     schema.TypeString,
 				Required: true,
-			},
-			"access_key_id": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
 			},
 			"created_at": {
 				Type:     schema.TypeString,
@@ -57,6 +52,11 @@ func ResourceIdentityAccessKey() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+			},
+			"secret_access_key": {
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 		},
 	}
@@ -84,12 +84,18 @@ func resourceIdentityV5AccessKeyCreate(ctx context.Context, d *schema.ResourceDa
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
-	id := utils.PathSearch("access_key.user_id", createAccessKeyBody, "").(string)
-	if id == "" {
-		return common.CheckDeletedDiag(d, err, "error get IAM user id : id is not found in API response")
+	access := utils.PathSearch("access_key.access_key_id", createAccessKeyBody, "").(string)
+	if access == "" {
+		return common.CheckDeletedDiag(d, err, "error get IAM access key : access key is not found in API response")
 	}
-	d.SetId(id)
+	d.SetId(access)
+	secret := utils.PathSearch("access_key.secret_access_key", createAccessKeyBody, "").(string)
+	if secret == "" {
+		return common.CheckDeletedDiag(d, err, "error get IAM secret key : secret key is not found in API response")
+	}
+	if err := d.Set("secret_access_key", secret); err != nil {
+		return diag.Errorf("error setting IAM field : %s", err)
+	}
 	return resourceIdentityV5AccessKeyRead(ctx, d, meta)
 }
 
@@ -102,7 +108,7 @@ func resourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData, 
 
 	getAccessKeyHttpUrl := "v5/users/{user_id}/access-keys"
 	getAccessKeyPath := iamClient.Endpoint + getAccessKeyHttpUrl
-	getAccessKeyPath = strings.ReplaceAll(getAccessKeyPath, "{user_id}", d.Id())
+	getAccessKeyPath = strings.ReplaceAll(getAccessKeyPath, "{user_id}", d.Get("user_id").(string))
 	getAccessKeyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
@@ -116,22 +122,24 @@ func resourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	}
 	accessKey := utils.PathSearch("access_keys", getAccessKeyRespBody, nil).([]interface{})
 	if accessKey == nil {
+		return common.CheckDeletedDiag(d, err, "error getting IAM access keys: keys is not found in API response")
+	}
+	body := checkAccessExist(d, accessKey)
+	if body == nil {
 		return common.CheckDeletedDiag(d, err, "error getting IAM access key: key is not found in API response")
 	}
-
 	mErr := multierror.Append(nil,
-		d.Set("access_key_id", utils.PathSearch("access_key_id", accessKey[0], nil)),
-		d.Set("created_at", utils.PathSearch("created_at", accessKey[0], nil)),
-		d.Set("status", utils.PathSearch("status", accessKey[0], nil)),
+		d.Set("created_at", utils.PathSearch("created_at", body, nil)),
+		d.Set("status", utils.PathSearch("status", body, nil)),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting IAM access key fields: %s", err)
 	}
-	accessKeyId := d.Get("access_key_id").(string)
+	accessKeyId := utils.PathSearch("access_key_id", body, nil).(string)
 	if accessKeyId != "" {
 		getLastUsedHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}/last-used"
 		getLastUsedPath := iamClient.Endpoint + getLastUsedHttpUrl
-		getLastUsedPath = strings.ReplaceAll(getLastUsedPath, "{user_id}", d.Id())
+		getLastUsedPath = strings.ReplaceAll(getLastUsedPath, "{user_id}", d.Get("user_id").(string))
 		getLastUsedPath = strings.ReplaceAll(getLastUsedPath, "{access_key_id}", accessKeyId)
 		getLastUsedOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -148,8 +156,20 @@ func resourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData, 
 			return diag.FromErr(e)
 		}
 	}
-	d.SetId(d.Get("user_id").(string))
+	d.SetId(accessKeyId)
 	return nil
+}
+
+func checkAccessExist(d *schema.ResourceData, arrays []interface{}) interface{} {
+	accessKey := d.Id()
+	var res interface{}
+	for _, array := range arrays {
+		if accessKey == utils.PathSearch("access_key_id", array, nil).(string) {
+			res = array
+			break
+		}
+	}
+	return res
 }
 
 func resourceIdentityV5AccessKeyUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -159,7 +179,7 @@ func resourceIdentityV5AccessKeyUpdate(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	accessKeyId := d.Get("access_key_id").(string)
+	accessKeyId := d.Id()
 	if accessKeyId == "" {
 		return diag.Errorf("error getting IAM access key id")
 	}
@@ -167,7 +187,7 @@ func resourceIdentityV5AccessKeyUpdate(ctx context.Context, d *schema.ResourceDa
 	if d.HasChanges("status") {
 		updateAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
 		updateAccessKeyPath := iamClient.Endpoint + updateAccessKeyHttpUrl
-		updateAccessKeyPath = strings.ReplaceAll(updateAccessKeyPath, "{user_id}", d.Id())
+		updateAccessKeyPath = strings.ReplaceAll(updateAccessKeyPath, "{user_id}", d.Get("user_id").(string))
 		updateAccessKeyPath = strings.ReplaceAll(updateAccessKeyPath, "{access_key_id}", accessKeyId)
 		updateAccessKeyOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -191,8 +211,8 @@ func resourceIdentityV5AccessKeyDelete(_ context.Context, d *schema.ResourceData
 	}
 	deleteAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
 	deleteAccessKeyPath := iamClient.Endpoint + deleteAccessKeyHttpUrl
-	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{user_id}", d.Id())
-	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{access_key_id}", d.Get("access_key_id").(string))
+	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{user_id}", d.Get("user_id").(string))
+	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{access_key_id}", d.Id())
 	deleteAccessKeyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
