@@ -134,6 +134,7 @@ resource "huaweicloud_identity_trust_agency" "test" {
         {
           Action = [
             "sts:agencies:assume",
+			"adn:*:list*",
           ]
           Effect = "Allow"
           Principal = {
