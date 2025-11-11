@@ -50,5 +50,5 @@ In addition to all arguments above, the following attributes are exported:
 The IAM v5 access key can be imported using the id, e.g:
 
 ```bash
-$ terraform import huaweicloud_identityv5_access_key.access_key <id>
+$ terraform import huaweicloud_identityv5_access_key.access_key <user_id>/<access_key_id>
 ```
