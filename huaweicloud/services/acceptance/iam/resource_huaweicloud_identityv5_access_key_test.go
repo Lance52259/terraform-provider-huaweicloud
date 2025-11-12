@@ -37,11 +37,11 @@ func getIdentityAccessKeyResourceFuncV5(cfg *config.Config, state *terraform.Res
 	}
 	accessKeys := utils.PathSearch("access_keys", getAccessKeyRespBody, nil).([]interface{})
 	for _, access := range accessKeys {
-		if state.Primary.ID == utils.PathSearch("access_key_id", access, nil).(string) {
+		if state.Primary.ID == fmt.Sprintf(state.Primary.Attributes["user_id"]+"/"+utils.PathSearch("access_key_id", access, "").(string)) {
 			return access, nil
 		}
 	}
-	return nil, nil
+	return nil, golangsdk.ErrDefault404{}
 }
 
 func TestAccIdentityV5AccessKey_basic(t *testing.T) {
@@ -67,7 +67,7 @@ func TestAccIdentityV5AccessKey_basic(t *testing.T) {
 				Config: testAccIdentityAccessKeyV5_basic(userName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "status", "active"),
+					resource.TestCheckResourceAttr(resourceName, "status", "inactive"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrSet(resourceName, "secret_access_key"),
 				),
@@ -75,14 +75,14 @@ func TestAccIdentityV5AccessKey_basic(t *testing.T) {
 			{
 				Config: testAccIdentityAccessKeyV5_update(userName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "status", "inactive"),
+					resource.TestCheckResourceAttr(resourceName, "status", "active"),
 				),
 			},
 			{
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{""},
+				ImportStateVerifyIgnore: []string{"secret_access_key"},
 			},
 		},
 	})
@@ -97,6 +97,7 @@ resource "huaweicloud_identityv5_user" "user_1" {
 
 resource "huaweicloud_identityv5_access_key" "key_1" {
   user_id = huaweicloud_identityv5_user.user_1.id
+  status  = "inactive"
 }
 `, userName)
 }
@@ -110,7 +111,7 @@ resource "huaweicloud_identityv5_user" "user_1" {
 
 resource "huaweicloud_identityv5_access_key" "key_1" {
   user_id = huaweicloud_identityv5_user.user_1.id
-  status  = "inactive"
+  status  = "active"
 }
 `, userName)
 }

@@ -31,13 +31,13 @@ The following arguments are supported:
 
 * `user_id` - (Required, String， NonUpdatable) Specifies the ID of the user.
 
+* `status` - (Optional, String) Specifies the status of the access key can be *active* or *inactive*.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The access key ID.
-
-* `status` - Indicates the status of the access key can be *active* or *inactive*.
 
 * `created_at` - Indicates access key creation time.
 
@@ -47,7 +47,7 @@ In addition to all arguments above, the following attributes are exported:
 * 
 ## Import
 
-The IAM v5 access key can be imported using the id, e.g:
+The IAM v5 access key can be imported using the user_id and access_key_id seperated by a slash, e.g:
 
 ```bash
 $ terraform import huaweicloud_identityv5_access_key.access_key <user_id>/<access_key_id>
