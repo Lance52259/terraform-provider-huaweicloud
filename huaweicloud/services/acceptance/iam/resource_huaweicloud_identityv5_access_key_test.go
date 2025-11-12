@@ -35,13 +35,12 @@ func getIdentityAccessKeyResourceFuncV5(cfg *config.Config, state *terraform.Res
 	if err != nil {
 		return nil, err
 	}
-	accessKeys := utils.PathSearch("access_keys", getAccessKeyRespBody, nil).([]interface{})
-	for _, access := range accessKeys {
-		if state.Primary.ID == fmt.Sprintf(state.Primary.Attributes["user_id"]+"/"+utils.PathSearch("access_key_id", access, "").(string)) {
-			return access, nil
-		}
+
+	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", strings.Split(state.Primary.ID, "/")[1]), getAccessKeyRespBody, nil)
+	if accessKey == nil {
+		return nil, golangsdk.ErrDefault404{}
 	}
-	return nil, golangsdk.ErrDefault404{}
+	return accessKey, nil
 }
 
 func TestAccIdentityV5AccessKey_basic(t *testing.T) {
