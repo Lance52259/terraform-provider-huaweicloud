@@ -36,7 +36,7 @@ func getIdentityAccessKeyResourceFuncV5(cfg *config.Config, state *terraform.Res
 		return nil, err
 	}
 
-	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", strings.Split(state.Primary.ID, "/")[1]), getAccessKeyRespBody, nil)
+	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", state.Primary.ID), getAccessKeyRespBody, nil)
 	if accessKey == nil {
 		return nil, golangsdk.ErrDefault404{}
 	}
@@ -81,6 +81,7 @@ func TestAccIdentityV5AccessKey_basic(t *testing.T) {
 				ResourceName:            resourceName,
 				ImportState:             true,
 				ImportStateVerify:       true,
+				ImportStateIdFunc:       testIdentityV5AccessKeyImportState(resourceName),
 				ImportStateVerifyIgnore: []string{"secret_access_key"},
 			},
 		},
@@ -113,4 +114,19 @@ resource "huaweicloud_identityv5_access_key" "key_1" {
   status  = "active"
 }
 `, userName)
+}
+
+func testIdentityV5AccessKeyImportState(name string) resource.ImportStateIdFunc {
+	return func(s *terraform.State) (string, error) {
+		rs, ok := s.RootModule().Resources[name]
+		if !ok {
+			return "", fmt.Errorf("resource (%s) not found: %s", name, rs)
+		}
+
+		userId := rs.Primary.Attributes["user_id"]
+		if userId == "" {
+			return "", fmt.Errorf("attribute (user_id) of Resource (%s) not found: %s", name, rs)
+		}
+		return userId + "/" + rs.Primary.ID, nil
+	}
 }

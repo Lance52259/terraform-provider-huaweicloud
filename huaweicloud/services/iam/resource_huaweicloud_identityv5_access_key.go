@@ -89,15 +89,13 @@ func resourceIdentityV5AccessKeyCreate(ctx context.Context, d *schema.ResourceDa
 		return diag.FromErr(err)
 	}
 	accessKeyId := utils.PathSearch("access_key.access_key_id", createAccessKeyBody, "").(string)
+	d.SetId(accessKeyId)
 	mErr := multierror.Append(nil,
-		d.Set("access_key_id", accessKeyId),
 		d.Set("secret_access_key", utils.PathSearch("access_key.secret_access_key", createAccessKeyBody, "").(string)),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting IAM access key fields: %s", err)
 	}
-
-	d.SetId(userId + "/" + accessKeyId)
 
 	if _, ok := d.GetOk("status"); ok {
 		updateAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
@@ -141,7 +139,7 @@ func resourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", d.Get("access_key_id").(string)), getAccessKeyRespBody, nil)
+	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", d.Id()), getAccessKeyRespBody, nil)
 	if accessKey == nil {
 		return common.CheckDeletedDiag(d, err, "error getting IAM access keys: access key is not found in API response")
 	}
@@ -184,7 +182,7 @@ func resourceIdentityV5AccessKeyUpdate(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	accessKeyId := d.Get("access_key_id").(string)
+	accessKeyId := d.Id()
 	if d.HasChanges("status") {
 		updateAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
 		updateAccessKeyPath := iamClient.Endpoint + updateAccessKeyHttpUrl
@@ -213,7 +211,7 @@ func resourceIdentityV5AccessKeyDelete(_ context.Context, d *schema.ResourceData
 	deleteAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
 	deleteAccessKeyPath := iamClient.Endpoint + deleteAccessKeyHttpUrl
 	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{user_id}", d.Get("user_id").(string))
-	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{access_key_id}", d.Get("access_key_id").(string))
+	deleteAccessKeyPath = strings.ReplaceAll(deleteAccessKeyPath, "{access_key_id}", d.Id())
 	deleteAccessKeyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 	}
@@ -228,14 +226,15 @@ func resourceIdentityV5AccessKeyImportState(_ context.Context, d *schema.Resourc
 	[]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid format of import ID, must be <user_id>/<access_key_id>")
+		return nil, fmt.Errorf("invalid format of import ID, must be <user_id>/<id>")
 	}
 
-	if err := d.Set("user_id", parts[0]); err != nil {
-		return nil, fmt.Errorf("required import user_id")
-	}
-	if err := d.Set("access_key_id", parts[1]); err != nil {
-		return nil, fmt.Errorf("required import access_key_id")
+	d.SetId(parts[1])
+	mErr := multierror.Append(nil,
+		d.Set("user_id", parts[0]),
+	)
+	if err := mErr.ErrorOrNil(); err != nil {
+		return nil, fmt.Errorf("failed to set value to state when import, %s", err)
 	}
 	return []*schema.ResourceData{d}, nil
 }
