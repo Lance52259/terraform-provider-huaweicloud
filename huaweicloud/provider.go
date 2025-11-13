@@ -1293,6 +1293,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_nat_private_gateway_specs":       nat.DataSourceNatPrivateGatewaySpecs(),
 			"huaweicloud_nat_gateways_by_tags":            nat.DataSourceNatGatewaysByTags(),
 			"huaweicloud_nat_private_gateways_by_tags":    nat.DataSourceNatPrivateGatewaysByTags(),
+			"huaweicloud_nat_private_transit_subnets":     nat.DataSourceNatPrivateTransitSubnets(),
 			"huaweicloud_nat_private_transit_ips_by_tags": nat.DataSourceNatPrivateTransitIpsByTags(),
 
 			"huaweicloud_networking_port":              vpc.DataSourceNetworkingPortV2(),
