@@ -10,17 +10,12 @@ description: |-
 
 Manages an IAM v5 group resource within HuaweiCloud.
 
--> NOTE: You must have admin privileges to use this resource.
-
 ## Example Usage
 
 ```hcl
-variable "name" {}
-variable "description" {}
-
 resource "huaweicloud_identityv5_group" "group" {
-	group_name  = var.name
-	description = var.description
+  group_name  = "test_group_name"
+  description = "test description"
 }
 ```
 
@@ -28,7 +23,7 @@ resource "huaweicloud_identityv5_group" "group" {
 
 The following arguments are supported:
 
-* `name` - (Required, String) Specifies the name of the group. The username consists of `1` to `128` characters. It can
+* `group_name` - (Required, String) Specifies the name of the group. The username consists of `1` to `128` characters. It can
 contain only uppercase letters, lowercase letters, digits, spaces, and special characters (-_) and cannot start with a
 digit.
 
@@ -46,7 +41,7 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-The IAM v5 group can be imported using the id, e.g:
+The IAM v5 group can be imported using the `id`, e.g:
 
 ```bash
 $ terraform import huaweicloud_identityv5_group.test <id>

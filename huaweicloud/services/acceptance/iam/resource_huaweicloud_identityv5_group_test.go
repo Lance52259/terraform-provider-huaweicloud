@@ -60,7 +60,7 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
 					resource.TestCheckResourceAttr(resourceName, "description", "kkkkkstring"),
-					resource.TestCheckResourceAttr(resourceName, "name", "kkkkk4"),
+					resource.TestCheckResourceAttr(resourceName, "group_name", "kkkkk4"),
 				),
 			},
 			{
@@ -76,7 +76,7 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
 					resource.TestCheckResourceAttr(resourceName, "description", "kkkkkstringupdate"),
-					resource.TestCheckResourceAttr(resourceName, "name", "kkkkkupdate"),
+					resource.TestCheckResourceAttr(resourceName, "group_name", "kkkkkupdate"),
 				),
 			},
 			{
@@ -87,7 +87,7 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrSet(resourceName, "urn"),
 					resource.TestCheckResourceAttr(resourceName, "description", ""),
-					resource.TestCheckResourceAttr(resourceName, "name", "kkkkkupdate1"),
+					resource.TestCheckResourceAttr(resourceName, "group_name", "kkkkkupdate1"),
 				),
 			},
 		},
@@ -97,7 +97,7 @@ func TestAccIdentityV5Group_basic(t *testing.T) {
 func testAccIdentityV5Group_basic() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_group" "group" {
-	name  = "kkkkk4"
+	group_name  = "kkkkk4"
 	description = "kkkkkstring"
 }
 `)
@@ -106,7 +106,7 @@ resource "huaweicloud_identityv5_group" "group" {
 func testAccIdentityV5Group_update() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_group" "group" {
- 	name  = "kkkkkupdate"
+ 	group_name  = "kkkkkupdate"
 	description = "kkkkkstringupdate"
 }
 `)
@@ -115,7 +115,7 @@ resource "huaweicloud_identityv5_group" "group" {
 func testAccIdentityV5Group_noDescription() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_group" "group" {
- 	name  = "kkkkkupdate1"
+ 	group_name  = "kkkkkupdate1"
 }
 `)
 }

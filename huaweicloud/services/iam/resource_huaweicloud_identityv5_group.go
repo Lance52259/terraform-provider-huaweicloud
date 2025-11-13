@@ -18,8 +18,6 @@ import (
 // @API IAM GET /v5/groups/{group_id}
 // @API IAM PUT /v5/groups/{group_id}
 // @API IAM DELETE /v5/groups/{group_id}
-var groupNonUpdatableParams = []string{"group_id"}
-
 func ResourceIdentityV5Group() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityV5GroupCreate,
@@ -27,14 +25,12 @@ func ResourceIdentityV5Group() *schema.Resource {
 		UpdateContext: resourceIdentityV5GroupUpdate,
 		DeleteContext: resourceIdentityV5GroupDelete,
 
-		CustomizeDiff: config.FlexibleForceNew(groupNonUpdatableParams),
-
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
 		Schema: map[string]*schema.Schema{
-			"name": {
+			"group_name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -68,7 +64,7 @@ func resourceIdentityV5GroupCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 	createGroupResp, err := iamClient.Request("POST", createGroupPath, &createGroupOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error get IAM group")
+		return diag.Errorf("error creating IAM group: %s", err)
 	}
 	createGroupBody, err := utils.FlattenResponse(createGroupResp)
 	if err != nil {
@@ -76,7 +72,7 @@ func resourceIdentityV5GroupCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 	id := utils.PathSearch("group.group_id", createGroupBody, "").(string)
 	if id == "" {
-		return common.CheckDeletedDiag(d, err, "error getting IAM group : group id is not found in API response")
+		return diag.Errorf("error getting IAM group : group id is not found in API response")
 	}
 	d.SetId(id)
 	return resourceIdentityV5GroupRead(ctx, d, meta)
@@ -84,7 +80,7 @@ func resourceIdentityV5GroupCreate(ctx context.Context, d *schema.ResourceData, 
 
 func buildCreateGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"group_name":  d.Get("name").(string),
+		"group_name":  d.Get("group_name").(string),
 		"description": utils.ValueIgnoreEmpty(d.Get("description")),
 	}
 	return bodyParams
@@ -104,7 +100,7 @@ func resourceIdentityV5GroupRead(_ context.Context, d *schema.ResourceData, meta
 	}
 	getGroupResp, err := iamClient.Request("GET", getGroupPath, &getGroupOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error get IAM group")
+		return common.CheckDeletedDiag(d, err, "error getting IAM group")
 	}
 	getGroupRespBody, err := utils.FlattenResponse(getGroupResp)
 	if err != nil {
@@ -117,14 +113,11 @@ func resourceIdentityV5GroupRead(_ context.Context, d *schema.ResourceData, meta
 
 	mErr := multierror.Append(nil,
 		d.Set("description", utils.PathSearch("description", group, nil)),
-		d.Set("name", utils.PathSearch("group_name", group, nil)),
+		d.Set("group_name", utils.PathSearch("group_name", group, nil)),
 		d.Set("created_at", utils.PathSearch("created_at", group, nil)),
 		d.Set("urn", utils.PathSearch("urn", group, nil)),
 	)
-	if err = mErr.ErrorOrNil(); err != nil {
-		return diag.Errorf("error setting IAM group fields: %s", err)
-	}
-	return nil
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func resourceIdentityV5GroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -134,7 +127,7 @@ func resourceIdentityV5GroupUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 	updateChanges := []string{
-		"name",
+		"group_name",
 		"description",
 	}
 	if d.HasChanges(updateChanges...) {
@@ -155,7 +148,7 @@ func resourceIdentityV5GroupUpdate(ctx context.Context, d *schema.ResourceData, 
 
 func buildUpdateGroupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
-		"new_group_name":        d.Get("name").(string),
+		"new_group_name":        d.Get("group_name").(string),
 		"new_group_description": d.Get("description").(string),
 	}
 	return bodyParams
