@@ -15,8 +15,7 @@ Use this data source to get the list of cloud connection capabilities.
 ```hcl
 variable "resource_type" {}
 
-data "huaweicloud_cc_connection_capabilities" "test" {
-}
+data "huaweicloud_cc_connection_capabilities" "test" {}
 
 data "huaweicloud_cc_connection_capabilities" "test1" {
   resource_type = var.resource_type

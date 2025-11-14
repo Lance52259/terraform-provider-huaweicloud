@@ -13,9 +13,7 @@ Use this data source to get the list of region that the cloud connection support
 ## Example Usage
 
 ```hcl
-data "huaweicloud_cc_connection_supported_regions" "test" {
-  
-}
+data "huaweicloud_cc_connection_supported_regions" "test" {}
 ```
 
 ## Argument Reference

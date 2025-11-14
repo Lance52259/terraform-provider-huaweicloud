@@ -21,19 +21,19 @@ data "huaweicloud_cc_connection_quotas" "test" {
 }
 
 data "huaweicloud_cc_connection_quotas" "test1" {
-  quota_type = "cloud_connection_region"
+  quota_type          = "cloud_connection_region"
   cloud_connection_id = var.cloud_connection_id
 }
 
 data "huaweicloud_cc_connection_quotas" "test2" {
-  quota_type = "cloud_connection_route"
+  quota_type          = "cloud_connection_route"
   cloud_connection_id = var.cloud_connection_id
 }
 
 data "huaweicloud_cc_connection_quotas" "test3" {
-  quota_type = "region_network_instance"
+  quota_type          = "region_network_instance"
   cloud_connection_id = var.cloud_connection_id
-  region_id = var.region_id
+  region_id           = var.region_id
 }
 ```
 

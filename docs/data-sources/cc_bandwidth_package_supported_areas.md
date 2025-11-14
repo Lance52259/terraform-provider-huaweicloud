@@ -15,9 +15,7 @@ Use this data source to get the list of geographic region that the bandwidth pac
 ```hcl
 variable "station" {}
 
-data "huaweicloud_cc_bandwidth_package_supported_areas" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_supported_areas" "test" {}
 
 data "huaweicloud_cc_bandwidth_package_supported_areas" "test1" {
   station = var.station

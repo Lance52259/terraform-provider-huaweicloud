@@ -80,7 +80,7 @@ data "huaweicloud_cc_connection_quotas" "test" {
 func testDataSourceCcCloudConnection_QuotaType_CloudConnectionRegion() string {
 	return `
 data "huaweicloud_cc_connection_quotas" "test" {
-  quota_type = "cloud_connection_region"
+  quota_type          = "cloud_connection_region"
   cloud_connection_id = "a4da6488b3154b22ad5a93f858dc6a9d"
 }`
 }
@@ -88,7 +88,7 @@ data "huaweicloud_cc_connection_quotas" "test" {
 func testDataSourceCcCloudConnection_QuotaType_CloudConnectionRoute() string {
 	return `
 data "huaweicloud_cc_connection_quotas" "test" {
-  quota_type = "cloud_connection_route"
+  quota_type          = "cloud_connection_route"
   cloud_connection_id = "a4da6488b3154b22ad5a93f858dc6a9d"
 }`
 }
@@ -96,8 +96,8 @@ data "huaweicloud_cc_connection_quotas" "test" {
 func testDataSourceCcCloudConnection_QuotaType_NetworkInstance() string {
 	return `
 data "huaweicloud_cc_connection_quotas" "test" {
-  quota_type = "region_network_instance"
+  quota_type          = "region_network_instance"
   cloud_connection_id = "a4da6488b3154b22ad5a93f858dc6a9d"
-  region_id = "cn-southwest-242"
+  region_id           = "cn-southwest-242"
 }`
 }

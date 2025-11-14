@@ -59,9 +59,7 @@ func TestAccDataSourceCcCloudConnectionCapabilities_basic(t *testing.T) {
 
 func testDataSourceCcCloudConnectionCapabilities_Basic() string {
 	return `
-data "huaweicloud_cc_connection_capabilities" "test" {
-  
-}`
+data "huaweicloud_cc_connection_capabilities" "test" {}`
 }
 
 func testDataSourceCcCloudConnectionCapabilities_ResourceType_Ipv6_Support_Regions() string {
