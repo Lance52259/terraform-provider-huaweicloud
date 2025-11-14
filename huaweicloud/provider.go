@@ -1157,6 +1157,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_services":                     iam.DataSourceIdentityServices(),
 
 			"huaweicloud_identityv5_virtual_mfa_devices": iam.DataSourceIdentityV5VirtualMfaDevices(),
+			"huaweicloud_identityv5_attached_policies":   iam.DataSourceIdentityV5AttachedPolicies(),
 
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
