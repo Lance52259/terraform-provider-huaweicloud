@@ -13,9 +13,7 @@ Use this data source to get the list of the bandwidth package line.
 ## Example Usage
 
 ```hcl
-data "huaweicloud_cc_bandwidth_package_lines" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_lines" "test" {}
 ```
 
 ## Argument Reference

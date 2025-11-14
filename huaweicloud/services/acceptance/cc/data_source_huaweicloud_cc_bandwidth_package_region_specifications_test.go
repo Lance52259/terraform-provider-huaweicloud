@@ -103,7 +103,7 @@ data "huaweicloud_cc_bandwidth_package_region_specifications" "test" {
 func testDataSourceCcBandwidthPackageRegionSpecifications_MultiRegion() string {
 	return `
 data "huaweicloud_cc_bandwidth_package_region_specifications" "test" {
-  local_region_id = "cn-southwest-242"
+  local_region_id  = "cn-southwest-242"
   remote_region_id = "cn-southwest-248"
 }`
 }

@@ -16,9 +16,7 @@ Use this data source to get the list of bandwidth package specifications in a ge
 variable "local_area_id" {}
 variable "remote_area_id" {}
 
-data "huaweicloud_cc_bandwidth_package_area_specifications" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_area_specifications" "test" {}
 
 data "huaweicloud_cc_bandwidth_package_area_specifications" "test1" {
   local_area_id = var.local_area_id
@@ -29,7 +27,7 @@ data "huaweicloud_cc_bandwidth_package_area_specifications" "test2" {
 }
 
 data "huaweicloud_cc_bandwidth_package_area_specifications" "test3" {
-  local_area_id = var.local_area_id
+  local_area_id  = var.local_area_id
   remote_area_id = var.remote_area_id
 }
 ```

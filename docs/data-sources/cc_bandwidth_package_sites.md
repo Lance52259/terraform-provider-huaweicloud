@@ -17,9 +17,7 @@ variable "site_code" {}
 variable "region_id" {}
 variable "name" {}
 
-data "huaweicloud_cc_bandwidth_package_sites" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_sites" "test" {}
 
 data "huaweicloud_cc_bandwidth_package_sites" "test1" {
   site_code = var.site_code

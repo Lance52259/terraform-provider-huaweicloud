@@ -95,7 +95,7 @@ data "huaweicloud_cc_bandwidth_package_area_specifications" "test" {
 func testDataSourceCcBandwidthPackageAreaSpecifications_MultiArea() string {
 	return `
 data "huaweicloud_cc_bandwidth_package_area_specifications" "test" {
-  local_area_id = "Africa"
+  local_area_id  = "Africa"
   remote_area_id = "Asia-Pacific"
 }`
 }

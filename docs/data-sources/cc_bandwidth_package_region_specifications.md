@@ -16,9 +16,7 @@ Use this data source to get the list of the multi-city bandwidth package specifi
 variable "local_region_id" {}
 variable "remote_region_id" {}
 
-data "huaweicloud_cc_bandwidth_package_region_specifications" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_region_specifications" "test" {}
 
 data "huaweicloud_cc_bandwidth_package_region_specifications" "test1" {
   local_region_id = var.local_region_id
@@ -29,7 +27,7 @@ data "huaweicloud_cc_bandwidth_package_region_specifications" "test2" {
 }
 
 data "huaweicloud_cc_bandwidth_package_region_specifications" "test3" {
-  local_region_id = var.local_region_id
+  local_region_id  = var.local_region_id
   remote_region_id = var.remote_region_id
 }
 ```

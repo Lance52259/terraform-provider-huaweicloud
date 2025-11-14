@@ -16,9 +16,7 @@ Use this data source to get the list of the bandwidth package class.
 variable "level" {}
 variable "name" {}
 
-data "huaweicloud_cc_bandwidth_package_levels" "test" {
-  
-}
+data "huaweicloud_cc_bandwidth_package_levels" "test" {}
 
 data "huaweicloud_cc_bandwidth_package_levels" "test1" {
   level = var.level
