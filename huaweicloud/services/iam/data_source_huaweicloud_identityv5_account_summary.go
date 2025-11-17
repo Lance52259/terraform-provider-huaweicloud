@@ -14,6 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/schemas"
 )
 
+// @API IAM GET /v5/account-summary
 func DataSourceIamIdentityV5AccountSummary() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIamIdentityV5AccountSummaryRead,
@@ -112,7 +113,6 @@ func dataSourceIamIdentityV5AccountSummaryRead(_ context.Context, d *schema.Reso
 	return nil
 }
 
-// @API IAM GET /v5/account-summary
 func (w *IdentityV5AccountSummaryDSWrapper) GetAccountSummaryV5() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "iam")
 	if err != nil {
