@@ -43,6 +43,7 @@ func testAccDatasourceMfaDevices_basic(userId string) string {
 data "huaweicloud_identitycenter_instance" "test" {}
  
 data "huaweicloud_identitycenter_mfa_devices" "test"{
+  depends_on        = [data.huaweicloud_identitycenter_instance.test]
   user_id           = "%s"
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }

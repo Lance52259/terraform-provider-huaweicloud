@@ -119,7 +119,7 @@ func flattenMfaDevices(data interface{}) []interface{} {
 	if len(devices) < 1 {
 		return nil
 	}
-	result := make([]interface{}, len(devices))
+	result := make([]interface{}, 0, len(devices))
 	for _, device := range devices {
 		result = append(result, map[string]interface{}{
 			"registered_date": utils.FormatTimeStampRFC3339(int64(utils.PathSearch("registered_date", device, float64(0)).(float64))/1000, false),
