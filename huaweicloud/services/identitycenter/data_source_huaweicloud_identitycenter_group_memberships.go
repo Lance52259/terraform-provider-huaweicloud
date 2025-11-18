@@ -84,10 +84,6 @@ func buildListGroupMembershipsParams(marker string, d *schema.ResourceData) stri
 		res = fmt.Sprintf("%s&group_id=%v", res, v)
 	}
 
-	if v, ok := d.GetOk("user_id"); ok {
-		res = fmt.Sprintf("%s&user_id=%v", res, v)
-	}
-
 	return res
 }
 
@@ -235,12 +231,12 @@ func flattenGroupMemberships(memberships []interface{}) []interface{} {
 	}
 
 	result := make([]interface{}, 0, len(memberships))
-	for _, provider := range memberships {
+	for _, membership := range memberships {
 		result = append(result, map[string]interface{}{
-			"membership_id":     utils.PathSearch("membership_id", provider, nil),
-			"group_id":          utils.PathSearch("group_id", provider, nil),
-			"identity_store_id": utils.PathSearch("identity_store_id", provider, nil),
-			"member_id":         flattenMemberId(utils.PathSearch("member_id", provider, nil)),
+			"membership_id":     utils.PathSearch("membership_id", membership, nil),
+			"group_id":          utils.PathSearch("group_id", membership, nil),
+			"identity_store_id": utils.PathSearch("identity_store_id", membership, nil),
+			"member_id":         flattenMemberId(utils.PathSearch("member_id", membership, nil)),
 		})
 	}
 	return result
