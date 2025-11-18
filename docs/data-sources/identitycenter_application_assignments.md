@@ -37,7 +37,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `application_assignments` - The list of the application assignments.The [application_assignments](#application_assignments_struct) structure is documented below.
+* `application_assignments` - The list of the application assignments.
+  The [application_assignments](#application_assignments_struct) structure is documented below.
 
 <a name="application_assignments_struct"></a>
 The `application_assignments` block supports:

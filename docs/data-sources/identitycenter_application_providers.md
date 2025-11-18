@@ -26,7 +26,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `application_providers` - The list of the application providers.The [application_providers](#application_providers_struct) structure is documented below.
+* `application_providers` - The list of the application providers.
+  The [application_providers](#application_providers_struct) structure is documented below.
 
 <a name="application_providers_struct"></a>
 The `application_providers` block supports:
@@ -37,7 +38,8 @@ The `application_providers` block supports:
 
 * `application_provider_id` - The ID of the application provider.
 
-* `display_data` - The display data of the application provider. The [display_data](#display_data_struct) structure is documented below.
+* `display_data` - The display data of the application provider.
+  The [display_data](#display_data_struct) structure is documented below.
 
 <a name="application_providers_struct"></a>
 The `application_providers` block supports:

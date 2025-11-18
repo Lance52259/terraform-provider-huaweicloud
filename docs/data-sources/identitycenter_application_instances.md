@@ -30,7 +30,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `application_instances` - The list of the application instances.The [application_instances](#application_instances_struct) structure is documented below.
+* `application_instances` - The list of the application instances.
+  The [application_instances](#application_instances_struct) structure is documented below.
 
 <a name="application_instances_struct"></a>
 The `application_instances` block supports:
@@ -47,13 +48,17 @@ The `application_instances` block supports:
 
 * `response_schema_config` - The response schema configuration of the application instance.
 
-* `security_config` - The security configuration of the application instance. The [security_config](#security_config_struct) structure is documented below.
+* `security_config` - The security configuration of the application instance.
+  The [security_config](#security_config_struct) structure is documented below.
 
-* `service_provider_config` - The service provider configuration of the application instance. The [service_provider_config](#service_provider_config_struct) structure is documented below.
+* `service_provider_config` - The service provider configuration of the application instance.
+  The [service_provider_config](#service_provider_config_struct) structure is documented below.
 
-* `identity_provider_config` - The identity provider configuration of the application instance. The [identity_provider_config](#identity_provider_config_struct) structure is documented below.
+* `identity_provider_config` - The identity provider configuration of the application instance.
+  The [identity_provider_config](#identity_provider_config_struct) structure is documented below.
 
-* `active_certificate` - The active certificate of the application instance. The [active_certificate](#active_certificate_struct) structure is documented below.
+* `active_certificate` - The active certificate of the application instance.
+  The [active_certificate](#active_certificate_struct) structure is documented below.
 
 * `visible` - Whether the application instance is visible.
 

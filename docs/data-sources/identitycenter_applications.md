@@ -30,7 +30,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `applications` - The list of the applications. The [applications](#applications_struct) structure is documented below.
+* `applications` - The list of the applications.
+  The [applications](#applications_struct) structure is documented below.
 
 <a name="applications_struct"></a>
 The `applications` block supports:
@@ -39,7 +40,8 @@ The `applications` block supports:
 
 * `application_provider_urn` - The urn of the application provider.
 
-* `assignment_config` - The assignment configuration of the application. The [assignment_config](#assignment_config_struct) structure is documented below.
+* `assignment_config` - The assignment configuration of the application.
+  The [assignment_config](#assignment_config_struct) structure is documented below.
 
 * `created_date` - The created date of the application.
 
@@ -53,7 +55,8 @@ The `applications` block supports:
 
 * `application_account` - The account of the application.
 
-* `portal_options` - The portal options of the application. The [portal_options](#portal_options_struct) structure is documented below.
+* `portal_options` - The portal options of the application.
+  The [portal_options](#portal_options_struct) structure is documented below.
 
 <a name="assignment_config_struct"></a>
 The `assignment_config` block supports:
