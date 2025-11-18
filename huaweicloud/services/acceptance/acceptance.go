@@ -151,6 +151,7 @@ var (
 	HW_RAM_ENABLE_FLAG               = os.Getenv("HW_RAM_ENABLE_FLAG")
 	HW_RAM_SHARE_INVITATION_ID       = os.Getenv("HW_RAM_SHARE_INVITATION_ID")
 	HW_RAM_SHARE_ID                  = os.Getenv("HW_RAM_SHARE_ID")
+	HW_RAM_PERMISSION_ID             = os.Getenv("HW_RAM_PERMISSION_ID")
 
 	HW_RMS_TARGET_ID_FOR_FGS        = os.Getenv("HW_RMS_TARGET_ID_FOR_FGS")
 	HW_RMS_TARGET_ID_FOR_RFS        = os.Getenv("HW_RMS_TARGET_ID_FOR_RFS")
@@ -862,6 +863,26 @@ func TestAccPreCheckRGCTemplate(t *testing.T) {
 	}
 }
 
+func TestAccPreCheckRGCAccountID(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCOperation(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCOrganizationID(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
 // lintignore:AT003
 func TestAccPreCheckSDRSDeleteNic(t *testing.T) {
 	if HW_SDRS_PROTECTION_INSTANCE_ID == "" || HW_SDRS_NIC_ID == "" {
@@ -1489,6 +1510,13 @@ func TestAccPreCheckRAMSharedPrincipalsQueryFields(t *testing.T) {
 	if HW_RAM_SHARE_ACCOUNT_ID == "" || HW_RAM_SHARE_RESOURCE_URN == "" {
 		t.Skip("HW_RAM_SHARE_ACCOUNT_ID and HW_RAM_SHARE_RESOURCE_URN " +
 			"must be set for RAM shared principals tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRAMPermissionVersions(t *testing.T) {
+	if HW_RAM_PERMISSION_ID == "" {
+		t.Skip("HW_RAM_PERMISSION_ID must be set for RAM permission versions tests.")
 	}
 }
 
