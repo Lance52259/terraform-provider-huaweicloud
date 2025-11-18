@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+// @API IdentityCenter GET /v1/identity-stores/{identity_store_id}/group-memberships
+// @API IdentityCenter GET /v1/identity-stores/{identity_store_id}/group-memberships-for-member
 func DataSourceIdentityCenterGroupMemberships() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityCenterGroupMembershipsRead,
