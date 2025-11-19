@@ -1184,6 +1184,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_catalog_applications":                    identitycenter.DataSourceIdentityCenterCatalogApplications(),
 			"huaweicloud_identitycenter_batch_query_groups":                      identitycenter.DataSourceIdentityCenterBatchQueryGroups(),
 			"huaweicloud_identitycenter_account_assignments":                     identitycenter.DataSourceIdentityCenterAccountAssignments(),
+			"huaweicloud_identitycenter_application_instance_profiles":           identitycenter.DataSourceIdentityCenterApplicationInstanceProfiles(),
 
 			"huaweicloud_iec_bandwidths":     iec.DataSourceBandWidths(),
 			"huaweicloud_iec_eips":           iec.DataSourceEips(),
@@ -2464,6 +2465,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_identity_provider_certificate":          identitycenter.ResourceIdentityCenterIdentityProviderCertificate(),
 			"huaweicloud_identitycenter_tenant":                                 identitycenter.ResourceIdentityCenterTenant(),
 			"huaweicloud_identitycenter_bearer_token":                           identitycenter.ResourceIdentityCenterBearerToken(),
+			"huaweicloud_identitycenter_application_instance_profile_delete":    identitycenter.ResourceIdentityCenterApplicationInstanceProfileDelete(),
 
 			"huaweicloud_iec_eip":                 iec.ResourceEip(),
 			"huaweicloud_iec_keypair":             iec.ResourceKeypair(),
