@@ -1169,6 +1169,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_services":                     iam.DataSourceIdentityServices(),
 
 			"huaweicloud_identityv5_virtual_mfa_devices": iam.DataSourceIdentityV5VirtualMfaDevices(),
+			"huaweicloud_identityv5_registered_services": iam.DataSourceIdentityV5RegisteredServices(),
 
 			"huaweicloud_identitycenter_user_sessions":                           identitycenter.DataSourceIdentityCenterUserSessions(),
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
@@ -1369,6 +1370,12 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_organizational_units":                  rgc.DataSourceOrganizationalUnits(),
 			"huaweicloud_rgc_organizational_unit_controls":          rgc.DataSourceOrganizationalUnitControl(),
 			"huaweicloud_rgc_organizational_unit_compliance_status": rgc.DataSourceOrganizationalUnitComplianceStatus(),
+			"huaweicloud_rgc_accounts":                              rgc.DataSourceAccounts(),
+			"huaweicloud_rgc_enabled_controls":                      rgc.DataSourceEnabledControls(),
+			"huaweicloud_rgc_account_controls":                      rgc.DataSourceAccountControls(),
+			"huaweicloud_rgc_account_compliance_status":             rgc.DataSourceAccountComplianceStatus(),
+			"huaweicloud_rgc_account_enabled_control":               rgc.DataSourceAccountEnabledControl(),
+			"huaweicloud_rgc_core_account":                          rgc.DataSourceCoreAccounts(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
