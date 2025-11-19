@@ -865,6 +865,7 @@ func TestAccPreCheckRGCTemplate(t *testing.T) {
 	}
 }
 
+// lintignore:AT003
 func TestAccPreCheckRGCAccountID(t *testing.T) {
 	if HW_RGC_ACCOUNT_ID == "" {
 		t.Skip("HW_RGC_ACCOUNT_ID must be set for acceptance tests")
