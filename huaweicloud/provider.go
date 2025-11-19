@@ -1368,6 +1368,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_ram_tags":                                  ram.DataSourceTags(),
 			"huaweicloud_ram_permission_versions":                   ram.DataSourcePermissionVersions(),
 			"huaweicloud_ram_quotas":                                ram.DataSourceQuotas(),
+			"huaweicloud_ram_distinct_shared_principals":            ram.DataSourceDistinctSharedPrincipals(),
 
 			"huaweicloud_rgc_home_region":                           rgc.DataSourceHomeRegion(),
 			"huaweicloud_rgc_pre_launch_check":                      rgc.DataSourcePreLaunchCheck(),
@@ -2487,7 +2488,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_identityv5_group":              iam.ResourceIdentityV5Group(),
 			"huaweicloud_identityv5_group_membership":   iam.ResourceIdentityV5GroupMembership(),
 			"huaweicloud_identityv5_access_key":         iam.ResourceIdentityAccessKey(),
-
 
 			"huaweicloud_identitycenter_instance":                               identitycenter.ResourceIdentityCenterInstance(),
 			"huaweicloud_identitycenter_registered_region":                      identitycenter.ResourceIdentityCenterRegisteredRegion(),
