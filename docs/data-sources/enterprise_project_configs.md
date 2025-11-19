@@ -16,13 +16,6 @@ Use this data source to get the configurations of EPS within HuaweiCloud.
 data "huaweicloud_enterprise_project_configs" "test" {}
 ```
 
-## Argument Reference
-
-The following arguments are supported:
-
-* `region` - (Optional, String) Specifies the region in which to query the configurations.  
-  If omitted, the provider-level region will be used.
-
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
