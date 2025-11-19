@@ -334,9 +334,11 @@ var (
 	HW_SDRS_FAILURE_JOB_ID         = os.Getenv("HW_SDRS_FAILURE_JOB_ID")
 	HW_SDRS_PROTECTION_GROUP_ID    = os.Getenv("HW_SDRS_PROTECTION_GROUP_ID")
 
-	HW_IDENTITY_CENTER_ACCOUNT_ID                      = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID              = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE       = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
+	HW_IDENTITY_CENTER_USER_ID                   = os.Getenv("HW_IDENTITY_CENTER_USER_ID")
+	HW_IDENTITY_CENTER_SESSION_ID                = os.Getenv("HW_IDENTITY_CENTER_SESSION_ID")
+	HW_IDENTITY_CENTER_ACCOUNT_ID                = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID        = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
 	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID         = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID")
 	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID")
 
@@ -915,6 +917,20 @@ func TestAccPreCheckSDRSProtectionGroup(t *testing.T) {
 func TestAccPreCheckSDRSInstanceResizeFlavor(t *testing.T) {
 	if HW_SDRS_RESIZE_FLAVOR_ID == "" {
 		t.Skip("HW_SDRS_RESIZE_FLAVOR_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckIdentityCenterUserId(t *testing.T) {
+	if HW_IDENTITY_CENTER_USER_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_USER_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckIdentityCenterSessionId(t *testing.T) {
+	if HW_IDENTITY_CENTER_SESSION_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_SESSION_ID must be set for acceptance tests")
 	}
 }
 

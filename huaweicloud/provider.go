@@ -1169,8 +1169,10 @@ func Provider() *schema.Provider {
 
 			"huaweicloud_identityv5_virtual_mfa_devices": iam.DataSourceIdentityV5VirtualMfaDevices(),
 
+			"huaweicloud_identitycenter_user_sessions":                           identitycenter.DataSourceIdentityCenterUserSessions(),
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
 			"huaweicloud_identitycenter_instance":                                identitycenter.DataSourceIdentityCenter(),
+			"huaweicloud_identitycenter_mfa_devices":                             identitycenter.DataSourceIdentityCenterMfaDevices(),
 			"huaweicloud_identitycenter_groups":                                  identitycenter.DataSourceIdentityCenterGroups(),
 			"huaweicloud_identitycenter_users":                                   identitycenter.DataSourceIdentityCenterUsers(),
 			"huaweicloud_identitycenter_access_control_attribute_configurations": identitycenter.DataSourceAccessControlAttributeConfigurations(),
@@ -2459,6 +2461,10 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_group":                                  identitycenter.ResourceIdentityCenterGroup(),
 			"huaweicloud_identitycenter_group_membership":                       identitycenter.ResourceGroupMembership(),
 			"huaweicloud_identitycenter_permission_set":                         identitycenter.ResourcePermissionSet(),
+			"huaweicloud_identitycenter_user_session_delete":                    identitycenter.ResourceIdentityCenterUserSessionDelete(),
+			"huaweicloud_identitycenter_profile_disassociate":                   identitycenter.ResourceIdentityCenterProfileDisassociate(),
+			"huaweicloud_identitycenter_password_reset":                         identitycenter.ResourceIdentityCenterPasswordReset(),
+			"huaweicloud_identitycenter_email_verify":                           identitycenter.ResourceIdentityCenterEmailVerify(),
 			"huaweicloud_identitycenter_application_assignment":                 identitycenter.ResourceIdentityCenterApplicationAssignment(),
 			"huaweicloud_identitycenter_system_policy_attachment":               identitycenter.ResourceSystemPolicyAttachment(),
 			"huaweicloud_identitycenter_system_identity_policy_attachment":      identitycenter.ResourceSystemIdentityPolicyAttachment(),
