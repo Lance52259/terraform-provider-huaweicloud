@@ -1173,6 +1173,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identitycenter_groups":                                  identitycenter.DataSourceIdentityCenterGroups(),
 			"huaweicloud_identitycenter_users":                                   identitycenter.DataSourceIdentityCenterUsers(),
 			"huaweicloud_identitycenter_access_control_attribute_configurations": identitycenter.DataSourceAccessControlAttributeConfigurations(),
+			"huaweicloud_identitycenter_identity_store_associations":             identitycenter.DataSourceIdentityCenterIdentityStoreAssociations(),
 			"huaweicloud_identitycenter_permission_sets":                         identitycenter.DataSourceIdentitycenterPermissionSets(),
 			"huaweicloud_identitycenter_account_provisioning_permission_sets":    identitycenter.DataSourceAccountProvisioningPermissionSets(),
 			"huaweicloud_identitycenter_service_provider_configuration":          identitycenter.DataSourceIdentityCenterServiceProviderConfiguration(),
