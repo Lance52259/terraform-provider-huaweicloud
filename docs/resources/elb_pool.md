@@ -136,6 +136,11 @@ The following arguments are supported:
 
   -> **NOTE:** At least one of `loadbalancer_id`, `listener_id`, `type` must be specified.
 
+* `cascade_delete` - (Optional, Bool) Specifies whether to delete its associated resources, including backend servers and health checks. 
+   Defaults to **false**.
+  
+  -> **NOTE:** The backend server group cannot be associated with a forwarding policy.
+
 * `ip_version` - (Optional, String, NonUpdatable) Specifies the IP address version supported by the backend server group.
   The value can be **dualstack**, **v6**, or **v4**. If the protocol of the backend server group is HTTP, the value is **v4**.
 
@@ -245,7 +250,7 @@ $ terraform import huaweicloud_elb_pool.pool_1 <id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes include: `deletion_protection_enable`. It is
+API response, security or some other reason. The missing attributes include: `deletion_protection_enable`, `cascade_delete`. It is
 generally recommended running **terraform plan** after importing a pool. You can then decide if changes should be
 applied to the pool, or the resource definition should be updated to align with the pool. Also you can ignore changes
 as below.
@@ -256,7 +261,7 @@ resource "huaweicloud_elb_pool" "test" {
 
   lifecycle {
     ignore_changes = [
-      deletion_protection_enable,
+      deletion_protection_enable, cascade_delete
     ]
   }
 }
