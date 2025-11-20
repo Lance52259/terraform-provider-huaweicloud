@@ -327,6 +327,8 @@ var (
 	HW_RGC_MANAGE_ACCOUNT_EMAIL      = os.Getenv("HW_RGC_MANAGE_ACCOUNT_EMAIL")
 	HW_RGC_CONTROL_IDENTIFIER        = os.Getenv("HW_RGC_CONTROL_IDENTIFIER")
 	HW_RGC_TEMPLATE_BODY             = os.Getenv("HW_RGC_TEMPLATE_BODY")
+	HW_RGC_CONTROL_ID                = os.Getenv("HW_RGC_CONTROL_ID")
+	HW_RGC_CORE_ACCOUNT_TYPE         = os.Getenv("HW_RGC_CORE_ACCOUNT_TYPE")
 
 	HW_SDRS_PROTECTION_INSTANCE_ID = os.Getenv("HW_SDRS_PROTECTION_INSTANCE_ID")
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
@@ -334,11 +336,11 @@ var (
 	HW_SDRS_FAILURE_JOB_ID         = os.Getenv("HW_SDRS_FAILURE_JOB_ID")
 	HW_SDRS_PROTECTION_GROUP_ID    = os.Getenv("HW_SDRS_PROTECTION_GROUP_ID")
 
-	HW_IDENTITY_CENTER_USER_ID                   = os.Getenv("HW_IDENTITY_CENTER_USER_ID")
-	HW_IDENTITY_CENTER_SESSION_ID                = os.Getenv("HW_IDENTITY_CENTER_SESSION_ID")
-	HW_IDENTITY_CENTER_ACCOUNT_ID                = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID        = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
+	HW_IDENTITY_CENTER_USER_ID                         = os.Getenv("HW_IDENTITY_CENTER_USER_ID")
+	HW_IDENTITY_CENTER_SESSION_ID                      = os.Getenv("HW_IDENTITY_CENTER_SESSION_ID")
+	HW_IDENTITY_CENTER_ACCOUNT_ID                      = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID              = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE       = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
 	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID         = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID")
 	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID")
 
@@ -865,6 +867,7 @@ func TestAccPreCheckRGCTemplate(t *testing.T) {
 	}
 }
 
+// lintignore:AT003
 func TestAccPreCheckRGCAccountID(t *testing.T) {
 	if HW_RGC_ACCOUNT_ID == "" {
 		t.Skip("HW_RGC_ACCOUNT_ID must be set for acceptance tests")
@@ -882,6 +885,21 @@ func TestAccPreCheckRGCOperation(t *testing.T) {
 func TestAccPreCheckRGCOrganizationID(t *testing.T) {
 	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
 		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckAccountEnabledControl(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" || HW_RGC_CONTROL_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID and HW_RGC_CONTROL_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCCoreAccountType(t *testing.T) {
+	if HW_RGC_CORE_ACCOUNT_TYPE == "" {
+		t.Skip("HW_RGC_CORE_ACCOUNT_TYPE must be set for acceptance tests")
 	}
 }
 
