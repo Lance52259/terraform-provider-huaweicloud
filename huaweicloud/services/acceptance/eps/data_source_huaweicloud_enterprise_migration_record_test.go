@@ -31,8 +31,8 @@ func TestAccDataEnterpriseProjectMigrationRecord_basic(t *testing.T) {
 func testAccDataEnterpriseProjectMigrationRecord_basic_test() string {
 	return fmt.Sprintf(`
 data "huaweicloud_enterprise_project_migrate_record" "test" {
-  start_time = "2020-01-01 00:00:00"
-  end_time = "2025-11-19 15:30:30"
+  start_time  = "2020-01-01 00:00:00"
+  end_time    = "2025-11-19 15:30:30"
   resource_id = "3dde353d-0117-4e1a-a09c-4750f61a3c5d"
 }
 
