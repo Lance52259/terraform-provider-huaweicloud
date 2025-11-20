@@ -36,7 +36,7 @@ func DataSourceAccountEnabledControl() *schema.Resource {
 			"control_detail": {
 				Type:     schema.TypeList,
 				Computed: true,
-				Elem:     enabledControlsSchema(),
+				Elem:     accountEnabledControlsSchema(),
 			},
 			"regions": {
 				Type:     schema.TypeList,
@@ -70,7 +70,7 @@ func DataSourceAccountEnabledControl() *schema.Resource {
 	}
 }
 
-func enabledControlsSchema() *schema.Resource {
+func accountEnabledControlsSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"manage_account_id": {
