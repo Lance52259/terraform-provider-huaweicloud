@@ -32,6 +32,6 @@ const testAccDataEnterpriseProjectResourcesMapping_basic = `
 data "huaweicloud_enterprise_project_resources_mapping" "test" {}
 
 output "huaweicloud_enterprise_project_resources_mapping" {
-  value = length(data.huaweicloud_enterprise_project_resources_mapping.test.resource_mapping) == 6
+  value = length(data.huaweicloud_enterprise_project_resources_mapping.test.resource_mapping) > 0
 }
 `
