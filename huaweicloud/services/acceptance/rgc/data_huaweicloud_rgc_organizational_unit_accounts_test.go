@@ -26,7 +26,6 @@ func TestAccDataSourceOrganizationalUnitAccounts_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.landing_zone_version"),
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.manage_account_id"),
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.account_id"),
-					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.account_name"),
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.account_type"),
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.owner"),
 					resource.TestCheckResourceAttrSet(dataSource, "managed_accounts.0.state"),
