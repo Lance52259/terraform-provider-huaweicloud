@@ -165,9 +165,6 @@ func flattenListPoliciesV5Response(resp interface{}) []interface{} {
 
 func buildListPoliciesV5Params(d *schema.ResourceData, marker string) string {
 	res := "?limit=100"
-	if v, ok := d.GetOk("user_id"); ok {
-		res = fmt.Sprintf("%s&user_id=%v", res, v)
-	}
 	if v, ok := d.GetOk("policy_type"); ok {
 		res = fmt.Sprintf("%s&policy_type=%v", res, v)
 	}
