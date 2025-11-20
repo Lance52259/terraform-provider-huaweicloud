@@ -14,8 +14,8 @@ Use this data source to get the resource move record of EPS within HuaweiCloud.
 
 ```hcl
 data "huaweicloud_enterprise_project_migrate_record" "test" {
-  start_time = "2020-10-10 01:00:00"
-  end_time = "2025-11-19 15:30:00"
+  start_time  = "2020-10-10 01:00:00"
+  end_time    = "2025-11-19 15:30:00"
   resource_id = "3dde353d-0117-4e1a-a09c-4750f61a3c5d"
 }
 ```

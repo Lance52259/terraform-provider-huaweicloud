@@ -12,7 +12,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -135,38 +134,11 @@ func dataSourceMigrateRecordRead(_ context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating EPS client: %s", err)
 	}
 
-	return ListMigrateRecord(client, d)
-}
-
-func ListMigrateRecord(client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
-	httpUrl := "v1.0/enterprise-projects/migrate-record/list?limit=10"
-	if d.Get("resource_id") != nil {
-		httpUrl += fmt.Sprintf("&resource_id=%s", d.Get("resource_id"))
+	httpUrl, err := buildMigrateRecordQueryParameter(d)
+	if err != nil {
+		return diag.Errorf("error build EPS migrate record url: %s", err)
 	}
 
-	if begTime, ok := d.GetOk("start_time"); ok {
-		earlierTime, err := utils.FormatUTCTimeStamp(begTime.(string))
-		if err != nil {
-			return diag.Errorf("unable to parse start_time: %s", err)
-		}
-		d.Set("start_time", strconv.FormatInt(earlierTime*1000, 10))
-	}
-
-	if d.Get("start_time") != nil {
-		httpUrl += fmt.Sprintf("&start_time=%s", d.Get("start_time"))
-	}
-
-	if endTime, ok := d.GetOk("end_time"); ok {
-		laterTime, err := utils.FormatUTCTimeStamp(endTime.(string))
-		if err != nil {
-			return diag.Errorf("unable to parse end_time: %s", err)
-		}
-		d.Set("end_time", strconv.FormatInt(laterTime*1000, 10))
-	}
-
-	if d.Get("end_time") != nil {
-		httpUrl += fmt.Sprintf("&end_time=%s", d.Get("end_time"))
-	}
 	listPathBase := client.Endpoint + httpUrl
 
 	opt := golangsdk.RequestOpts{
@@ -179,7 +151,7 @@ func ListMigrateRecord(client *golangsdk.ServiceClient, d *schema.ResourceData) 
 	res := make([]interface{}, 0)
 	offset := ""
 	for {
-		listPath := listPathBase + buildListPath(offset)
+		listPath := listPathBase + buildOffsetPath(offset)
 		getResp, err := client.Request("GET", listPath, &opt)
 		if err != nil {
 			return diag.Errorf("error retrieving EPS migrate record: %s", err)
@@ -193,9 +165,6 @@ func ListMigrateRecord(client *golangsdk.ServiceClient, d *schema.ResourceData) 
 		if offset == "" {
 			break
 		}
-	}
-	if len(res) == 0 {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "")
 	}
 
 	randUUID, err := uuid.GenerateUUID()
@@ -211,7 +180,33 @@ func ListMigrateRecord(client *golangsdk.ServiceClient, d *schema.ResourceData) 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func buildListPath(offset string) string {
+func buildMigrateRecordQueryParameter(d *schema.ResourceData) (string, error) {
+	httpUrl := "v1.0/enterprise-projects/migrate-record/list?limit=10"
+
+	if d.Get("resource_id") != nil {
+		httpUrl += fmt.Sprintf("&resource_id=%s", d.Get("resource_id"))
+	}
+
+	if begTime, ok := d.GetOk("start_time"); ok {
+		earlierTime, err := utils.FormatUTCTimeStamp(begTime.(string))
+		if err != nil {
+			return "", fmt.Errorf("unable to parse start_time: %s", err)
+		}
+		httpUrl += fmt.Sprintf("&start_time=%s", strconv.FormatInt(earlierTime*1000, 10))
+	}
+
+	if endTime, ok := d.GetOk("end_time"); ok {
+		laterTime, err := utils.FormatUTCTimeStamp(endTime.(string))
+		if err != nil {
+			return "", fmt.Errorf("unable to parse end_time: %s", err)
+		}
+		httpUrl += fmt.Sprintf("&end_time=%s", strconv.FormatInt(laterTime*1000, 10))
+	}
+
+	return httpUrl, nil
+}
+
+func buildOffsetPath(offset string) string {
 	res := ""
 	if offset != "" {
 		res += fmt.Sprintf("&offset=%s", offset)
