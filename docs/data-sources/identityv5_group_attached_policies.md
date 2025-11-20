@@ -1,12 +1,12 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_identityv5_attached_policies"
+page_title: "HuaweiCloud: huaweicloud_identityv5_group_attached_policies"
 description: |-
   Use this data source to get attached policies for a specified IAM V5 group.
 ---
  
-# huaweicloud_identityv5_virtual_mfa_devices
+# huaweicloud_identityv5_group_attached_policies
  
 Use this data source to get attached policies for a specified IAM V5 group.
 
@@ -15,7 +15,7 @@ Use this data source to get attached policies for a specified IAM V5 group.
 ```hcl
 variable group_id {}
 
-data "huaweicloud_identityv5_attached_policies" "test" {
+data "huaweicloud_identityv5_group_attached_policies" "test" {
   group_id = var.group_id
 }
 ```

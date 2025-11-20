@@ -17,9 +17,9 @@ import (
 )
 
 // @API GET /v5/groups/{group_id}/attached-policies
-func DataSourceIdentityV5AttachedPolicies() *schema.Resource {
+func DataSourceIdentityV5GroupAttachedPolicies() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceIdentityV5AttachedPoliciesRead,
+		ReadContext: dataSourceIdentityV5GroupAttachedPoliciesRead,
 
 		Schema: map[string]*schema.Schema{
 			"group_id": {
@@ -54,7 +54,7 @@ func DataSourceIdentityV5AttachedPolicies() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityV5AttachedPoliciesRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceIdentityV5GroupAttachedPoliciesRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 	client, err := cfg.NewServiceClient("iam", region)
@@ -69,7 +69,7 @@ func dataSourceIdentityV5AttachedPoliciesRead(_ context.Context, d *schema.Resou
 	var path string
 
 	for {
-		path = client.Endpoint + "v5/groups/{group_id}/attached-policies" + buildListAttachedPoliciesV5Params(marker)
+		path = client.Endpoint + "v5/groups/{group_id}/attached-policies" + buildListGroupAttachedPoliciesV5Params(marker)
 		path = strings.ReplaceAll(path, "{group_id}", groupId)
 		reqOpt := &golangsdk.RequestOpts{
 			KeepResponseBody: true,
@@ -82,7 +82,7 @@ func dataSourceIdentityV5AttachedPoliciesRead(_ context.Context, d *schema.Resou
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		policies := flattenListAttachedPoliciesV5Response(resp)
+		policies := flattenListGroupAttachedPoliciesV5Response(resp)
 		allPolicies = append(allPolicies, policies...)
 
 		marker = utils.PathSearch("page_info.next_marker", resp, "").(string)
@@ -99,7 +99,7 @@ func dataSourceIdentityV5AttachedPoliciesRead(_ context.Context, d *schema.Resou
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func flattenListAttachedPoliciesV5Response(resp interface{}) []interface{} {
+func flattenListGroupAttachedPoliciesV5Response(resp interface{}) []interface{} {
 	if resp == nil {
 		return nil
 	}
@@ -117,7 +117,7 @@ func flattenListAttachedPoliciesV5Response(resp interface{}) []interface{} {
 	return result
 }
 
-func buildListAttachedPoliciesV5Params(marker string) string {
+func buildListGroupAttachedPoliciesV5Params(marker string) string {
 	res := "?limit=100"
 	if marker != "" {
 		res = fmt.Sprintf("%s&marker=%v", res, marker)
