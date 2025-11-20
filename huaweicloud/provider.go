@@ -1168,8 +1168,15 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_role_assignments":             iam.DataSourceIdentityRoleAssignments(),
 			"huaweicloud_identity_services":                     iam.DataSourceIdentityServices(),
 
-			"huaweicloud_identityv5_virtual_mfa_devices": iam.DataSourceIdentityV5VirtualMfaDevices(),
-			"huaweicloud_identityv5_registered_services": iam.DataSourceIdentityV5RegisteredServices(),
+			"huaweicloud_identityv5_virtual_mfa_devices":     iam.DataSourceIdentityV5VirtualMfaDevices(),
+			"huaweicloud_identityv5_registered_services":     iam.DataSourceIdentityV5RegisteredServices(),
+			"huaweicloud_identityv5_users":                   iam.DataSourceIdentityV5Users(),
+			"huaweicloud_identityv5_service_principals":      iam.DataSourceIdentityV5ServicePrincipals(),
+			"huaweicloud_identityv5_groups":                  iam.DataSourceIdentityV5Groups(),
+			"huaweicloud_identityv5_account_summary":         iam.DataSourceIamIdentityV5AccountSummary(),
+			"huaweicloud_identityv5_account_feature_status":  iam.DataSourceIdentityV5AccountFeatureStatus(),
+			"huaweicloud_identityv5_policies":                iam.DataSourceIdentityV5Policies(),
+			"huaweicloud_identityv5_group_attached_policies": iam.DataSourceIdentityV5GroupAttachedPolicies(),
 
 			"huaweicloud_identitycenter_user_sessions":                           identitycenter.DataSourceIdentityCenterUserSessions(),
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
@@ -1376,6 +1383,9 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_account_compliance_status":             rgc.DataSourceAccountComplianceStatus(),
 			"huaweicloud_rgc_account_enabled_control":               rgc.DataSourceAccountEnabledControl(),
 			"huaweicloud_rgc_core_account":                          rgc.DataSourceCoreAccounts(),
+			"huaweicloud_rgc_config_rule_compliances":               rgc.DataSourceConfigRuleCompliances(),
+			"huaweicloud_rgc_external_config_rule_compliances":      rgc.DataSourceExternalConfigRuleCompliances(),
+			"huaweicloud_rgc_controls":                              rgc.DataSourceControls(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
