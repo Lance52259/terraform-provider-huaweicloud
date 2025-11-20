@@ -23,7 +23,7 @@ var organizationalUnitRegisterNonUpdatableParams = []string{"organizational_unit
 
 // @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/register
 // @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/re-register
-// @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/de-register
+// @API RGC POST /v1/managed-organization/managed-organizational-units/{managed_organizational_unit_id}/de-register
 // @API RGC GET /v1/managed-organization/managed-organizational-units/{managed_organizational_unit_id}
 // @API RGC GET /v1/managed-organization/{operation_id}
 func ResourceOrganizationalUnitRegister() *schema.Resource {
