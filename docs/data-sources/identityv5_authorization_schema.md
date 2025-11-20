@@ -13,7 +13,9 @@ Use this data source to get the list of IAM authorization schemas within HuaweiC
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identityv5_authorization_schema" "schema" {}
+data "huaweicloud_identityv5_authorization_schema" "schema" {
+  service_code = "iam"
+}
 ```
 
 ## Argument Reference
