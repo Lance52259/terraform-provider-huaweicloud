@@ -16,9 +16,9 @@ import (
 )
 
 // @API GET /v5/features/{feature_name}
-func DataSourceIdentityV5Account() *schema.Resource {
+func DataSourceIdentityV5AccountFeatureStatus() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceIdentityV5AccountRead,
+		ReadContext: dataSourceIdentityV5AccountFeatureStatusRead,
 
 		Schema: map[string]*schema.Schema{
 			"feature_name": {
@@ -33,7 +33,7 @@ func DataSourceIdentityV5Account() *schema.Resource {
 	}
 }
 
-func dataSourceIdentityV5AccountRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceIdentityV5AccountFeatureStatusRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 	client, err := cfg.NewServiceClient("iam", region)
