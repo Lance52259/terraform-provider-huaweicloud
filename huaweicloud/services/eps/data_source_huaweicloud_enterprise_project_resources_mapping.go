@@ -40,10 +40,6 @@ func dataSourceResourcesMappingRead(_ context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating EPS client: %s", err)
 	}
 
-	return ListResourceMapping(client, d)
-}
-
-func ListResourceMapping(client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
 	httpUrl := "v1.0/enterprise-projects/resources-mapping"
 	listPath := client.Endpoint + httpUrl
 
@@ -58,6 +54,7 @@ func ListResourceMapping(client *golangsdk.ServiceClient, d *schema.ResourceData
 	if err != nil {
 		return diag.FromErr(err)
 	}
+	
 	respBody, err := utils.FlattenResponse(requestResp)
 	if err != nil {
 		return diag.FromErr(err)
