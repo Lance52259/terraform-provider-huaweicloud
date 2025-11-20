@@ -1174,6 +1174,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identityv5_groups":                 iam.DataSourceIdentityV5Groups(),
 			"huaweicloud_identityv5_account_summary":        iam.DataSourceIamIdentityV5AccountSummary(),
 			"huaweicloud_identityv5_account_feature_status": iam.DataSourceIdentityV5AccountFeatureStatus(),
+			"huaweicloud_identityv5_policies":            iam.DataSourceIdentityV5Policies(),
 
 			"huaweicloud_identitycenter_user_sessions":                           identitycenter.DataSourceIdentityCenterUserSessions(),
 			"huaweicloud_identitycenter_batch_query_users":                       identitycenter.DataSourceIdentityCenterBatchQueryUsers(),
