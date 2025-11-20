@@ -16,10 +16,6 @@ Provides account summary information for HuaweiCloud Identity and Access Managem
 data "huaweicloud_identityv5_account_summary" "account" {}
 ```
 
-## Argument Reference
-
-The following arguments are supported:
-
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
