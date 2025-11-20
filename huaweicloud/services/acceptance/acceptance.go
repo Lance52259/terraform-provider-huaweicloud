@@ -911,6 +911,13 @@ func TestAccPreCheckRGCControlViolations(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckRGCControlID(t *testing.T) {
+	if HW_RGC_CONTROL_ID == "" {
+		t.Skip("HW_RGC_CONTROL_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSDRSDeleteNic(t *testing.T) {
 	if HW_SDRS_PROTECTION_INSTANCE_ID == "" || HW_SDRS_NIC_ID == "" {
 		t.Skip("HW_SDRS_PROTECTION_INSTANCE_ID and HW_SDRS_NIC_ID must be set for acceptance tests")
