@@ -1378,7 +1378,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_operation":                             rgc.DataSourceOperation(),
 			"huaweicloud_rgc_organizational_unit_accounts":          rgc.DataSourceOrganizationalUnitAccounts(),
 			"huaweicloud_rgc_organizational_units":                  rgc.DataSourceOrganizationalUnits(),
-			"huaweicloud_rgc_organizational_unit_controls":          rgc.DataSourceOrganizationalUnitControl(),
+			"huaweicloud_rgc_organizational_unit_controls":          rgc.DataSourceOrganizationalUnitControls(),
 			"huaweicloud_rgc_organizational_unit_compliance_status": rgc.DataSourceOrganizationalUnitComplianceStatus(),
 			"huaweicloud_rgc_accounts":                              rgc.DataSourceAccounts(),
 			"huaweicloud_rgc_enabled_controls":                      rgc.DataSourceEnabledControls(),
@@ -1397,6 +1397,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_best_practice_details":                 rgc.DataSourceBestPracticeDetails(),
 			"huaweicloud_rgc_best_practice_overview":                rgc.DataSourceBestPracticeOverview(),
 			"huaweicloud_rgc_best_practice_account_info":            rgc.DataSourceBestPracticeAccountInfo(),
+			"huaweicloud_rgc_organizational_unit_enabled_control":   rgc.DataSourceOrganizationalUnitEnabledControl(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
