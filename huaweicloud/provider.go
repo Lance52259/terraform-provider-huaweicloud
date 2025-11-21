@@ -1394,6 +1394,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_rgc_template_deploy_params":                rgc.DataSourceTemplateDeployParams(),
 			"huaweicloud_rgc_predefined_templates":                  rgc.DataSourcePredefinedTemplates(),
 			"huaweicloud_rgc_best_practice_details":                 rgc.DataSourceBestPracticeDetails(),
+			"huaweicloud_rgc_best_practice_overview":                rgc.DataSourceBestPracticeOverview(),
 
 			"huaweicloud_rds_flavors":                           rds.DataSourceRdsFlavors(),
 			"huaweicloud_rds_available_flavors":                 rds.DataSourceRdsAvailableFlavors(),
