@@ -53,10 +53,6 @@ func accountSchema() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"account_name": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"account_type": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -211,7 +207,6 @@ func flattenAccountsResp(resp interface{}) []interface{} {
 			"landing_zone_version":                    utils.PathSearch("landing_zone_version", v, nil),
 			"manage_account_id":                       utils.PathSearch("manage_account_id", v, nil),
 			"account_id":                              utils.PathSearch("account_id", v, nil),
-			"account_name":                            utils.PathSearch("account_name", v, nil),
 			"account_type":                            utils.PathSearch("account_type", v, nil),
 			"owner":                                   utils.PathSearch("owner", v, nil),
 			"state":                                   utils.PathSearch("state", v, nil),
