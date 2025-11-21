@@ -82,13 +82,16 @@ func resourceIdentityV5AccessKeyCreate(ctx context.Context, d *schema.ResourceDa
 	}
 	createAccessKeyResp, err := iamClient.Request("POST", createAccessKeyPath, &createAccessKeyOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error create IAM user access key")
+		return diag.FromErr(err)
 	}
 	createAccessKeyBody, err := utils.FlattenResponse(createAccessKeyResp)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	accessKeyId := utils.PathSearch("access_key.access_key_id", createAccessKeyBody, "").(string)
+	if accessKeyId == "" {
+		return diag.Errorf("error getting IAM access key id: %s", err)
+	}
 	d.SetId(accessKeyId)
 	mErr := multierror.Append(nil,
 		d.Set("secret_access_key", utils.PathSearch("access_key.secret_access_key", createAccessKeyBody, "").(string)),
@@ -97,7 +100,7 @@ func resourceIdentityV5AccessKeyCreate(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("error setting IAM access key fields: %s", err)
 	}
 
-	if _, ok := d.GetOk("status"); ok {
+	if v, ok := d.GetOk("status"); ok && v.(string) != "active" {
 		updateAccessKeyHttpUrl := "v5/users/{user_id}/access-keys/{access_key_id}"
 		updateAccessKeyPath := iamClient.Endpoint + updateAccessKeyHttpUrl
 		updateAccessKeyPath = strings.ReplaceAll(updateAccessKeyPath, "{user_id}", userId)
@@ -141,7 +144,7 @@ func resourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData, 
 	}
 	accessKey := utils.PathSearch(fmt.Sprintf("access_keys[?access_key_id=='%s']|[0]", d.Id()), getAccessKeyRespBody, nil)
 	if accessKey == nil {
-		return common.CheckDeletedDiag(d, err, "error getting IAM access keys: access key is not found in API response")
+		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "")
 	}
 	mErr := multierror.Append(nil,
 		d.Set("created_at", utils.PathSearch("created_at", accessKey, "").(string)),
