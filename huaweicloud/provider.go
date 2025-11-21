@@ -2485,6 +2485,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_identityv5_virtual_mfa_device": iam.ResourceIdentityV5VirtualMFADevice(),
 			"huaweicloud_identityv5_group":              iam.ResourceIdentityV5Group(),
 			"huaweicloud_identityv5_group_membership":   iam.ResourceIdentityV5GroupMembership(),
+			"huaweicloud_identityv5_access_key":         iam.ResourceIdentityAccessKey(),
+
 
 			"huaweicloud_identitycenter_instance":                               identitycenter.ResourceIdentityCenterInstance(),
 			"huaweicloud_identitycenter_registered_region":                      identitycenter.ResourceIdentityCenterRegisteredRegion(),
