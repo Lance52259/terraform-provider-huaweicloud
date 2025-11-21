@@ -3,6 +3,7 @@ package elb
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -72,6 +73,10 @@ func ResourcePoolV3() *schema.Resource {
 				Optional:     true,
 				Computed:     true,
 				AtLeastOneOf: []string{"loadbalancer_id", "listener_id", "type"},
+			},
+			"cascade_delete": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"lb_method": {
 				Type:     schema.TypeString,
@@ -470,6 +475,11 @@ func resourcePoolV3Delete(ctx context.Context, d *schema.ResourceData, meta inte
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating ELB client: %s", err)
+	}
+
+	if d.Get("cascade_delete") != nil && d.Get("cascade_delete").(bool) {
+		httpUrl = "v3/{project_id}/elb/pools/{pool_id}/delete-cascade"
+		log.Printf("[INFO] Cascading delete elb pool: %s", d.Id())
 	}
 
 	deletePath := client.Endpoint + httpUrl

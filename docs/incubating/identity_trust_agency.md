@@ -52,7 +52,7 @@ The following arguments are supported:
   characters. Only English letters, digits, underscores (_), plus (+), equals (=), commas (,), dots (.), ats (@) and
   hyphens (-) are allowed. Changing this will create a new trust agency.
 
-* `trust_policy` - (Required, String, ForceNew) Specifies the trust policy of the trust agency. It's a JSON string.
+* `trust_policy` - (Required, String) Specifies the trust policy of the trust agency. It's a JSON string.
 
 * `policy_names` - (Required, List) Specifies a string list of one or more policy names that you would like to attach to
   the trust agency.
