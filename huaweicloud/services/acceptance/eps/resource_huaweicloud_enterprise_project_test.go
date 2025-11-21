@@ -26,7 +26,6 @@ func TestAccEnterpriseProject_basic(t *testing.T) {
 	var project enterpriseprojects.Project
 	rName := acceptance.RandomAccResourceName()
 	updateName := rName + "update"
-	deleteName := rName + "delete"
 	resourceName := "huaweicloud_enterprise_project.test"
 
 	rc := acceptance.InitResourceCheck(
@@ -61,18 +60,47 @@ func TestAccEnterpriseProject_basic(t *testing.T) {
 				),
 			},
 			{
+				ResourceName:            resourceName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"delete_flag"},
+			},
+		},
+	})
+}
+
+func TestAccEnterpriseProject_delete(t *testing.T) {
+	var project enterpriseprojects.Project
+	deleteName := acceptance.RandomAccResourceName() + "delete"
+	resourceDeleteName := "huaweicloud_enterprise_project.test_delete"
+
+	rc_delete := acceptance.InitResourceCheck(
+		resourceDeleteName,
+		&project,
+		getResourceEnterpriseProject,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      testAccCheckEnterpriseProjectDestroy,
+		Steps: []resource.TestStep{
+			{
 				Config: testAccEnterpriseProject_delete(deleteName),
 				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "name", deleteName),
-					resource.TestCheckResourceAttr(resourceName, "description", "terraform test delete"),
-					resource.TestCheckResourceAttr(resourceName, "status", "1"),
+					rc_delete.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceDeleteName, "name", deleteName),
+					resource.TestCheckResourceAttr(resourceDeleteName, "description", "terraform test delete"),
+					resource.TestCheckResourceAttr(resourceDeleteName, "status", "1"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
-				ImportState:       true,
-				ImportStateVerify: true,
+				ResourceName:            resourceDeleteName,
+				ImportState:             true,
+				ImportStateVerify:       true,
+				ImportStateVerifyIgnore: []string{"delete_flag"},
 			},
 		},
 	})
@@ -119,7 +147,7 @@ resource "huaweicloud_enterprise_project" "test" {
 
 func testAccEnterpriseProject_delete(rName string) string {
 	return fmt.Sprintf(`
-resource "huaweicloud_enterprise_project" "test" {
+resource "huaweicloud_enterprise_project" "test_delete" {
   name        = "%s"
   description = "terraform test delete"
   delete_flag = true

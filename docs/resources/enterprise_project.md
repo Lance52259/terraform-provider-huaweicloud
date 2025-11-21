@@ -39,7 +39,7 @@ resource "huaweicloud_enterprise_project" "test" {
   Defaults to **false**.
 
 * `delete_flag` - (Optional, Bool) Specifies whether to delete enterprise project.
-  The default value of this boolean parameter is false.
+  Defaults to **false**.
 
 ## Attribute Reference
 

@@ -41,11 +41,6 @@ func ResourceEnterpriseProject() *schema.Resource {
 
 		// Request and response parameters.
 		Schema: map[string]*schema.Schema{
-			"delete_flag": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-			},
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -53,6 +48,11 @@ func ResourceEnterpriseProject() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"delete_flag": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
 			},
 			"type": {
 				Type:         schema.TypeString,
