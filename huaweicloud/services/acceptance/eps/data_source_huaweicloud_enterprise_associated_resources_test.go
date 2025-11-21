@@ -106,9 +106,9 @@ data "huaweicloud_enterprise_project_associated_resources" "test" {
     huaweicloud_compute_instance.test
   ]
 
-  resource_id = huaweicloud_compute_instance.test.id
-  project_id = data.huaweicloud_identity_projects.test.projects[0].id
-  region_id = data.huaweicloud_identity_projects.test.name
+  resource_id   = huaweicloud_compute_instance.test.id
+  project_id    = data.huaweicloud_identity_projects.test.projects[0].id
+  region_id     = data.huaweicloud_identity_projects.test.name
   resource_type = "ecs"
 }
 
