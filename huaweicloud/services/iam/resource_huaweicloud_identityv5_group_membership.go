@@ -126,7 +126,7 @@ func resourceIdentityV5GroupMembershipRead(_ context.Context, d *schema.Resource
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		users := utils.PathSearch("users", getGroupRespBody, nil).([]interface{})
+		users := utils.PathSearch("users", getGroupRespBody, make([]interface{}, 0)).([]interface{})
 		allUsers = append(allUsers, users...)
 
 		marker = utils.PathSearch("page_info.next_marker", getGroupRespBody, "").(string)
