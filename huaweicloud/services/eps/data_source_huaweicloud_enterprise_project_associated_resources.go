@@ -116,16 +116,7 @@ func dataSourceAssociatedResourcesRead(_ context.Context, d *schema.ResourceData
 		return diag.Errorf("error creating EPS client: %s", err)
 	}
 
-	return ShowAssociatedResources(client, d)
-}
-
-func ShowAssociatedResources(client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
-	httpUrl := "v1.0/associated-resources/{resource_id}"
-	showPath := client.Endpoint + httpUrl
-	showPath = strings.ReplaceAll(showPath, "{resource_id}", d.Get("resource_id").(string))
-	showPath += fmt.Sprintf("?project_id=%s", d.Get("project_id"))
-	showPath += fmt.Sprintf("&region_id=%s", d.Get("region_id"))
-	showPath += fmt.Sprintf("&resource_type=%s", d.Get("resource_type"))
+	showPath := client.Endpoint + buildAssociatedResourcesQueryParameter(d)
 
 	opt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -152,6 +143,17 @@ func ShowAssociatedResources(client *golangsdk.ServiceClient, d *schema.Resource
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
+}
+
+func buildAssociatedResourcesQueryParameter(d *schema.ResourceData) string {
+	httpUrl := "v1.0/associated-resources/{resource_id}"
+
+	httpUrl = strings.ReplaceAll(httpUrl, "{resource_id}", d.Get("resource_id").(string))
+	httpUrl += fmt.Sprintf("?project_id=%s", d.Get("project_id"))
+	httpUrl += fmt.Sprintf("&region_id=%s", d.Get("region_id"))
+	httpUrl += fmt.Sprintf("&resource_type=%s", d.Get("resource_type"))
+
+	return httpUrl
 }
 
 func flattenListAssociatedResourcesResponseBody(resp interface{}) []interface{} {
