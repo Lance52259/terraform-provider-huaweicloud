@@ -206,11 +206,10 @@ func resourceEnterpriseProjectDelete(_ context.Context, d *schema.ResourceData, 
 		return diag.Errorf("error disabling Enterprise Project: %s", err)
 	}
 
-	if d.Get("delete_flag") == true {
+	if d.Get("delete_flag").(bool) {
 		return resourceEnterpriseProjectDeleteFlag(d, meta)
 	}
 
-	d.SetId("")
 	errorMsg := "Deleting enterprise projects is not supported. The project is only disabled and " +
 		"removed from the state, but it remains in the cloud."
 	return diag.Diagnostics{
@@ -238,13 +237,14 @@ func resourceEnterpriseProjectDeleteFlag(d *schema.ResourceData, meta interface{
 		},
 	}
 
-	for i := 0; i < 6; i++ {
+	MAX_RETRY_TIME := 6
+	for i := 1; i <= MAX_RETRY_TIME; i++ {
 		time.Sleep(20 * time.Second)
 		_, err := client.Request("DELETE", deletePath, &opt)
 		if err == nil {
 			return nil
 		}
-		if i == 6 && err != nil {
+		if i == MAX_RETRY_TIME {
 			return diag.Errorf("error delete Enterprise Project: %s", err)
 		}
 	}
