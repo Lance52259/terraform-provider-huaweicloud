@@ -52,7 +52,6 @@ func ResourceEnterpriseProject() *schema.Resource {
 			"delete_flag": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  false,
 			},
 			"type": {
 				Type:         schema.TypeString,
