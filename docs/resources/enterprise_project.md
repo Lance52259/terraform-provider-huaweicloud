@@ -70,3 +70,20 @@ Enterprise projects can be imported using their `id`, e.g.
 ```bash
 $ terraform import huaweicloud_enterprise_project.test <id>
 ```
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
+API response, security or some other reason. The missing attributes include: `delete_flag`. It is generally 
+recommended running **terraform plan** after importing an enterprise project. You can then decide if changes should be 
+applied to the enterprise project, or the resource definition should be updated to align with the enterprise project. 
+Also you can ignore changes as below.
+
+```hcl
+resource "huaweicloud_enterprise_project" "test" {
+    ...
+
+  lifecycle {
+    ignore_changes = [
+      delete_flag
+    ]
+  }
+}
+```
