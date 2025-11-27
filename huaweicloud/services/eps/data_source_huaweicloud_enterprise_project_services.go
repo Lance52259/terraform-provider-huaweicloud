@@ -31,10 +31,6 @@ func DataSourceEpsServices() *schema.Resource {
 			},
 
 			// Attributes.
-			"total_count": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"services": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -126,7 +122,6 @@ func dataSourceEpsServicesRead(_ context.Context, d *schema.ResourceData, meta i
 
 	mErr := multierror.Append(nil,
 		d.Set("services", res),
-		d.Set("total_count", len(res)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -135,11 +130,11 @@ func dataSourceEpsServicesRead(_ context.Context, d *schema.ResourceData, meta i
 func buildEpsServicesQueryParameter(d *schema.ResourceData) string {
 	httpUrl := "v1.0/enterprise-projects/providers?limit=200"
 
-	if d.Get("locale") != nil {
+	if d.Get("locale") != "" {
 		httpUrl += fmt.Sprintf("&locale=%s", d.Get("locale"))
 	}
 
-	if d.Get("service") != nil {
+	if d.Get("service") != "" {
 		httpUrl += fmt.Sprintf("&provider=%s", d.Get("service"))
 	}
 
@@ -172,6 +167,9 @@ func flattenListEpsServicesResponseBody(resp interface{}) []interface{} {
 }
 
 func flattenResourceTypeBody(resourceTypeBody interface{}) []interface{} {
+	if resourceTypeBody == nil {
+		return nil
+	}
 	resourceTypeArray := resourceTypeBody.([]interface{})
 	res := make([]interface{}, 0)
 	for _, v := range resourceTypeArray {

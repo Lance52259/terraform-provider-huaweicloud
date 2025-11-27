@@ -28,9 +28,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `total_count` - Specifies the total number of cloud services supported by EPS.
-
-* `services` - Specifies cloud services.
+* `services` - Indicates cloud services.
   The [service](#service) structure is documented below.
 
 <a name="service"></a>

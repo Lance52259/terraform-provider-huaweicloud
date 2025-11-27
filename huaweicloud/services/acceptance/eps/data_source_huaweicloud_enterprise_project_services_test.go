@@ -21,7 +21,11 @@ func TestAccDataEnterpriseProjectServices_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(all, "services.#"),
+					resource.TestCheckResourceAttrSet(all, "services.0.resource_types.#"),
+                    resource.TestCheckResourceAttrSet(all, "services.0.resource_types.0.resource_type"),
 					resource.TestCheckOutput("huaweicloud_enterprise_project_services", "true"),
+					resource.TestCheckOutput("huaweicloud_enterprise_project_services_locale", "true"),
+					resource.TestCheckOutput("huaweicloud_enterprise_project_services_service", "true"),
 				),
 			},
 		},
@@ -33,5 +37,21 @@ data "huaweicloud_enterprise_project_services" "test" {}
 
 output "huaweicloud_enterprise_project_services" {
   value = length(data.huaweicloud_enterprise_project_services.test.services) > 0
+}
+
+data "huaweicloud_enterprise_project_services" "test_locale" {
+  locale  = "en-us"
+}
+
+output "huaweicloud_enterprise_project_services_locale" {
+  value = length(data.huaweicloud_enterprise_project_services.test_locale.services) > 0
+}
+
+data "huaweicloud_enterprise_project_services" "test_service" {
+  service  = "vpc"
+}
+
+output "huaweicloud_enterprise_project_services_service" {
+  value = length(data.huaweicloud_enterprise_project_services.test_service.services) > 0
 }
 `
