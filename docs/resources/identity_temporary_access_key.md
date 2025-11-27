@@ -1,12 +1,12 @@
 ---
 subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: identity_security_tokens"
+page_title: "HuaweiCloud: identity_temporary_access_key"
 description: |-
     Use this data source to obtain temporary access keys and security tokens within HuaweiCloud.
 ---
 
-# identity_security_tokens
+# huaweicloud_identity_temporary_access_key
 
 Use this data source to obtain temporary access keys and security tokens within HuaweiCloud.
 
@@ -19,7 +19,7 @@ variable "token" {}
 variable "agency_name" {}
 variable "domain_name" {}
 
-resource "huaweicloud_identity_security_tokens" "test" {
+resource "huaweicloud_identity_temporary_access_key" "test" {
   token       = var.token
   methods     = "assume_role"
   agency_name = var.agency_name
@@ -32,7 +32,7 @@ resource "huaweicloud_identity_security_tokens" "test" {
 ```hcl
 variable "token" {}
 
-resource "huaweicloud_identity_security_tokens" "test" {
+resource "huaweicloud_identity_temporary_access_key" "test" {
   token   = var.token
   methods = "token"
 }

@@ -19,11 +19,11 @@ import (
 
 // ResourceIdentitySecurityTokens
 // @API IAM POST /v3.0/OS-CREDENTIAL/securitytokens
-func ResourceIdentitySecurityTokens() *schema.Resource {
+func ResourceIdentityTemporaryAccessKey() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: resourceIdentitySecurityTokensCreate,
-		ReadContext:   resourceIdentitySecurityTokensRead,
-		DeleteContext: resourceUserTokenDelete,
+		CreateContext: resourceIdentityTemporaryCreate,
+		ReadContext:   resourceIdentityTemporaryRead,
+		DeleteContext: resourceIdentityTemporaryDelete,
 
 		Schema: map[string]*schema.Schema{
 			"token": {
@@ -89,7 +89,7 @@ func ResourceIdentitySecurityTokens() *schema.Resource {
 	}
 }
 
-func resourceIdentitySecurityTokensCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityTemporaryCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient := common.NewCustomClient(true, "https://iam.{region_id}.myhuaweicloud.com")
 	basePath := iamClient.ResourceBase + "v3.0/OS-CREDENTIAL/securitytokens"
@@ -156,13 +156,23 @@ func buildCreateSecurityTokensBodyParams(d *schema.ResourceData) map[string]inte
 	return bodyParams
 }
 
-func resourceIdentitySecurityTokensRead(c context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityTemporaryRead(c context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	expiresAt, err := time.ParseInLocation(`2006-01-02T15:04:05Z`, d.Get("expires_at").(string), time.UTC)
 	if err != nil {
 		diag.Errorf("error parsing expires at: %s", err)
 	}
 	if time.Now().After(expiresAt) {
-		return resourceIdentitySecurityTokensCreate(c, d, meta)
+		return resourceIdentityTemporaryCreate(c, d, meta)
 	}
 	return nil
+}
+
+func resourceIdentityTemporaryDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
+	errorMsg := "Deleting token is not supported. The token is only removed from the state, but it remains in the cloud."
+	return diag.Diagnostics{
+		diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  errorMsg,
+		},
+	}
 }

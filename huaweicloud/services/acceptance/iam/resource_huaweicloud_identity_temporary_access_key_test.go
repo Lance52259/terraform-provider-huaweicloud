@@ -9,8 +9,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccIdentitySecurityTokens(t *testing.T) {
-	resourceName := "huaweicloud_identity_security_tokens.test"
+func TestAccIdentityTemporaryAccessKey(t *testing.T) {
+	resourceName := "huaweicloud_identity_temporary_access_key.test"
 	agencyName := acceptance.RandomAccResourceName()
 	userName := acceptance.RandomAccResourceName()
 	initPassword := acceptance.RandomPassword()
@@ -24,7 +24,7 @@ func TestAccIdentitySecurityTokens(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: AccIdentitySecurityTokensByAgency(agencyName, userName, initPassword),
+				Config: AccIdentityTemporaryAccessKeyByAgency(agencyName),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "expires_at"),
@@ -34,7 +34,7 @@ func TestAccIdentitySecurityTokens(t *testing.T) {
 				),
 			},
 			{
-				Config: AccIdentitySecurityTokensByToken(userName, initPassword),
+				Config: AccIdentityTemporaryAccessKeyByToken(userName, initPassword),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "expires_at"),
@@ -47,7 +47,7 @@ func TestAccIdentitySecurityTokens(t *testing.T) {
 	})
 }
 
-func AccIdentitySecurityTokensByAgency(agencyName, userName, initPassword string) string {
+func AccIdentityTemporaryAccessKeyByAgency(agencyName string) string {
 	return fmt.Sprintf(`
 %[1]s
 
@@ -57,7 +57,7 @@ resource "huaweicloud_identity_user_token" "test" {
   password     = "%[4]s"
 }
 
-resource "huaweicloud_identity_security_tokens" "test" {
+resource "huaweicloud_identity_temporary_access_key" "test" {
   token       = huaweicloud_identity_user_token.test.token
   methods     = "assume_role"
   agency_name = huaweicloud_identity_agency.test.name
@@ -67,11 +67,11 @@ resource "huaweicloud_identity_security_tokens" "test" {
 `, testAccIdentityAgency_domain(agencyName), acceptance.HW_DOMAIN_NAME, acceptance.HW_USER_NAME, acceptance.HW_USER_PWD)
 }
 
-func AccIdentitySecurityTokensByToken(userName, initPassword string) string {
+func AccIdentityTemporaryAccessKeyByToken(userName, initPassword string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_identity_security_tokens" "test" {
+resource "huaweicloud_identity_temporary_access_key" "test" {
   token            = huaweicloud_identity_user_token.test.token
   methods          = "token"
   duration_seconds = 3600
