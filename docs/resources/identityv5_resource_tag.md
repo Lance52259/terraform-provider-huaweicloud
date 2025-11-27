@@ -31,9 +31,9 @@ resource "huaweicloud_identityv5_resource_tag" "test" {
 
 The following arguments are supported:
 
-* `resource_type` - (Required, String) Specifies the resource type, which can be `trust agency` or `user`.
+* `resource_type` - (Required, String, NonUpdatable) Specifies the resource type, which can be `trust agency` or `user`.
 
-* `resource_id` - (Required, String) Specifies the resource id, a string of 1 to 64 characters containing only letters, numbers, and hyphens ("-").
+* `resource_id` - (Required, String, NonUpdatable) Specifies the resource id, a string of 1 to 64 characters containing only letters, numbers, and hyphens ("-").
 
 * `tags` - (Optional, Map) Specifies the tags of a VM node, key/value pair format.
 

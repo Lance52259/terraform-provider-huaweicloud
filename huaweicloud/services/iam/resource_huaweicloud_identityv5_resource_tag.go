@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var nonUpdatableParams = []string{"resource_type", "resource_id"}
 
 // ResourceIdentityV5ResourceTag
 // @API IAM POST /v5/{resource_type}/{resource_id}/tags/create
@@ -30,6 +33,8 @@ func ResourceIdentityV5ResourceTag() *schema.Resource {
 			StateContext: resourceIdentityV5ResourceTagImportState,
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(nonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"resource_type": {
 				Type:     schema.TypeString,
@@ -40,6 +45,12 @@ func ResourceIdentityV5ResourceTag() *schema.Resource {
 				Required: true,
 			},
 			"tags": common.TagsSchema(),
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
+			},
 		},
 	}
 }
