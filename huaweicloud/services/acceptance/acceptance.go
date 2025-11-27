@@ -53,6 +53,7 @@ var (
 	HW_SUBNET_ID                     = os.Getenv("HW_SUBNET_ID")
 	HW_SECURITY_GROUP_ID             = os.Getenv("HW_SECURITY_GROUP_ID")
 	HW_ENTERPRISE_PROJECT_ID         = os.Getenv("HW_ENTERPRISE_PROJECT_ID")
+	HW_ENTERPRISE_PROJECT_NAME       = os.Getenv("HW_ENTERPRISE_PROJECT_NAME")
 	HW_ADMIN                         = os.Getenv("HW_ADMIN")
 	HW_IAM_V5                        = os.Getenv("HW_IAM_V5")
 	HW_RUNNER_PUBLIC_IP              = os.Getenv("HW_RUNNER_PUBLIC_IP")
@@ -151,6 +152,7 @@ var (
 	HW_RAM_ENABLE_FLAG               = os.Getenv("HW_RAM_ENABLE_FLAG")
 	HW_RAM_SHARE_INVITATION_ID       = os.Getenv("HW_RAM_SHARE_INVITATION_ID")
 	HW_RAM_SHARE_ID                  = os.Getenv("HW_RAM_SHARE_ID")
+	HW_RAM_PERMISSION_ID             = os.Getenv("HW_RAM_PERMISSION_ID")
 
 	HW_RMS_TARGET_ID_FOR_FGS        = os.Getenv("HW_RMS_TARGET_ID_FOR_FGS")
 	HW_RMS_TARGET_ID_FOR_RFS        = os.Getenv("HW_RMS_TARGET_ID_FOR_RFS")
@@ -326,6 +328,8 @@ var (
 	HW_RGC_MANAGE_ACCOUNT_EMAIL      = os.Getenv("HW_RGC_MANAGE_ACCOUNT_EMAIL")
 	HW_RGC_CONTROL_IDENTIFIER        = os.Getenv("HW_RGC_CONTROL_IDENTIFIER")
 	HW_RGC_TEMPLATE_BODY             = os.Getenv("HW_RGC_TEMPLATE_BODY")
+	HW_RGC_CONTROL_ID                = os.Getenv("HW_RGC_CONTROL_ID")
+	HW_RGC_CORE_ACCOUNT_TYPE         = os.Getenv("HW_RGC_CORE_ACCOUNT_TYPE")
 
 	HW_SDRS_PROTECTION_INSTANCE_ID = os.Getenv("HW_SDRS_PROTECTION_INSTANCE_ID")
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
@@ -333,9 +337,13 @@ var (
 	HW_SDRS_FAILURE_JOB_ID         = os.Getenv("HW_SDRS_FAILURE_JOB_ID")
 	HW_SDRS_PROTECTION_GROUP_ID    = os.Getenv("HW_SDRS_PROTECTION_GROUP_ID")
 
-	HW_IDENTITY_CENTER_ACCOUNT_ID                = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID        = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
-	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
+	HW_IDENTITY_CENTER_USER_ID                         = os.Getenv("HW_IDENTITY_CENTER_USER_ID")
+	HW_IDENTITY_CENTER_SESSION_ID                      = os.Getenv("HW_IDENTITY_CENTER_SESSION_ID")
+	HW_IDENTITY_CENTER_ACCOUNT_ID                      = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID              = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
+	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE       = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE")
+	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID         = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID")
+	HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID = os.Getenv("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID")
 
 	HW_ER_TEST_ON     = os.Getenv("HW_ER_TEST_ON")     // Whether to run the ER related tests.
 	HW_ER_INSTANCE_ID = os.Getenv("HW_ER_INSTANCE_ID") // Whether to run the ER related tests.
@@ -861,6 +869,63 @@ func TestAccPreCheckRGCTemplate(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckRGCAccountID(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCOperation(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCOrganizationID(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckAccountEnabledControl(t *testing.T) {
+	if HW_RGC_ACCOUNT_ID == "" || HW_RGC_CONTROL_ID == "" {
+		t.Skip("HW_RGC_ACCOUNT_ID and HW_RGC_CONTROL_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCCoreAccountType(t *testing.T) {
+	if HW_RGC_CORE_ACCOUNT_TYPE == "" {
+		t.Skip("HW_RGC_CORE_ACCOUNT_TYPE must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCControlViolations(t *testing.T) {
+	if HW_RGC_ORGANIZATIONAL_UNIT_ID == "" || HW_RGC_ACCOUNT_ID == "" {
+		t.Skip("HW_RGC_ORGANIZATIONAL_UNIT_ID and HW_RGC_ACCOUNT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRGCControlID(t *testing.T) {
+	if HW_RGC_CONTROL_ID == "" {
+		t.Skip("HW_RGC_CONTROL_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckOrganizationalUnitEnabledControl(t *testing.T) {
+	if HW_RGC_CONTROL_ID == "" || HW_RGC_ORGANIZATIONAL_UNIT_ID == "" {
+		t.Skip("HW_RGC_CONTROL_ID and HW_RGC_ORGANIZATIONAL_UNIT_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSDRSDeleteNic(t *testing.T) {
 	if HW_SDRS_PROTECTION_INSTANCE_ID == "" || HW_SDRS_NIC_ID == "" {
 		t.Skip("HW_SDRS_PROTECTION_INSTANCE_ID and HW_SDRS_NIC_ID must be set for acceptance tests")
@@ -896,6 +961,20 @@ func TestAccPreCheckSDRSInstanceResizeFlavor(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckIdentityCenterUserId(t *testing.T) {
+	if HW_IDENTITY_CENTER_USER_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_USER_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckIdentityCenterSessionId(t *testing.T) {
+	if HW_IDENTITY_CENTER_SESSION_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_SESSION_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckIdentityCenterAccountId(t *testing.T) {
 	if HW_IDENTITY_CENTER_ACCOUNT_ID == "" {
 		t.Skip("HW_IDENTITY_CENTER_ACCOUNT_ID must be set for acceptance tests")
@@ -906,6 +985,20 @@ func TestAccPreCheckIdentityCenterAccountId(t *testing.T) {
 func TestAccPreCheckIdentityCenterIdentiyPolicyId(t *testing.T) {
 	if HW_IDENTITY_CENTER_IDENTITY_POLICY_ID == "" || HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE == "" {
 		t.Skip("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID, HW_IDENTITY_CENTER_IDENTITY_POLICY_ID_UPDATE must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckIdentityCenterApplicationInstanceId(t *testing.T) {
+	if HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckIdentityCenterApplicationInstanceProfileId(t *testing.T) {
+	if HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID == "" {
+		t.Skip("HW_IDENTITY_CENTER_APPLICATION_INSTANCE_PROFILE_ID must be set for acceptance tests")
 	}
 }
 
@@ -1473,6 +1566,13 @@ func TestAccPreCheckRAMSharedPrincipalsQueryFields(t *testing.T) {
 	if HW_RAM_SHARE_ACCOUNT_ID == "" || HW_RAM_SHARE_RESOURCE_URN == "" {
 		t.Skip("HW_RAM_SHARE_ACCOUNT_ID and HW_RAM_SHARE_RESOURCE_URN " +
 			"must be set for RAM shared principals tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRAMPermissionVersions(t *testing.T) {
+	if HW_RAM_PERMISSION_ID == "" {
+		t.Skip("HW_RAM_PERMISSION_ID must be set for RAM permission versions tests.")
 	}
 }
 
