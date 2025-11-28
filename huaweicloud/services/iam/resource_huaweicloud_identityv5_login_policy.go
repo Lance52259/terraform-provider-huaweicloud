@@ -41,22 +41,18 @@ func ResourceIdentityV5LoginPolicy() *schema.Resource {
 			"lockout_duration": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  15,
 			},
 			"login_failed_times": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  5,
 			},
 			"period_with_login_failures": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  15,
 			},
 			"session_timeout": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  60,
 			},
 			"show_recent_login_info": {
 				Type:     schema.TypeBool,
@@ -125,18 +121,7 @@ func resourceIdentityV5LoginPolicyUpdate(_ context.Context, d *schema.ResourceDa
 	createLoginPolicyPath := iamClient.Endpoint + createLoginPolicyHttpUrl
 	createLoginPolicyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		JSONBody: map[string]interface{}{
-			"user_validity_period":       d.Get("user_validity_period"),
-			"custom_info_for_login":      d.Get("custom_info_for_login"),
-			"lockout_duration":           d.Get("lockout_duration"),
-			"login_failed_times":         d.Get("login_failed_times"),
-			"period_with_login_failures": d.Get("period_with_login_failures"),
-			"session_timeout":            d.Get("session_timeout"),
-			"show_recent_login_info":     d.Get("show_recent_login_info"),
-			"allow_address_netmasks":     d.Get("allow_address_netmasks"),
-			"allow_ip_ranges":            d.Get("allow_ip_ranges"),
-			"allow_ip_ranges_ipv6":       d.Get("allow_ip_ranges_ipv6"),
-		},
+		JSONBody:         buildCreateLoginPolicyBodyParams(d),
 	}
 
 	_, err = iamClient.Request("PUT", createLoginPolicyPath, &createLoginPolicyOpt)
@@ -147,6 +132,22 @@ func resourceIdentityV5LoginPolicyUpdate(_ context.Context, d *schema.ResourceDa
 		d.SetId(cfg.DomainID)
 	}
 	return nil
+}
+
+func buildCreateLoginPolicyBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"user_validity_period":       d.Get("user_validity_period"),
+		"custom_info_for_login":      d.Get("custom_info_for_login"),
+		"lockout_duration":           d.Get("lockout_duration"),
+		"login_failed_times":         d.Get("login_failed_times"),
+		"period_with_login_failures": d.Get("period_with_login_failures"),
+		"session_timeout":            d.Get("session_timeout"),
+		"show_recent_login_info":     d.Get("show_recent_login_info"),
+		"allow_address_netmasks":     d.Get("allow_address_netmasks"),
+		"allow_ip_ranges":            d.Get("allow_ip_ranges"),
+		"allow_ip_ranges_ipv6":       d.Get("allow_ip_ranges_ipv6"),
+	}
+	return bodyParams
 }
 
 func resourceIdentityV5LoginPolicyRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

@@ -18,7 +18,7 @@ Manages the account password policy v5 resource within HuaweiCloud.
 ## Example Usage
 
 ```hcl
-resource "huaweicloud_identityv5_password_policy" "enhanced" {
+resource "huaweicloud_identityv5_password_policy" "test" {
   maximum_consecutive_identical_chars = 1
   minimum_password_age                = 30
   minimum_password_length             = 10
@@ -78,5 +78,5 @@ In addition to all arguments above, the following attributes are exported:
 The IAM v5 password policy can be imported using the account ID or domain ID, e.g.
 
 ```bash
-$ terraform import huaweicloud_identityv5_password_policy.example <your account ID>
+$ terraform import huaweicloud_identityv5_password_policy.test <id>
 ```

@@ -42,17 +42,14 @@ func ResourceIdentityV5PasswordPolicy() *schema.Resource {
 			"minimum_password_length": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  8,
 			},
 			"password_reuse_prevention": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  1,
 			},
 			"password_not_username_or_invert": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  true,
 			},
 			"password_validity_period": {
 				Type:     schema.TypeInt,
@@ -62,12 +59,10 @@ func ResourceIdentityV5PasswordPolicy() *schema.Resource {
 			"password_char_combination": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  2,
 			},
 			"allow_user_to_change_password": {
 				Type:     schema.TypeBool,
 				Optional: true,
-				Default:  true,
 			},
 
 			"maximum_password_length": {
@@ -93,16 +88,7 @@ func resourceIdentityV5PasswordPolicyUpdate(ctx context.Context, d *schema.Resou
 	createPasswordPolicyPath := iamClient.Endpoint + createPasswordPolicyHttpUrl
 	createPasswordPolicyOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		JSONBody: map[string]interface{}{
-			"maximum_consecutive_identical_chars": d.Get("maximum_consecutive_identical_chars"),
-			"minimum_password_age":                d.Get("minimum_password_age"),
-			"minimum_password_length":             d.Get("minimum_password_length"),
-			"password_reuse_prevention":           d.Get("password_reuse_prevention"),
-			"password_not_username_or_invert":     d.Get("password_not_username_or_invert"),
-			"password_validity_period":            d.Get("password_validity_period"),
-			"password_char_combination":           d.Get("password_char_combination"),
-			"allow_user_to_change_password":       d.Get("allow_user_to_change_password"),
-		},
+		JSONBody:         buildCreatePasswordPolicyOptBodyParams(d),
 	}
 
 	_, err = iamClient.Request("PUT", createPasswordPolicyPath, &createPasswordPolicyOpt)
@@ -113,6 +99,20 @@ func resourceIdentityV5PasswordPolicyUpdate(ctx context.Context, d *schema.Resou
 		d.SetId(cfg.DomainID)
 	}
 	return resourceIdentityV5PasswordPolicyRead(ctx, d, meta)
+}
+
+func buildCreatePasswordPolicyOptBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"maximum_consecutive_identical_chars": d.Get("maximum_consecutive_identical_chars"),
+		"minimum_password_age":                d.Get("minimum_password_age"),
+		"minimum_password_length":             d.Get("minimum_password_length"),
+		"password_reuse_prevention":           d.Get("password_reuse_prevention"),
+		"password_not_username_or_invert":     d.Get("password_not_username_or_invert"),
+		"password_validity_period":            d.Get("password_validity_period"),
+		"password_char_combination":           d.Get("password_char_combination"),
+		"allow_user_to_change_password":       d.Get("allow_user_to_change_password"),
+	}
+	return bodyParams
 }
 
 func resourceIdentityV5PasswordPolicyRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
