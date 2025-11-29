@@ -24,6 +24,7 @@ var (
 	HW_SECRET_KEY         = os.Getenv("HW_SECRET_KEY")
 	HW_USER_ID            = os.Getenv("HW_USER_ID")
 	HW_USER_NAME          = os.Getenv("HW_USER_NAME")
+	HW_USER_PWD           = os.Getenv("HW_USER_PWD")
 	HW_PROJECT_ID         = os.Getenv("HW_PROJECT_ID")
 	HW_PROJECT_ID_1       = os.Getenv("HW_PROJECT_ID_1")
 	HW_PROJECT_ID_2       = os.Getenv("HW_PROJECT_ID_2")
