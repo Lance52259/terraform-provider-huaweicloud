@@ -17,9 +17,9 @@ import (
 )
 
 // @API RGC GET /v1/governance/managed-organizational-units/{managed_organizational_unit_id}/controls
-func DataSourceOrganizationalUnitControl() *schema.Resource {
+func DataSourceOrganizationalUnitControls() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceOrganizationalUnitControlRead,
+		ReadContext: dataSourceOrganizationalUnitControlsRead,
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -33,13 +33,13 @@ func DataSourceOrganizationalUnitControl() *schema.Resource {
 			"control_summaries": {
 				Type:     schema.TypeList,
 				Computed: true,
-				Elem:     OrganizationalUnitControlSchema(),
+				Elem:     organizationalUnitControlSchema(),
 			},
 		},
 	}
 }
 
-func OrganizationalUnitControlSchema() *schema.Resource {
+func organizationalUnitControlSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"manage_account_id": {
@@ -100,7 +100,7 @@ func OrganizationalUnitControlSchema() *schema.Resource {
 	return &sc
 }
 
-func dataSourceOrganizationalUnitControlRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceOrganizationalUnitControlsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	managedOuId := d.Get("managed_organizational_unit_id").(string)
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
