@@ -29,6 +29,7 @@ var (
 	HW_PROJECT_ID_1       = os.Getenv("HW_PROJECT_ID_1")
 	HW_PROJECT_ID_2       = os.Getenv("HW_PROJECT_ID_2")
 	HW_PROJECT_ID_3       = os.Getenv("HW_PROJECT_ID_3")
+	HW_GROUP_ID           = os.Getenv("HW_GROUP_ID")
 
 	HW_DEDICATED_HOST_ID = os.Getenv("HW_DEDICATED_HOST_ID")
 
