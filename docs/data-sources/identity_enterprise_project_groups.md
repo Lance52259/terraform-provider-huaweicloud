@@ -42,4 +42,11 @@ The `groups` block contains:
 
 * `name` - Indicates the name of the IAM user groups.
 
+* `enterprise_projects` - Indicates the projects contains.
+  The [enterprise_projects](#IdentityEnterpriseProjects_projects) structure is documented below.
+
+<a name="IdentityEnterpriseProjects_projects"></a>
+The `enterprise_projects` block contains:
+
+* `project_id` - Indicates the ID of enterprise projects.
 

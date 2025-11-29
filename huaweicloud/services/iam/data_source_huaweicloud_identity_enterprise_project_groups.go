@@ -2,6 +2,8 @@ package iam
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/go-uuid"
@@ -14,6 +16,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IAM GET /v3.0/OS-PERMISSION/groups/{group_id}/enterprise-projects
 // @API IAM GET /v3.0/OS-PERMISSION/enterprise-projects/{enterprise_project_id}/groups
 func DataSourceIdentityEnterpriseProjectGroups() *schema.Resource {
 	return &schema.Resource{
@@ -48,6 +51,18 @@ func DataSourceIdentityEnterpriseProjectGroups() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"enterprise_projects": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"project_id": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -80,22 +95,57 @@ func DataSourceIdentityEnterpriseProjectGroupsRead(_ context.Context, d *schema.
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
 	d.SetId(id)
-	groupsList := flattenEnterpriseProjectGroupsList(utils.PathSearch("groups", respBody, make([]interface{}, 0)).([]interface{}))
+	groupsList := flattenEnterpriseProjectGroupsList(utils.PathSearch("groups", respBody, make([]interface{}, 0)).([]interface{}), iamClient)
 	if e := d.Set("groups", groupsList); e != nil {
 		return diag.FromErr(e)
 	}
 	return nil
 }
 
-func flattenEnterpriseProjectGroupsList(list []interface{}) []map[string]interface{} {
+func flattenEnterpriseProjectGroupsList(list []interface{}, iamClient *golangsdk.ServiceClient) []map[string]interface{} {
 	res := make([]map[string]interface{}, len(list))
 	for i, group := range list {
+		groupID := utils.PathSearch("id", group, "").(string)
+		projects, err := GetGroupEnterpriseProjectsRead(iamClient, groupID)
+		if err != nil {
+			log.Printf("[DEBUG] Failed to get enterprise projects for group ID %s: %s", groupID, err)
+			return nil
+		}
 		res[i] = map[string]interface{}{
-			"create_time": utils.PathSearch("createTime", group, nil),
-			"description": utils.PathSearch("description", group, ""),
-			"domain_id":   utils.PathSearch("domain_id", group, ""),
-			"id":          utils.PathSearch("id", group, ""),
-			"name":        utils.PathSearch("name", group, ""),
+			"create_time":         utils.PathSearch("createTime", group, nil),
+			"description":         utils.PathSearch("description", group, ""),
+			"domain_id":           utils.PathSearch("domain_id", group, ""),
+			"name":                utils.PathSearch("name", group, ""),
+			"id":                  groupID,
+			"enterprise_projects": projects,
+		}
+	}
+	return res
+}
+
+func GetGroupEnterpriseProjectsRead(iamClient *golangsdk.ServiceClient, groupId string) ([]map[string]interface{}, error) {
+	path := iamClient.Endpoint + "v3.0/OS-PERMISSION/groups/{group_id}/enterprise-projects"
+	path = strings.ReplaceAll(path, "{group_id}", groupId)
+	identityOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	response, err := iamClient.Request("GET", path, &identityOpt)
+	if err != nil {
+		return nil, fmt.Errorf("error getting identity enterprise-projects for group %s: %w", groupId, err)
+	}
+	respBody, err := utils.FlattenResponse(response)
+	if err != nil {
+		return nil, fmt.Errorf("error flattening response for group %s: %w", groupId, err)
+	}
+	enterpriseProjectList := flattenEnterpriseProjectList(utils.PathSearch("\"enterprise-projects\"", respBody, make([]interface{}, 0)).([]interface{}))
+	return enterpriseProjectList, nil
+}
+
+func flattenEnterpriseProjectList(list []interface{}) []map[string]interface{} {
+	res := make([]map[string]interface{}, len(list))
+	for i, project := range list {
+		res[i] = map[string]interface{}{
+			"project_id": utils.PathSearch("projectId", project, ""),
 		}
 	}
 	return res

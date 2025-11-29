@@ -1169,10 +1169,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_catalog":                      iam.DataSourceIdentityCatalog(),
 			"huaweicloud_identity_role_assignments":             iam.DataSourceIdentityRoleAssignments(),
 			"huaweicloud_identity_services":                     iam.DataSourceIdentityServices(),
-			"huaweicloud_identity_group_enterprise_projects": iam.DataSourceIdentityGroupEnterpriseProjects(),
-			"huaweicloud_identity_user_enterprise_projects":  iam.DataSourceIdentityUserEnterpriseProjects(),
-			"huaweicloud_identity_enterprise_project_groups": iam.DataSourceIdentityEnterpriseProjectGroups(),
-			"huaweicloud_identity_enterprise_project_users":  iam.DataSourceIdentityEnterpriseProjectUsers(),
+			"huaweicloud_identity_enterprise_project_groups":    iam.DataSourceIdentityEnterpriseProjectGroups(),
+			"huaweicloud_identity_enterprise_project_users":     iam.DataSourceIdentityEnterpriseProjectUsers(),
 
 			"huaweicloud_identityv5_virtual_mfa_devices":     iam.DataSourceIdentityV5VirtualMfaDevices(),
 			"huaweicloud_identityv5_registered_services":     iam.DataSourceIdentityV5RegisteredServices(),
@@ -2490,7 +2488,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_identityv5_group":              iam.ResourceIdentityV5Group(),
 			"huaweicloud_identityv5_group_membership":   iam.ResourceIdentityV5GroupMembership(),
 			"huaweicloud_identityv5_access_key":         iam.ResourceIdentityAccessKey(),
-
 
 			"huaweicloud_identitycenter_instance":                               identitycenter.ResourceIdentityCenterInstance(),
 			"huaweicloud_identitycenter_registered_region":                      identitycenter.ResourceIdentityCenterRegisteredRegion(),
