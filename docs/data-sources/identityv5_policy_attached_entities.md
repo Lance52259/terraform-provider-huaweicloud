@@ -28,7 +28,7 @@ The following arguments are supported:
 
 * `policy_id` - (Required, String) Specifies the ID of the IAM policy.
 
-* `entity_type` - (Optional, String) Specifies the type of the entity, can be "user", "group" or "agency".
+* `entity_type` - (Optional, String) Specifies the type of the entity, can be `user`, `group` or `agency`.
 
 ## Attributes Reference
 

@@ -11,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -25,34 +24,25 @@ func DataSourceIdentityV5Policies() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"policy_type": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The type of identity policy, can be \"custom\" or \"system\".",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"path_prefix": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Description: "The resource path prefix, composed of segments of strings, each segment contains one or " +
-					"more letters, digits, \".\", \",\", \"+\", \"@\", \"=\", \"_\", or \"-\", ending with \"/\", " +
-					"for example \"foo/bar/\".",
 			},
 			"only_attached": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Description: "Whether to list only policies that are attached to entities.",
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"language": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Description: "Select the language of the information returned by the interface, which can be " +
-					"Chinese (\"zh-cn\") or English (\"en-us\"). The default is Chinese.",
 			},
 			"policy_id": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ConflictsWith: []string{"policy_type", "path_prefix", "only_attached"},
-				Description: "Specifies the id of the policy. This parameter conflicts with `policy_type`, " +
-					"`path_prefix` and `only_attached`.",
 			},
 
 			"policies": {
@@ -62,54 +52,44 @@ func DataSourceIdentityV5Policies() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"attachment_count": {
-							Type:        schema.TypeInt,
-							Computed:    true,
-							Description: "The number of entities attached to the policy.",
+							Type:     schema.TypeInt,
+							Computed: true,
 						},
 						"default_version_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The ID of the default version of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"path": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The path of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"policy_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The ID of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"policy_name": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The name of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"policy_type": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The type of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"updated_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The time when the default version of the policy was last updated.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"urn": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The URN of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"created_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The time when the policy was created.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"description": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The description of the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
@@ -138,7 +118,7 @@ func dataSourceIdentityV5PoliciesRead(_ context.Context, d *schema.ResourceData,
 		path = strings.ReplaceAll(path, "{policy_id}", policyId)
 		r, err := client.Request("GET", path, reqOpt)
 		if err != nil {
-			return common.CheckDeletedDiag(d, err, "error retrieving policies")
+			return diag.Errorf("error retrieving policies: %s", err)
 		}
 		resp, err := utils.FlattenResponse(r)
 		if err != nil {
@@ -155,7 +135,7 @@ func dataSourceIdentityV5PoliciesRead(_ context.Context, d *schema.ResourceData,
 
 			r, err := client.Request("GET", path, reqOpt)
 			if err != nil {
-				return common.CheckDeletedDiag(d, err, "error retrieving policies")
+				return diag.Errorf("error retrieving policies: %s", err)
 			}
 			resp, err := utils.FlattenResponse(r)
 			if err != nil {

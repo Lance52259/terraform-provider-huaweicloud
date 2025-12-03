@@ -6,7 +6,6 @@ description: |-
   Use this data source to get a list of IAM V5 policies.
 ---
 
-
 # huaweicloud_identityv5_policies
 
 Use this data source to get a list of IAM V5 policies.
@@ -28,10 +27,10 @@ data "huaweicloud_identityv5_policies" "test" {
 
 The following arguments are supported:
 
-* `policy_type` - (Optional, String) Specifies the type of identity policy, can be "custom" or "system".
+* `policy_type` - (Optional, String) Specifies the type of identity policy, can be `custom` or `system`.
 
 * `path_prefix` - (Optional, String) Specifies the resource path prefix, composed of segments of strings, each segment contains
-  one or more letters, digits, ".", ",", "+", "@", "=", "_", or "-", ending with "/", for example "foo/bar/".
+  one or more letters, digits, `.`, `,`, `+`, `@`, `=`, `_`, or `-`, ending with `/`, for example `foo/bar/`.
 
 * `only_attached` - (Optional, Bool) Specifies whether to list only policies that are attached to entities.
 

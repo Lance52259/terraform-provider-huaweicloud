@@ -12,7 +12,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -25,69 +24,58 @@ func DataSourceIdentityV5PolicyAttachedEntities() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"policy_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The ID of the IAM policy.",
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"entity_type": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The type of the entity, can be \"user\", \"group\" or \"agency\".",
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"policy_agencies": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "The list of agencies attached to the policy.",
+				Type:     schema.TypeList,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"agency_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The ID of the agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"attached_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The time when the agency was attached to the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
 			},
 			"policy_groups": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "The list of user groups attached to the policy.",
+				Type:     schema.TypeList,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"group_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The ID of the user group.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"attached_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The time when the group was attached to the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
 			},
 			"policy_users": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "The list of IAM users attached to the policy.",
+				Type:     schema.TypeList,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"user_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The ID of the IAM user.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"attached_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The time when the user was attached to the policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},
@@ -118,7 +106,7 @@ func dataSourceIdentityV5PolicyAttachedEntitiesRead(_ context.Context, d *schema
 		}
 		r, err := client.Request("GET", path, reqOpt)
 		if err != nil {
-			return common.CheckDeletedDiag(d, err, "error retrieving policy attached entities")
+			return diag.Errorf("error retrieving policy attached entities: %s", err)
 		}
 		resp, err := utils.FlattenResponse(r)
 		if err != nil {
