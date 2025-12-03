@@ -3,6 +3,7 @@ package iam
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
@@ -15,7 +16,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/policies
+// DataSourceIdentityV5Policies
+// @API IAM GET /v5/policies
+// @API IAM GET /v5/policies/{policy_id}
 func DataSourceIdentityV5Policies() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5PoliciesRead,
@@ -27,15 +30,31 @@ func DataSourceIdentityV5Policies() *schema.Resource {
 				Description: "The type of identity policy, can be \"custom\" or \"system\".",
 			},
 			"path_prefix": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The resource path prefix, composed of segments of strings, each segment contains one or more letters, digits, \".\", \",\", \"+\", \"@\", \"=\", \"_\", or \"-\", ending with \"/\", for example \"foo/bar/\".",
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "The resource path prefix, composed of segments of strings, each segment contains one or " +
+					"more letters, digits, \".\", \",\", \"+\", \"@\", \"=\", \"_\", or \"-\", ending with \"/\", " +
+					"for example \"foo/bar/\".",
 			},
 			"only_attached": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Whether to list only policies that are attached to entities.",
 			},
+			"language": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Description: "Select the language of the information returned by the interface, which can be " +
+					"Chinese (\"zh-cn\") or English (\"en-us\"). The default is Chinese.",
+			},
+			"policy_id": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"policy_type", "path_prefix", "only_attached"},
+				Description: "Specifies the id of the policy. This parameter conflicts with `policy_type`, " +
+					"`path_prefix` and `only_attached`.",
+			},
+
 			"policies": {
 				Type:        schema.TypeList,
 				Computed:    true,
@@ -110,11 +129,13 @@ func dataSourceIdentityV5PoliciesRead(_ context.Context, d *schema.ResourceData,
 	var allPolicies []interface{}
 	var marker string
 	var path string
-	for {
-		path = client.Endpoint + "v5/policies" + buildListPoliciesV5Params(d, marker)
-		reqOpt := &golangsdk.RequestOpts{
-			KeepResponseBody: true,
-		}
+	reqOpt := &golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"X-Language": d.Get("language").(string)},
+	}
+	if policyId := d.Get("policy_id").(string); policyId != "" {
+		path = client.Endpoint + "v5/policies/{policy_id}"
+		path = strings.ReplaceAll(path, "{policy_id}", policyId)
 		r, err := client.Request("GET", path, reqOpt)
 		if err != nil {
 			return common.CheckDeletedDiag(d, err, "error retrieving policies")
@@ -123,12 +144,30 @@ func dataSourceIdentityV5PoliciesRead(_ context.Context, d *schema.ResourceData,
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		policies := flattenListPoliciesV5Response(resp)
-		allPolicies = append(allPolicies, policies...)
+		policy := utils.PathSearch("policy", resp, map[string]interface{}{}).(map[string]interface{})
+		policies := map[string]interface{}{
+			"policies": []interface{}{policy},
+		}
+		allPolicies = append(allPolicies, flattenListPoliciesV5Response(policies)...)
+	} else {
+		for {
+			path = client.Endpoint + "v5/policies" + buildListPoliciesV5Params(d, marker)
 
-		marker = utils.PathSearch("page_info.next_marker", resp, "").(string)
-		if marker == "" {
-			break
+			r, err := client.Request("GET", path, reqOpt)
+			if err != nil {
+				return common.CheckDeletedDiag(d, err, "error retrieving policies")
+			}
+			resp, err := utils.FlattenResponse(r)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			policies := flattenListPoliciesV5Response(resp)
+			allPolicies = append(allPolicies, policies...)
+
+			marker = utils.PathSearch("page_info.next_marker", resp, "").(string)
+			if marker == "" {
+				break
+			}
 		}
 	}
 
