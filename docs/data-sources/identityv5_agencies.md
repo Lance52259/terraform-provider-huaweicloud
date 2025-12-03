@@ -27,7 +27,7 @@ data "huaweicloud_identityv5_agencies" "test" {
 The following arguments are supported:
 
 * `path_prefix` - (Optional, String) Specifies the resource path prefix, composed of segments of strings, each segment
-  contains one or more letters, digits, ".", ",", "+", "@", "=", "_", or "-", ending with "/", for example "foo/bar/".
+  contains one or more letters, digits, `.`, `,`, `+`, `@`, `=`, `_`, or `-`, ending with `/`, for example `foo/bar/`.
 
 * `agency_id` - (Optional, String) Specifies the id of the agency. This parameter conflicts with `path_prefix`.
 

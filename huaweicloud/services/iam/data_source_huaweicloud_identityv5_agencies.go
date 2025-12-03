@@ -12,7 +12,6 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -27,15 +26,11 @@ func DataSourceIdentityV5Agencies() *schema.Resource {
 			"path_prefix": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Description: "The resource path prefix, composed of segments of strings, each segment contains one " +
-					"or more letters, digits, \".\", \",\", \"+\", \"@\", \"=\", \"_\", or \"-\", ending with \"/\", " +
-					"for example \"foo/bar/\".",
 			},
 			"agency_id": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ConflictsWith: []string{"path_prefix"},
-				Description:   "Specifies the id of the agency. This parameter conflicts with `path_prefix`",
 			},
 
 			"agencies": {
@@ -45,54 +40,44 @@ func DataSourceIdentityV5Agencies() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"trust_policy": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The json format of the policy document for trust agency to a trust policy.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"agency_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The id of agency or trust agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"agency_name": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The name of agency or trust agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"path": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The path of the agency or trust agency",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"trust_domain_id": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The account ID of the trusted domain, only exists in agencies, not in trust agencies.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"trust_domain_name": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The account name of the trusted domain, only exists in agencies, not in trust agencies.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"urn": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The URN of the agency or trust agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"created_at": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The creation time of the agency or trust agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"description": {
-							Type:        schema.TypeString,
-							Computed:    true,
-							Description: "The description of the agency or trust agency.",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"max_session_duration": {
-							Type:        schema.TypeInt,
-							Computed:    true,
-							Description: "The max session duration of agency or trust agency.",
+							Type:     schema.TypeInt,
+							Computed: true,
 						},
 					},
 				},
@@ -117,7 +102,7 @@ func dataSourceIdentityV5AgenciesRead(_ context.Context, d *schema.ResourceData,
 		path = strings.ReplaceAll(path, "{agency_id}", agencyId)
 		r, err := client.Request("GET", path, reqOpt)
 		if err != nil {
-			return common.CheckDeletedDiag(d, err, "error retrieving agencies")
+			return diag.Errorf("error retrieving agencies: %s", err)
 		}
 		resp, err := utils.FlattenResponse(r)
 		if err != nil {
@@ -133,7 +118,7 @@ func dataSourceIdentityV5AgenciesRead(_ context.Context, d *schema.ResourceData,
 			path := client.Endpoint + "v5/agencies" + buildListAgenciesV5Params(d, marker)
 			r, err := client.Request("GET", path, reqOpt)
 			if err != nil {
-				return common.CheckDeletedDiag(d, err, "error retrieving agencies")
+				return diag.Errorf("error retrieving agencies: %s", err)
 			}
 			resp, err := utils.FlattenResponse(r)
 			if err != nil {
