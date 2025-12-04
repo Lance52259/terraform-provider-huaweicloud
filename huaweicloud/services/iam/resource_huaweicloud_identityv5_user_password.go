@@ -1,0 +1,75 @@
+package iam
+
+import (
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+)
+
+// ResourceIdentityV5UserPassword
+// @API IAM POST /v5/caller-password
+func ResourceIdentityV5UserPassword() *schema.Resource {
+	return &schema.Resource{
+		CreateContext: resourceIdentityV5UserPasswordCreate,
+		ReadContext:   resourceIdentityV5UserPasswordRead,
+		DeleteContext: resourceIdentityV5UserPasswordDelete,
+
+		Schema: map[string]*schema.Schema{
+			"new_password": {
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+				ForceNew:  true,
+			},
+			"old_password": {
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
+				ForceNew:  true,
+			},
+		},
+	}
+}
+
+func resourceIdentityV5UserPasswordCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating IAM client: %s", err)
+	}
+
+	changePasswordPath := iamClient.Endpoint + "v5/caller-password"
+	options := golangsdk.RequestOpts{
+		OkCodes: []int{200},
+		JSONBody: map[string]interface{}{
+			"new_password": d.Get("new_password").(string),
+			"old_password": d.Get("old_password").(string),
+		},
+	}
+	_, err = iamClient.Request("POST", changePasswordPath, &options)
+	if err != nil {
+		return diag.Errorf("error change password: %s", err)
+	}
+	userId, err := getUserId(cfg)
+	d.SetId(userId)
+	return nil
+}
+
+func resourceIdentityV5UserPasswordRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	return nil
+}
+
+func resourceIdentityV5UserPasswordDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	errorMsg := "Deleting password is not supported. The password is only removed from the state, but it remains in the cloud."
+	return diag.Diagnostics{
+		diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  errorMsg,
+		},
+	}
+}
