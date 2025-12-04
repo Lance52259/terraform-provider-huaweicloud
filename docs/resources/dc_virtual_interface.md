@@ -35,6 +35,15 @@ resource "huaweicloud_dc_virtual_interface" "test" {
   address_family       = "ipv4"
   local_gateway_v4_ip  = "1.1.1.1/30"
   remote_gateway_v4_ip = "1.1.1.2/30"
+
+  enable_bfd = true
+  extend_attribute   {
+    ha_type           = "bfd"
+    ha_mode           = "auto_single"
+    min_rx_interval   = 1000
+    min_tx_interval   = 1000
+    detect_multiplier = 3
+  }
 }
 ```
 
@@ -64,6 +73,15 @@ resource "huaweicloud_dc_virtual_interface" "test" {
   address_family       = "ipv4"
   local_gateway_v4_ip  = "1.1.1.1/30"
   remote_gateway_v4_ip = "1.1.1.2/30"
+
+  enable_bfd = true
+  extend_attribute   {
+    ha_type           = "bfd"
+    ha_mode           = "auto_single"
+    min_rx_interval   = 1000
+    min_tx_interval   = 1000
+    detect_multiplier = 3
+  }
 }
 ```
 
@@ -181,6 +199,44 @@ The following arguments are supported:
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the virtual interface.
 
+* `extend_attribute` - (Optional, List) The extended parameter information.
+  The [extend_attribute](#DCVirtualInterface_extend_attribute) structure is documented below.
+
+<a name="DCVirtualInterface_extend_attribute"></a>
+The `extend_attribute` block supports:
+
+* `ha_type` - (Optional, String) The availability detection type of the virtual interface. The value can be **bfd** or **nqa**
+
+* `ha_mode` - (Optional, String) The availability detection mode. 
+
+  Valid values are:
+  + **auto_single**: auto single bfd detection.
+  + **auto_multi**: auto multi bfd detection.
+  + **static_single**: static single bfd detection.
+  + **static_multi**: static multi bfd detection.
+  + **enhance_nqa**: enhance nqa detection.
+
+* `detect_multiplier` - (Optional, Int) The number of detection retries.
+The valid value is range from `3` to `20`. The default value is `3`.
+
+* `min_rx_interval` - (Optional, Int) The interval for receiving detection packets.
+The valid value is range from `200` to `5000`. The default value is `1000`.
+
+* `min_tx_interval` - (Optional, Int) The interval for sending detection packets.
+The valid value is range from `200` to `5000`. The default value is `1000`.
+
+* `remote_disclaim` - (Optional, Int) The remote identifier of the static BFD session.
+The valid value is range from `1` to `16384`. 
+
+* `local_disclaim` - (Optional, Int) The local identifier of the static BFD session.
+The valid value is range from `1` to `16384`.
+
+* `ipv6_remote_disclaim` - (Optional, Int) The remote identifier of the static IPv6 BFD session.
+The valid value is range from `1` to `16384`.
+
+* `ipv6_local_disclaim` - (Optional, Int) The local identifier of the static IPv6 BFD session.
+The valid value is range from `1` to `16384`.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -215,9 +271,6 @@ In addition to all arguments above, the following attributes are exported:
 
 * `vif_peers` - The peer information of the virtual interface.
   The [vif_peers](#DCVirtualInterface_vif_peers) structure is documented below.
-
-* `extend_attribute` - The extended parameter information.
-  The [extend_attribute](#DCVirtualInterface_extend_attribute) structure is documented below.
 
 <a name="DCVirtualInterface_vif_peers"></a>
 The `vif_peers` block supports:
@@ -261,23 +314,6 @@ The `vif_peers` block supports:
 * `remote_ep_group` - The remote subnet list, which records the CIDR blocks used in the on-premises data center.
 
 * `service_ep_group` - The list of public network addresses that can be accessed by the on-premises data center.
-
-<a name="DCVirtualInterface_extend_attribute"></a>
-The `extend_attribute` block supports:
-
-* `ha_type` - The availability detection type of the virtual interface.
-
-* `ha_mode` - The availability detection mode.
-
-* `detect_multiplier` - The number of detection retries.
-
-* `min_rx_interval` - The interval for receiving detection packets.
-
-* `min_tx_interval` - The interval for sending detection packets.
-
-* `remote_disclaim` - The remote identifier of the static BFD session.
-
-* `local_disclaim` - The local identifier of the static BFD session.
 
 ## Import
 
