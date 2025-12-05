@@ -13,12 +13,10 @@ Use this data source to query the entities attached to an IAM policy.
 ## Example Usage
 
 ```hcl
-data "huaweicloud_identityv5_policy_attached_entities" "test" {
-  policy_id = "policy-id"
-}
+variable policy_id {}
 
-output "entities" {
-  value = data.huaweicloud_identityv5_policy_attached_entities.test.policy_users
+data "huaweicloud_identityv5_policy_attached_entities" "test" {
+  policy_id = var.policy_id
 }
 ```
 
