@@ -3,12 +3,12 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identity_user_password"
 description: |-
-  Modify IAM user's own passwords within HuaweiCloud.
+  Modify IAM user's own password within HuaweiCloud.
 ---
 
 # huaweicloud_identity_user_password
 
-Modify IAM user's own passwords within HuaweiCloud.
+Modify IAM user's own password within HuaweiCloud.
 
 ->**Note** The password can not be destroyed.
 
