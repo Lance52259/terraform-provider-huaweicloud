@@ -2748,9 +2748,10 @@ func Provider() *schema.Provider {
 			"huaweicloud_oms_migration_task":       oms.ResourceMigrationTask(),
 			"huaweicloud_oms_migration_task_group": oms.ResourceMigrationTaskGroup(),
 
-			"huaweicloud_ram_organization":            ram.ResourceRAMOrganization(),
-			"huaweicloud_ram_resource_share":          ram.ResourceRAMShare(),
-			"huaweicloud_ram_resource_share_accepter": ram.ResourceShareAccepter(),
+			"huaweicloud_ram_organization":              ram.ResourceRAMOrganization(),
+			"huaweicloud_ram_resource_share":            ram.ResourceRAMShare(),
+			"huaweicloud_ram_resource_share_accepter":   ram.ResourceShareAccepter(),
+			"huaweicloud_ram_resource_share_permission": ram.ResourceRAMResourceSharePermission(),
 
 			"huaweicloud_rds_mysql_account":                  rds.ResourceMysqlAccount(),
 			"huaweicloud_rds_mysql_binlog":                   rds.ResourceMysqlBinlog(),
