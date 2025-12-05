@@ -11,6 +11,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
+var v5UserPasswordNonUpdatableParams = []string{"new_password", "old_password"}
+
 // ResourceIdentityV5UserPassword
 // @API IAM POST /v5/caller-password
 func ResourceIdentityV5UserPassword() *schema.Resource {
@@ -19,18 +21,18 @@ func ResourceIdentityV5UserPassword() *schema.Resource {
 		ReadContext:   resourceIdentityV5UserPasswordRead,
 		DeleteContext: resourceIdentityV5UserPasswordDelete,
 
+		CustomizeDiff: config.FlexibleForceNew(v5UserPasswordNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"new_password": {
 				Type:      schema.TypeString,
 				Required:  true,
 				Sensitive: true,
-				ForceNew:  true,
 			},
 			"old_password": {
 				Type:      schema.TypeString,
 				Required:  true,
 				Sensitive: true,
-				ForceNew:  true,
 			},
 		},
 	}

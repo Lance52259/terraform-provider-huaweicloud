@@ -26,9 +26,9 @@ resource "huaweicloud_identityv5_user_password" "test" {
 
 ## Argument Reference
 
-* `new_password` - (Required, String, ForceNew) Specifies the IAM user new password.
+* `new_password` - (Required, String, NonUpdatable) Specifies the IAM user new password.
 
-* `old_password` - (Required, String, ForceNew) Specifies the IAM user old password.
+* `old_password` - (Required, String, NonUpdatable) Specifies the IAM user old password.
 
 ## Attribute Reference
 
