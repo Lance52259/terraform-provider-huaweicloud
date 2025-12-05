@@ -53,7 +53,7 @@ func resourceIdentityV5AsymmetricSignatureSwitchUpdate(ctx context.Context, d *s
 	}
 	_, err = iamClient.Request("PUT", path, &reqOpts)
 	if err != nil {
-		return diag.Errorf("error set IAM AsymmetricSignatureSwitch %s", err)
+		return diag.Errorf("error set IAM asymmetric signature switch: %s", err)
 	}
 	d.SetId(cfg.DomainID)
 	return resourceIdentityV5AsymmetricSignatureSwitchRead(ctx, d, meta)
@@ -72,7 +72,7 @@ func resourceIdentityV5AsymmetricSignatureSwitchRead(_ context.Context, d *schem
 	}
 	resp, err := iamClient.Request("GET", path, &reqOpts)
 	if err != nil {
-		return diag.Errorf("error get IAM AsymmetricSignatureSwitch %s", err)
+		return diag.Errorf("error get IAM asymmetric signature switch: %s", err)
 	}
 	respBody, err := utils.FlattenResponse(resp)
 	if err != nil {
@@ -80,7 +80,7 @@ func resourceIdentityV5AsymmetricSignatureSwitchRead(_ context.Context, d *schem
 	}
 	asymmetricSignatureSwitch := utils.PathSearch("asymmetric_signature.asymmetric_signature_switch", respBody, nil)
 	if asymmetricSignatureSwitch == nil {
-		return diag.Errorf("error getting IAM AsymmetricSignatureSwitch: asymmetric_signature_switch is not found in response")
+		return diag.Errorf("error getting IAM asymmetric signature switch: asymmetric_signature_switch is not found in response")
 	}
 	err = d.Set("asymmetric_signature_switch", asymmetricSignatureSwitch)
 	if err != nil {
@@ -90,8 +90,8 @@ func resourceIdentityV5AsymmetricSignatureSwitchRead(_ context.Context, d *schem
 }
 
 func resourceIdentityV5AsymmetricSignatureSwitchDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	errorMsg := "Deleting AsymmetricSignatureSwitch is not supported. " +
-		"The AsymmetricSignatureSwitch is only removed from the state, but it remains in the cloud."
+	errorMsg := "Deleting asymmetric signature switch is not supported. " +
+		"The asymmetric signature switch is only removed from the state, but it remains in the cloud."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,
