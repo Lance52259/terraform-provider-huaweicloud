@@ -39,9 +39,8 @@ func testDataSourceIdentityv5Tags_basic(name string) string {
 data "huaweicloud_identityv5_resource_tags" "test" {
   resource_type = "user"
   resource_id   = huaweicloud_identityv5_user.user_1.id
-  depends_on = [
-    huaweicloud_identityv5_resource_tag.test
-  ]
+  
+  depends_on = [huaweicloud_identityv5_resource_tag.test]
 }
 `, testAccV5ResourceTag_basic(name))
 }

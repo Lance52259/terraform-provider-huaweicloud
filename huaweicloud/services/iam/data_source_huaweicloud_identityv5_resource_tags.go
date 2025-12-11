@@ -51,7 +51,7 @@ func dataSourceIAMIdentityv5TagsRead(_ context.Context, d *schema.ResourceData, 
 	getResourceTagOpt := golangsdk.RequestOpts{KeepResponseBody: true}
 	getResourceTagResp, err := iamClient.Request("GET", getResourceTagPath, &getResourceTagOpt)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, "error retrieving IAM resource tag")
+		return diag.Errorf("error retrieving IAM resource tag: %s", err)
 	}
 
 	getResourceTagRespBody, err := utils.FlattenResponse(getResourceTagResp)
@@ -64,7 +64,7 @@ func dataSourceIAMIdentityv5TagsRead(_ context.Context, d *schema.ResourceData, 
 	}
 	d.SetId(id)
 	mErr := multierror.Append(nil,
-		d.Set("tags", flattenTagsToMap(utils.PathSearch("tags", getResourceTagRespBody, make([]interface{}, 0)))),
+		d.Set("tags", flattenTagsToMap(utils.PathSearch("tags", getResourceTagRespBody, nil))),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting tags fields: %s", err)

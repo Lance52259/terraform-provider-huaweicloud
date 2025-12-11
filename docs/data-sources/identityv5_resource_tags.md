@@ -35,13 +35,13 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `tags` - Indicates the custom tag list.
-  The [tags](#Identityv5_Tags) structure is documented below.
+  The [tags](#Identityv5_tags) structure is documented below.
 
-<a name="Identityv5_Tags"></a>
+<a name="Identityv5_tags"></a>
 The `tags` block supports:
 
-* `tag_key` - Indicates the Tag key, can contain letters, numbers, spaces and any combination of symbols
+* `tag_key` - Indicates the tag key, can contain letters, numbers, spaces and any combination of symbols
   `_`, `.`, `:`, `=`, `+`, `-`, `@`, but cannot start with space or begin with `_sys_`, length range [1,64].
 
-* `tag_value` - Indicates the Tag value, can contain letters, numbers, spaces and any combination of symbols
+* `tag_value` - Indicates the tag value, can contain letters, numbers, spaces and any combination of symbols
   `_`, `.`, `:`, `/`, `=`, `+`, `-`, `@`, can be empty string, length range [0,128].
