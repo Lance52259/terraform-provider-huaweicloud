@@ -17,7 +17,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-var nonUpdatableParams = []string{"resource_type", "resource_id"}
+var resourceTagNonUpdatableParams = []string{"resource_type", "resource_id"}
 
 // ResourceIdentityV5ResourceTag
 // @API IAM POST /v5/{resource_type}/{resource_id}/tags/create
@@ -33,7 +33,7 @@ func ResourceIdentityV5ResourceTag() *schema.Resource {
 			StateContext: resourceIdentityV5ResourceTagImportState,
 		},
 
-		CustomizeDiff: config.FlexibleForceNew(nonUpdatableParams),
+		CustomizeDiff: config.FlexibleForceNew(resourceTagNonUpdatableParams),
 
 		Schema: map[string]*schema.Schema{
 			"resource_type": {
@@ -96,7 +96,7 @@ func resourceIdentityV5ResourceTagRead(_ context.Context, d *schema.ResourceData
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if err = d.Set("tags", flattenTagsToMap(utils.PathSearch("tags", getResourceTagRespBody, make([]interface{}, 0)))); err != nil {
+	if err = d.Set("tags", flattenTagsToMap(utils.PathSearch("tags", getResourceTagRespBody, nil))); err != nil {
 		return diag.Errorf("error saving resource tag (%s) fields: %s", d.Id(), err)
 	}
 	return nil

@@ -20,16 +20,18 @@ func TestAccIdentityV5UserPassword(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccIdentityV5UserPassword(password, originalPassword),
+				Config: testAccIdentityV5UserPassword_basic(password, originalPassword),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName, "new_password", password),
+					resource.TestCheckResourceAttr(resourceName, "old_password", originalPassword),
 				),
 			},
 		},
 	})
 }
 
-func testAccIdentityV5UserPassword(newPassword, oldPassword string) string {
+func testAccIdentityV5UserPassword_basic(newPassword, oldPassword string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_identityv5_user_password" "test" {
   new_password = "%[1]s"
