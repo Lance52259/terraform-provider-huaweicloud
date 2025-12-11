@@ -1184,6 +1184,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_identityv5_account_feature_status":   iam.DataSourceIdentityV5AccountFeatureStatus(),
 			"huaweicloud_identityv5_policies":                 iam.DataSourceIdentityV5Policies(),
 			"huaweicloud_identityv5_policy_attached_entities": iam.DataSourceIdentityV5PolicyAttachedEntities(),
+			"huaweicloud_identityv5_agency_attached_policies": iam.DataSourceIdentityV5AgencyAttachedPolicies(),
 			"huaweicloud_identityv5_group_attached_policies":  iam.DataSourceIdentityV5GroupAttachedPolicies(),
 			"huaweicloud_identityv5_authorization_schema":     iam.DataSourceIdentityV5AuthorizationSchema(),
 
