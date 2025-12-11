@@ -1376,6 +1376,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_ram_distinct_shared_principals":            ram.DataSourceDistinctSharedPrincipals(),
 			"huaweicloud_ram_distinct_shared_resources":             ram.DataSourceDistinctSharedResources(),
 			"huaweicloud_ram_resource_permission":                   ram.DataSourcePermission(),
+			"huaweicloud_ram_resource_instances_filter":             ram.DataSourceResourceInstancesFilter(),
 
 			"huaweicloud_rgc_home_region":                           rgc.DataSourceHomeRegion(),
 			"huaweicloud_rgc_pre_launch_check":                      rgc.DataSourcePreLaunchCheck(),
