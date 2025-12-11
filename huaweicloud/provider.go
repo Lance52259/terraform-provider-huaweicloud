@@ -1776,6 +1776,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_cce_autopilot_clusters":            cceautopilot.DataSourceCceAutopilotClusters(),
 			"huaweicloud_cce_autopilot_addon_templates":     cceautopilot.DataSourceCceAutopilotAddonTemplates(),
 			"huaweicloud_cce_autopilot_cluster_certificate": cceautopilot.DataSourceCceAutopilotClusterCertificate(),
+			"huaweicloud_cce_autopilot_cluster_upgrade_info": cceautopilot.DataSourceCceAutopilotClusterUpgradeInfo(),
+			"huaweicloud_cce_autopilot_releases":            cceautopilot.DataSourceCCEAutopilotReleases(),
 
 			"huaweicloud_dms_product_v1":        dms.DataSourceDmsProduct(),
 			"huaweicloud_dms_maintainwindow_v1": dms.DataSourceDmsMaintainWindow(),
