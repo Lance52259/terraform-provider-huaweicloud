@@ -12,7 +12,7 @@ description: |-
 
 ```hcl
 data "huaweicloud_cce_flavor_specifications" "test" {
-  clusterType = ""
+  cluster_type = var.cluster_type
 }
 ```
 
@@ -22,7 +22,7 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
-* `clusterType` - (Required, String) 集群类型
+* `clusterType` - (Required, String) Cluster type
 
 ## Attribute Reference
 
@@ -33,7 +33,7 @@ In addition to all arguments above, the following attributes are exported:
 * `isSoldOut` - The data source ID.
 * `isSupportMultiAZ` - The data source ID.
 
-* `availableMasterFlavors` - availableMasterFlavors.yaml中的数据,数据结构以具体的模板为准
+* `availableMasterFlavors` - data in availableMasterFlavors.yaml
 
   The [availableMasterFlavors](#availableMasterFlavors_struct) structure is documented below.
 
