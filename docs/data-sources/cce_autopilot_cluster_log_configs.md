@@ -12,8 +12,8 @@ description: |-
 
 ```hcl
 data "huaweicloud_cce_autopilot_cluster_log_configs" "test" {
-  cluster_id = ""
-  project_id = ""
+  cluster_id = var.cluster_id
+  project_id = var.project_id
 }
 ```
 
