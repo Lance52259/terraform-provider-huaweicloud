@@ -6,17 +6,17 @@ description: |
   Use this data source to list permission versions in Resource Access Manager.
 ---
 
-# huaweicloud_ram_resource_permissions
+# huaweicloud_ram_resource_permissions_versions
 
 Use this data source to list permission versions in Resource Access Manager.
 
 ## Example Usage
 
 ```hcl
-variable "permission_id" {}
+variable "resource_type" {}
 
-data "huaweicloud_ram_resource_permissions" "test" {
-  permission_id = var.permission_id
+data "huaweicloud_ram_resource_permissions_versions" "test" {
+  resource_type = var.resource_type
 }
 ```
 
@@ -24,7 +24,11 @@ data "huaweicloud_ram_resource_permissions" "test" {
 
 The following arguments are supported:
 
-* `permission_id` - (Required, String) Specifies the id of RAM permission.
+* `resource_type` - (Optional, String) Specifies the resource type of RAM permission.
+
+* `permission_type` - (Optional, String) Specifies the type of the permission.
+
+* `name` - (Optional, String) Specifies the name of RAM permission.
 
 ## Attribute Reference
 
