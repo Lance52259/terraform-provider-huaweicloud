@@ -8,7 +8,7 @@ description: |-
 
 # huaweicloud_cce_autopilot_chart
 
-获取模板列表
+get chart template list
 
 ## Example Usage
 
