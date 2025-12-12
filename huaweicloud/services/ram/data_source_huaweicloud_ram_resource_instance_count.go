@@ -2,11 +2,13 @@ package ram
 
 import (
 	"context"
-	"github.com/chnsz/golangsdk"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -106,7 +108,7 @@ func getResourceInstancesCount(client *golangsdk.ServiceClient, d *schema.Resour
 		MoreHeaders: map[string]string{
 			"Content-Type": "application/json",
 		},
-		JSONBody: buildResourceInstancesFilterBody(d),
+		JSONBody: buildResourceInstancesCountFilterBody(d),
 	}
 	getResourceInstancesCountHttpResp, err := client.Request("POST", getResourceInstancesCountHttpPath, &getResourceInstancesCountHttpOpt)
 	if err != nil {
@@ -119,7 +121,7 @@ func getResourceInstancesCount(client *golangsdk.ServiceClient, d *schema.Resour
 	return getResourceInstancesCountRespBody, nil
 }
 
-func buildResourceInstancesFilterBody(d *schema.ResourceData) map[string]interface{} {
+func buildResourceInstancesCountFilterBody(d *schema.ResourceData) map[string]interface{} {
 	params := map[string]interface{}{}
 
 	if v, ok := d.GetOk("without_any_tag"); ok {
