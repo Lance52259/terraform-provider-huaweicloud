@@ -1,9 +1,9 @@
 ---
-subcategory: ""
+subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_cluster_upgrade_info"
 description: |-
-
+  Use this data source to get  the list of CCE Autopilot clusters upgrade info within huaweicloud.
 
 ---
 
@@ -14,6 +14,7 @@ description: |-
 ```hcl
 data "huaweicloud_cce_autopilot_cluster_upgrade_info" "test" {
   cluster_id = ""
+  project_id = ""
 }
 ```
 
