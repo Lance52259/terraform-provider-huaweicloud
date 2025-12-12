@@ -1,5 +1,5 @@
 ---
-subcategory: "CCE Autopilot"
+subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_addon_instances"
 description: |-

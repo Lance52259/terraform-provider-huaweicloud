@@ -1,9 +1,9 @@
 ---
-subcategory: "模板管理(Autopilot)"
+subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_chart"
 description: |- 
-  获取模板列表
+  Use this data source to get  the list of CCE Autopilot charts within huaweicloud.
 ---
 
 # huaweicloud_cce_autopilot_chart
