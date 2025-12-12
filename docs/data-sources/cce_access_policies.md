@@ -32,7 +32,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `apiVersion` - The access policies api version.
 
-* `accessPolicyList` - accessPolicyList.yaml中的数据,数据结构以具体的模板为准
+* `accessPolicyList` - data in accessPolicyList.yaml
 
   The [accessPolicyList](#values_struct) structure is documented below.
 
