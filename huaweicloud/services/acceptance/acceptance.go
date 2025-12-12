@@ -24,10 +24,12 @@ var (
 	HW_SECRET_KEY         = os.Getenv("HW_SECRET_KEY")
 	HW_USER_ID            = os.Getenv("HW_USER_ID")
 	HW_USER_NAME          = os.Getenv("HW_USER_NAME")
+	HW_USER_PWD           = os.Getenv("HW_USER_PWD")
 	HW_PROJECT_ID         = os.Getenv("HW_PROJECT_ID")
 	HW_PROJECT_ID_1       = os.Getenv("HW_PROJECT_ID_1")
 	HW_PROJECT_ID_2       = os.Getenv("HW_PROJECT_ID_2")
 	HW_PROJECT_ID_3       = os.Getenv("HW_PROJECT_ID_3")
+	HW_GROUP_ID           = os.Getenv("HW_GROUP_ID")
 
 	HW_DEDICATED_HOST_ID = os.Getenv("HW_DEDICATED_HOST_ID")
 
@@ -1572,6 +1574,20 @@ func TestAccPreCheckRAMSharedPrincipalsQueryFields(t *testing.T) {
 func TestAccPreCheckRAMPermissionVersions(t *testing.T) {
 	if HW_RAM_PERMISSION_ID == "" {
 		t.Skip("HW_RAM_PERMISSION_ID must be set for RAM permission versions tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRAMPermission(t *testing.T) {
+	if HW_RAM_PERMISSION_ID == "" {
+		t.Skip("HW_RAM_PERMISSION_ID must be set for RAM permission tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRAMResourceSharePermission(t *testing.T) {
+	if HW_RAM_PERMISSION_ID == "" || HW_RAM_SHARE_ID == "" {
+		t.Skip("HW_RAM_PERMISSION_ID and HW_RAM_SHARE_ID must be set for RAM permission versions tests.")
 	}
 }
 

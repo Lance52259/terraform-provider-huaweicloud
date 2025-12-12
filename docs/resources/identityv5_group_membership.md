@@ -39,7 +39,7 @@ resource "huaweicloud_identityv5_group_membership" "membership_1" {
 
 The following arguments are supported:
 
-* `group_id` - (Required, String) Specifies the group ID of this membership.
+* `group_id` - (Required, String, NonUpdatable) Specifies the group ID of this membership.
 
 * `user_id_list` - (Required, List) Specifies a list of IAM user IDs to associate to the group.
 

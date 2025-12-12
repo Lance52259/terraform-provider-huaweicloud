@@ -3,8 +3,10 @@ package eps
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
+	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -20,6 +22,7 @@ import (
 // @API EPS GET /v1.0/enterprise-projects/{enterprise_project_id}
 // @API EPS PUT /v1.0/enterprise-projects/{enterprise_project_id}
 // @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/action
+// @API EPS DELETE /v1.0/enterprise-projects/{enterprise_project_id}
 func ResourceEnterpriseProject() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceEnterpriseProjectCreate,
@@ -44,6 +47,10 @@ func ResourceEnterpriseProject() *schema.Resource {
 			},
 			"description": {
 				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"delete_flag": {
+				Type:     schema.TypeBool,
 				Optional: true,
 			},
 			"type": {
@@ -198,7 +205,9 @@ func resourceEnterpriseProjectDelete(_ context.Context, d *schema.ResourceData, 
 		return diag.Errorf("error disabling Enterprise Project: %s", err)
 	}
 
-	d.SetId("")
+	if d.Get("delete_flag").(bool) {
+		return resourceEnterpriseProjectDeleteFlag(d, meta)
+	}
 
 	errorMsg := "Deleting enterprise projects is not supported. The project is only disabled and " +
 		"removed from the state, but it remains in the cloud."
@@ -208,4 +217,36 @@ func resourceEnterpriseProjectDelete(_ context.Context, d *schema.ResourceData, 
 			Summary:  errorMsg,
 		},
 	}
+}
+
+func resourceEnterpriseProjectDeleteFlag(d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	client, err := cfg.NewServiceClient("eps", cfg.Region)
+	if err != nil {
+		return diag.Errorf("error creating EPS client: %s", err)
+	}
+	httpUrl := "v1.0/enterprise-projects/{enterprise_project_id}"
+	deletePath := client.Endpoint + httpUrl
+
+	deletePath = strings.ReplaceAll(deletePath, "{enterprise_project_id}", d.Id())
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+
+	MAX_RETRY_TIME := 6
+	for i := 1; i <= MAX_RETRY_TIME; i++ {
+		time.Sleep(20 * time.Second)
+		_, err := client.Request("DELETE", deletePath, &opt)
+		if err == nil {
+			return nil
+		}
+		if i == MAX_RETRY_TIME {
+			return diag.Errorf("error delete Enterprise Project: %s", err)
+		}
+	}
+
+	return nil
 }

@@ -21,6 +21,7 @@ import (
 // @API DC GET /v3/{project_id}/dcaas/virtual-interfaces/{interfaceId}
 // @API DC PUT /v3/{project_id}/dcaas/virtual-interfaces/{interfaceId}
 // @API DC POST /v3/{project_id}/dcaas/virtual-interfaces
+// @API DC PUT /v3/{project_id}/dcaas/virtual-interfaces/{interfaceId}/extend-attributes
 func ResourceVirtualInterface() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceVirtualInterfaceCreate,
@@ -196,6 +197,14 @@ func ResourceVirtualInterface() *schema.Resource {
 				Description: "The enterprise project ID to which the virtual interface belongs.",
 			},
 			"tags": common.TagsSchema(),
+			"extend_attribute": {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Optional:    true,
+				MaxItems:    1,
+				Elem:        extendAttributeSchema(),
+				Description: "The extended parameter information.",
+			},
 
 			// Attributes
 			"device_id": {
@@ -259,12 +268,6 @@ func ResourceVirtualInterface() *schema.Resource {
 				Elem:        vifPeersSchema(),
 				Description: "The peer information of the virtual interface.",
 			},
-			"extend_attribute": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Elem:        extendAttributeSchema(),
-				Description: "The extended parameter information.",
-			},
 		},
 	}
 }
@@ -274,41 +277,61 @@ func extendAttributeSchema() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"ha_type": {
 				Type:        schema.TypeString,
+				Optional:    true,
 				Computed:    true,
 				Description: `The availability detection type of the virtual interface.`,
 			},
 			"ha_mode": {
 				Type:        schema.TypeString,
+				Optional:    true,
 				Computed:    true,
 				Description: `The availability detection mode.`,
 			},
 			"detect_multiplier": {
 				Type:        schema.TypeInt,
+				Optional:    true,
 				Computed:    true,
 				Description: `The number of detection retries.`,
 			},
 			"min_rx_interval": {
 				Type:        schema.TypeInt,
+				Optional:    true,
 				Computed:    true,
 				Description: `The interval for receiving detection packets.`,
 			},
 			"min_tx_interval": {
 				Type:        schema.TypeInt,
+				Optional:    true,
 				Computed:    true,
 				Description: `The interval for sending detection packets.`,
 			},
 			"remote_disclaim": {
 				Type:        schema.TypeInt,
+				Optional:    true,
 				Computed:    true,
 				Description: `The remote identifier of the static BFD session.`,
 			},
 			"local_disclaim": {
 				Type:        schema.TypeInt,
+				Optional:    true,
 				Computed:    true,
 				Description: `The local identifier of the static BFD session.`,
 			},
+			"ipv6_remote_disclaim": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: `The remote identifier of the static ipv6 BFD session.`,
+			},
+			"ipv6_local_disclaim": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: `The local identifier of the static ipv6 BFD session.`,
+			},
 		},
 	}
+
 	return &sc
 }
 
@@ -503,12 +526,67 @@ func resourceVirtualInterfaceCreate(ctx context.Context, d *schema.ResourceData,
 	}
 	d.SetId(id)
 
+	// set extend_attribute
+	diagnostics := virtualInterfaceExtendAttribute(client, d)
+	if diagnostics != nil {
+		return diagnostics
+	}
+
 	// create tags
 	if err := utils.CreateResourceTags(client, d, "dc-vif", d.Id()); err != nil {
 		return diag.Errorf("error creating tags of DC virtual interface (%s): %s", d.Id(), err)
 	}
 
 	return resourceVirtualInterfaceRead(ctx, d, meta)
+}
+
+func virtualInterfaceExtendAttribute(client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
+	requestBody := buildVirtualInterfaceExtendAttributeBodyParams(d)
+	if requestBody == nil {
+		return nil
+	}
+
+	requestPath := client.Endpoint + "v3/{project_id}/dcaas/virtual-interfaces/{interfaceId}/extend-attributes"
+	requestPath = strings.ReplaceAll(requestPath, "{project_id}", client.ProjectID)
+	requestPath = strings.ReplaceAll(requestPath, "{interfaceId}", d.Id())
+
+	requestOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody:         utils.RemoveNil(requestBody),
+	}
+
+	_, err := client.Request("PUT", requestPath, &requestOpt)
+	if err != nil {
+		return diag.Errorf("error updating DC virtual interface (%s) extend attribute: %s", d.Id(), err)
+	}
+
+	return nil
+}
+
+func buildVirtualInterfaceExtendAttributeBodyParams(d *schema.ResourceData) map[string]interface{} {
+	rawParams := d.Get("extend_attribute").([]interface{})
+	if len(rawParams) == 0 {
+		return nil
+	}
+
+	raw, ok := rawParams[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	params := map[string]interface{}{
+		"extend_attribute": map[string]interface{}{
+			"ha_type":              utils.ValueIgnoreEmpty(raw["ha_type"]),
+			"ha_mode":              utils.ValueIgnoreEmpty(raw["ha_mode"]),
+			"detect_multiplier":    utils.ValueIgnoreEmpty(raw["detect_multiplier"]),
+			"min_rx_interval":      utils.ValueIgnoreEmpty(raw["min_rx_interval"]),
+			"min_tx_interval":      utils.ValueIgnoreEmpty(raw["min_tx_interval"]),
+			"remote_disclaim":      utils.ValueIgnoreEmpty(raw["remote_disclaim"]),
+			"local_disclaim":       utils.ValueIgnoreEmpty(raw["local_disclaim"]),
+			"ipv6_remote_disclaim": utils.ValueIgnoreEmpty(raw["ipv6_remote_disclaim"]),
+			"ipv6_local_disclaim":  utils.ValueIgnoreEmpty(raw["ipv6_local_disclaim"]),
+		},
+	}
+	return params
 }
 
 func resourceVirtualInterfaceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -597,13 +675,15 @@ func flattenExtendAttribute(extendResp interface{}) []interface{} {
 	}
 
 	extendAttribute := map[string]interface{}{
-		"ha_type":           utils.PathSearch("ha_type", extendResp, nil),
-		"ha_mode":           utils.PathSearch("ha_mode", extendResp, nil),
-		"detect_multiplier": utils.PathSearch("detect_multiplier", extendResp, nil),
-		"min_rx_interval":   utils.PathSearch("min_rx_interval", extendResp, nil),
-		"min_tx_interval":   utils.PathSearch("min_tx_interval", extendResp, nil),
-		"remote_disclaim":   utils.PathSearch("remote_disclaim", extendResp, nil),
-		"local_disclaim":    utils.PathSearch("local_disclaim", extendResp, nil),
+		"ha_type":              utils.PathSearch("ha_type", extendResp, nil),
+		"ha_mode":              utils.PathSearch("ha_mode", extendResp, nil),
+		"detect_multiplier":    utils.PathSearch("detect_multiplier", extendResp, nil),
+		"min_rx_interval":      utils.PathSearch("min_rx_interval", extendResp, nil),
+		"min_tx_interval":      utils.PathSearch("min_tx_interval", extendResp, nil),
+		"remote_disclaim":      utils.PathSearch("remote_disclaim", extendResp, nil),
+		"local_disclaim":       utils.PathSearch("local_disclaim", extendResp, nil),
+		"ipv6_remote_disclaim": utils.PathSearch("ipv6_remote_disclaim", extendResp, nil),
+		"ipv6_local_disclaim":  utils.PathSearch("ipv6_local_disclaim", extendResp, nil),
 	}
 
 	return []interface{}{extendAttribute}
@@ -757,6 +837,13 @@ func resourceVirtualInterfaceUpdate(ctx context.Context, d *schema.ResourceData,
 		}
 		if err = openVirtualInterfaceNetworkDetection(client, d); err != nil {
 			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("extend_attribute") {
+		diagnostics := virtualInterfaceExtendAttribute(client, d)
+		if diagnostics != nil {
+			return diagnostics
 		}
 	}
 

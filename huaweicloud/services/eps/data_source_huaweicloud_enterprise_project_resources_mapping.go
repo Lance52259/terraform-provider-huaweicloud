@@ -54,7 +54,7 @@ func dataSourceResourcesMappingRead(_ context.Context, d *schema.ResourceData, m
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	
+
 	respBody, err := utils.FlattenResponse(requestResp)
 	if err != nil {
 		return diag.FromErr(err)
