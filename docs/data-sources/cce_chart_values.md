@@ -12,7 +12,7 @@ description: |-
 
 ```hcl
 data "huaweicloud_cce_chart_values" "test" {
-  chart_id = ""
+  chart_id = var.chart_id
 }
 ```
 
@@ -22,7 +22,7 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
-* `chart_id` - (Required, String) 模板的ID
+* `chart_id` - (Required, String) Chart ID
 
 ## Attribute Reference
 
@@ -30,7 +30,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `values` - values.yaml中的数据,数据结构以具体的模板为准
+* `values` - data in values.yaml
 
   The [values](#values_struct) structure is documented below.
 
