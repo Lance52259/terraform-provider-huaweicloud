@@ -619,7 +619,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_cce_charts":                 cce.DataSourceCCECharts(),
 			"huaweicloud_cce_cluster_configurations": cce.DataSourceClusterConfigurations(),
 			"huaweicloud_cce_addons":                 cce.DataSourceCceAddons(),
-			"huaweicloud_cce_list_releases":          cce.DataSourceCCEListReleases(),
+			"huaweicloud_cce_releases":               cce.DataSourceCCEReleases(),
 			"huaweicloud_cce_chart_values":           cce.DataSourceCCEShowChartValues(),
 
 			"huaweicloud_cci_namespaces":                 cci.DataSourceCciNamespaces(),

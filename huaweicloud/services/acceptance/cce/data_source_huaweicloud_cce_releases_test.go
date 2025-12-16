@@ -9,8 +9,8 @@ import (
 )
 
 func TestAccDataSourceCCEReleases_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_cce_list_releases.test"
-	rName := acceptance.RandomAccResourceName()
+	dataSource := "data.huaweicloud_cce_releases.test"
+	rName := "xxxxxxdeploy"
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -20,22 +20,23 @@ func TestAccDataSourceCCEReleases_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceCCEListReleases_basic(rName),
+				Config: testDataSourceCCEListReleases_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "id"),
 					resource.TestCheckResourceAttrSet(dataSource, "region"),
+					resource.TestCheckResourceAttr(dataSource, "releases.0.name", rName),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceCCEListReleases_basic(name string) string {
+func testDataSourceCCEListReleases_basic() string {
 	return fmt.Sprintf(`
 
-data "huaweicloud_cce_list_releases" "test" {
-  cluster_id = "5064e9b7-cb89-11f0-99e1-0255ac1001b2"
+data "huaweicloud_cce_releases" "test" {
+  cluster_id = "3f44db15-d996-11f0-b740-0255ac1001b5"
 }
 `)
 }

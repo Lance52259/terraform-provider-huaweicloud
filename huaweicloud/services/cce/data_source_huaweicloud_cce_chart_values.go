@@ -26,24 +26,15 @@ func DataSourceCCEShowChartValues() *schema.Resource {
 				Computed:    true,
 				Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
 			},
-			"values": {
-				Type:        schema.TypeList,
-				Computed:    true,
-				Description: "values.yaml中的数据,数据结构以具体的模板为准",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"basic": {
-							Type:        schema.TypeMap,
-							Computed:    true,
-							Description: "",
-						},
-					},
-				},
-			},
 			"chart_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "模板的ID",
+				Description: "Specifies the chart template id in which to query the resource.",
+			},
+			"values": {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}
@@ -102,13 +93,7 @@ func (w *CCEShowChartValuesDSWrapper) showChartValuesToSchema(body *gjson.Result
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("values", schemas.ObjectToList(body.Get("values"),
-			func(values gjson.Result) any {
-				return map[string]any{
-					"basic": values.Get("basic").Value(),
-				}
-			},
-		)),
+		d.Set("values", schemas.MapToStrMap(body.Get("values"))),
 	)
 	return mErr.ErrorOrNil()
 }

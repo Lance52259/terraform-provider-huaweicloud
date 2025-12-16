@@ -11,8 +11,8 @@ import (
 
 func TestAccDataSourceHuaweiCloudCceShowChartValues_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_chart_values.test"
-	rName := acceptance.RandomAccResourceName()
 	dc := acceptance.InitDataSourceCheck(dataSource)
+	chartImage := "{\"App_image\":\"swr.cn-north-7.myhuaweicloud.com/zscce/nginx:latest\"}"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -21,16 +21,19 @@ func TestAccDataSourceHuaweiCloudCceShowChartValues_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceHuaweiCloudCceShowChartValues_basic(rName),
+				Config: testDataSourceHuaweiCloudCceShowChartValues_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckResourceAttrSet(dataSource, "id"),
+					resource.TestCheckResourceAttrSet(dataSource, "region"),
+					resource.TestCheckResourceAttr(dataSource, "values.Chartimage", chartImage),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceHuaweiCloudCceShowChartValues_basic(name string) string {
+func testDataSourceHuaweiCloudCceShowChartValues_basic() string {
 	return fmt.Sprintf(`
 
 data "huaweicloud_cce_chart_values" "test" {
