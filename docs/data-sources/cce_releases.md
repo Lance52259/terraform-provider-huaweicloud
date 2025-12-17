@@ -36,8 +36,11 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - Indicates a data source ID.
 
-* `releases` - Indicates a list of CCE chart releases. Structure is documented below.
+* `releases` - The releases data in the cce cluster.
 
+  The [object](#releases) structure is documented below.
+
+<a name="releases"></a>
 The `releases` block supports:
 
 * `chart_name` - The chart name.

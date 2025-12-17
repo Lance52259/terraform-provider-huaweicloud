@@ -12,7 +12,6 @@ import (
 func TestAccDataSourceHuaweiCloudCceShowChartValues_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_chart_values.test"
 	dc := acceptance.InitDataSourceCheck(dataSource)
-	chartImage := "{\"App_image\":\"swr.cn-north-7.myhuaweicloud.com/zscce/nginx:latest\"}"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -26,7 +25,7 @@ func TestAccDataSourceHuaweiCloudCceShowChartValues_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "id"),
 					resource.TestCheckResourceAttrSet(dataSource, "region"),
-					resource.TestCheckResourceAttr(dataSource, "values.Chartimage", chartImage),
+					resource.TestCheckResourceAttrSet(dataSource, "values"),
 				),
 			},
 		},

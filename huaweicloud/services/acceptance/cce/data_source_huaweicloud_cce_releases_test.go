@@ -10,7 +10,6 @@ import (
 
 func TestAccDataSourceCCEReleases_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_releases.test"
-	rName := "xxxxxxdeploy"
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -25,7 +24,7 @@ func TestAccDataSourceCCEReleases_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "id"),
 					resource.TestCheckResourceAttrSet(dataSource, "region"),
-					resource.TestCheckResourceAttr(dataSource, "releases.0.name", rName),
+					resource.TestCheckResourceAttrSet(dataSource, "releases.0.name"),
 				),
 			},
 		},

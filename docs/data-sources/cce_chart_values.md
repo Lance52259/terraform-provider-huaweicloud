@@ -34,11 +34,4 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `values` - The data in values.yaml.
-
-  The [values](#values_struct) structure is documented below.
-
-<a name="values_struct"></a>
-The `values` block supports:
-
-* `basic` - The basic value of chart.
+* `values` - The values of the chart template.

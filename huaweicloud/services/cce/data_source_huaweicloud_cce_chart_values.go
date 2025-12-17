@@ -2,6 +2,7 @@ package cce
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -32,9 +33,9 @@ func DataSourceCCEShowChartValues() *schema.Resource {
 				Description: "Specifies the chart template id in which to query the resource.",
 			},
 			"values": {
-				Type:     schema.TypeMap,
+				Type:     schema.TypeString,
 				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Description: "The values of the chart template.",
 			},
 		},
 	}
@@ -93,7 +94,19 @@ func (w *CCEShowChartValuesDSWrapper) showChartValuesToSchema(body *gjson.Result
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("values", schemas.MapToStrMap(body.Get("values"))),
+		d.Set("values", w.setChartValues(body)),
 	)
 	return mErr.ErrorOrNil()
+}
+
+
+func (*CCEShowChartValuesDSWrapper) setChartValues(data *gjson.Result) string {
+	chartValues := data.Get("values").Map()
+	res := ""
+	for k, v := range chartValues {
+		res += k;
+		jsonBytes, _ := json.Marshal(v)
+		res += string(jsonBytes);
+	}
+	return res
 }
