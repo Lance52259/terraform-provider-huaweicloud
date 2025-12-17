@@ -101,12 +101,8 @@ func (w *CCEShowChartValuesDSWrapper) showChartValuesToSchema(body *gjson.Result
 
 
 func (*CCEShowChartValuesDSWrapper) setChartValues(data *gjson.Result) string {
-	chartValues := data.Get("values").Map()
-	res := ""
-	for k, v := range chartValues {
-		res += k;
-		jsonBytes, _ := json.Marshal(v)
-		res += string(jsonBytes);
-	}
-	return res
+	chartValues := data.Get("values")
+	jsonBytes, _ := json.Marshal(chartValues)
+
+	return string(jsonBytes)
 }
