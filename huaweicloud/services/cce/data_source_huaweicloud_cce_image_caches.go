@@ -12,6 +12,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/httphelper"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/schemas"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API CCE GET /v5/imagecaches
@@ -24,6 +25,50 @@ func DataSourceCCEImageCaches() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+			},
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"image_caches": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"created_at": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"images": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"image_cache_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"retention_days": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"status": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"message": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -70,9 +115,14 @@ func (w *CCEImageCachesDSWrapper) getImageCaches() (*gjson.Result, error) {
 	}
 
 	uri := "/v5/imagecaches"
+	params := map[string]any{
+		"name": w.Get("name"),
+	}
+	params = utils.RemoveNil(params)
 	return httphelper.New(client).
 		Method("GET").
 		URI(uri).
+		Query(params).
 		Request().
 		Result()
 }
@@ -81,6 +131,20 @@ func (w *CCEImageCachesDSWrapper) imageCachesToSchema(body *gjson.Result) error 
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
+		d.Set("image_caches", schemas.SliceToList(body.Get("image_caches"),
+		func(imagecache gjson.Result) any {
+			return map[string]any{
+				"name":          imagecache.Get("kind").Value(),
+				"id":            imagecache.Get("apiVersion").Value(),
+				"created_at":    imagecache.Get("name").Value(),
+				"images":        imagecache.Get("policyId").Value(),
+				"image_cache_size":   imagecache.Get("policyType").Value(),
+				"retention_days":     imagecache.Get("createTime").Value(),
+				"status":    imagecache.Get("updateTime").Value(),
+				"message":   imagecache.Get("updateTime").Value(),
+			}
+		},
+	)),
 	)
 	return mErr.ErrorOrNil()
 }

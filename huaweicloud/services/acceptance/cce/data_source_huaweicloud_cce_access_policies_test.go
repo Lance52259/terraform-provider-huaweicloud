@@ -1,6 +1,7 @@
 package cce
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -19,16 +20,21 @@ func TestAccDataSourceHuaweiCloudCceAccessPolicies_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccessPolicies_basic,
+				Config: testAccessPolicies_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckResourceAttrSet(dataSource, "id"),
+					resource.TestCheckResourceAttrSet(dataSource, "region"),
+					resource.TestCheckResourceAttrSet(dataSource, "api_version"),
 				),
 			},
 		},
 	})
 }
 
-const testAccessPolicies_basic = `
-data "huaweicloud_cce_access_policies" "test" {}
+func testAccessPolicies_basic() string {
+	return fmt.Sprintf(`
 
-`
+data "huaweicloud_cce_access_policies" "test" {}
+`)
+}

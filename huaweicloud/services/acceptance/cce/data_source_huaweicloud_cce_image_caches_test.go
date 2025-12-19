@@ -1,6 +1,7 @@
 package cce
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -19,7 +20,7 @@ func TestAccDataSourceHuaweiCloudCceImageCaches_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testImageCaches_basic,
+				Config: testImageCaches_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 				),
@@ -28,7 +29,9 @@ func TestAccDataSourceHuaweiCloudCceImageCaches_basic(t *testing.T) {
 	})
 }
 
-const testImageCaches_basic = `
-data "huaweicloud_cce_image_caches" "test" {}
+func testImageCaches_basic() string {
+	return fmt.Sprintf(`
 
-`
+data "huaweicloud_cce_image_caches" "test" {}
+`)
+}
