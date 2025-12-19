@@ -608,6 +608,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_cc_network_instances":                            cc.DataSourceCcNetworkInstances(),
 			"huaweicloud_cc_permissions":                                  cc.DataSourceCcPermissions(),
 
+			"huaweicloud_cce_access_policies":        cce.DataSourceCCEAccessPolicies(),
+			"huaweicloud_cce_image_caches":           cce.DataSourceCCEImageCaches(),
 			"huaweicloud_cce_addon_template":         cce.DataSourceAddonTemplate(),
 			"huaweicloud_cce_cluster":                cce.DataSourceCCEClusterV3(),
 			"huaweicloud_cce_clusters":               cce.DataSourceCCEClusters(),
