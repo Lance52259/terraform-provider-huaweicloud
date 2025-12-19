@@ -13,7 +13,6 @@ Use this data source to get the cluster access policies.
 ## Example Usage
 
 ```hcl
-
 data "huaweicloud_cce_access_policies" "test" {}
 ```
 
@@ -30,20 +29,12 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `kind` - The access policies api type.
-
-* `api_version` - The access policies api version.
-
 * `access_policy_list` - The access policy data in cce cluster.
 
   The [access_policy_list](#access_policy_list_struct) structure is documented below.
 
 <a name="access_policy_list_struct"></a>
 The `access_policy_list` block supports:
-
-* `kind` - The access policies api type.
-
-* `api_version` - The access policies api version.
 
 * `name` - The access policy name.
 

@@ -30,28 +30,11 @@ func DataSourceCCEAccessPolicies() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"kind": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"api_version": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
 			"access_policy_list": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"kind": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
-						"api_version": {
-							Type:     schema.TypeString,
-							Computed: true,
-						},
 						"name": {
 							Type:     schema.TypeString,
 							Computed: true,
@@ -142,13 +125,9 @@ func (w *CCEAccessPoliciesDSWrapper) accessPoliciesToSchema(body *gjson.Result) 
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("kind", body.Get("kind").Value()),
-		d.Set("api_version", body.Get("apiVersion").Value()),
 		d.Set("access_policy_list", schemas.SliceToList(body.Get("accessPolicyList"),
 			func(accesspolicy gjson.Result) any {
 				return map[string]any{
-					"kind":          accesspolicy.Get("kind").Value(),
-					"api_version":   accesspolicy.Get("apiVersion").Value(),
 					"name":          accesspolicy.Get("name").Value(),
 					"policy_id":     accesspolicy.Get("policyId").Value(),
 					"policy_type":   accesspolicy.Get("policyType").Value(),

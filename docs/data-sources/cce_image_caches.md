@@ -13,7 +13,6 @@ Use this data source to get the image caches.
 ## Example Usage
 
 ```hcl
-
 data "huaweicloud_cce_image_caches" "test" {}
 ```
 
