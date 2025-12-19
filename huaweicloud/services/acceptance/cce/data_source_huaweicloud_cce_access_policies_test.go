@@ -24,7 +24,7 @@ func TestAccDataSourceHuaweiCloudCceAccessPolicies_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "id"),
-					resource.TestCheckResourceAttrSet(dataSource, "region"),
+					resource.TestCheckResourceAttrSet(dataSource, "kind"),
 					resource.TestCheckResourceAttrSet(dataSource, "api_version"),
 				),
 			},

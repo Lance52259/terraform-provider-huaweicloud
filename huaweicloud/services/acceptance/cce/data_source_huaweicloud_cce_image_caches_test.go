@@ -23,6 +23,8 @@ func TestAccDataSourceHuaweiCloudCceImageCaches_basic(t *testing.T) {
 				Config: testImageCaches_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckResourceAttrSet(dataSource, "id"),
+					resource.TestCheckResourceAttrSet(dataSource, "region"),
 				),
 			},
 		},
