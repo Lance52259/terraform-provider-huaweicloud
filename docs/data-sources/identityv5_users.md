@@ -6,7 +6,7 @@ description: |-
   Use this data source to get the list of user in the Identity and Access Management V5 service.
 ---
 
-# huaweicloud_identityv5_virtual_mfa_devices
+# huaweicloud_identityv5_users
 
 Use this data source to get the list of user in the Identity and Access Management V5 service.
 
