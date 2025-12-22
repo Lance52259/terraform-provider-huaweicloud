@@ -27,10 +27,17 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
 * `cluster_type` - (Required, String) Specifies the type of cluster.
+  The value can be: VirtualMachine or ARM64.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
+* `cluster_flavor_specs` - The cluster_flavor_specs data of cce cluster.
+
+  The [cluster_flavor_specs](#cluster_flavor_specs_struct) structure is documented below.
+
+<a name="cluster_flavor_specs_struct"></a>
+The `cluster_flavor_specs` block supports:
 
 * `name` - The cluster flavor name.
 

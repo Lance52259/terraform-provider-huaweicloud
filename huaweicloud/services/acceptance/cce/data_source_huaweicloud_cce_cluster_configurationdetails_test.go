@@ -9,7 +9,7 @@ import (
 )
 
 func TestAccDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_cce_cluster_configurationdetails.test"
+	dataSource := "data.huaweicloud_cce_cluster_configuration_details.test"
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -30,9 +30,9 @@ func TestAccDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(t *testing
 }
 
 const testDataSourceHuaweiCloudCceClusterConfigurationDetails_basic = `
-data "huaweicloud_cce_cluster_configurationdetails" "test" {}
+data "huaweicloud_cce_cluster_configuration_details" "test" {}
 
 output "is_results_not_empty" {
-  value = length(data.huaweicloud_cce_cluster_configurationdetails.test.configurations) > 0
+  value = length(data.huaweicloud_cce_cluster_configuration_details.test.configurations) > 0
 }
 `

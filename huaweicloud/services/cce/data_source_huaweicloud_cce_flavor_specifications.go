@@ -29,7 +29,6 @@ func DataSourceCCEFlavorSpecifications() *schema.Resource {
 			"cluster_type": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "集群类型",
 			},
 			"cluster_flavor_specs": {
 				Type:     schema.TypeList,
@@ -55,25 +54,24 @@ func DataSourceCCEFlavorSpecifications() *schema.Resource {
 						"available_master_flavors": {
 							Type:        schema.TypeList,
 							Computed:    true,
-							Description: `The available master flavors.`,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"name": {
 										Type:        schema.TypeString,
 										Computed:    true,
-										Description: `The master flavor name`,
 									},
 									"azs": {
 										Type:        schema.TypeList,
 										Computed:    true,
-										Description: `The master flavor azs`,
 										Elem:        &schema.Schema{Type: schema.TypeString},
 									},
 									"az_fault_domains": {
 										Type:        schema.TypeMap,
 										Computed:    true,
-										Description: "",
-										Elem:     &schema.Schema{Type: schema.TypeList},
+										Elem: &schema.Schema{
+											Type: schema.TypeList,
+											Elem: &schema.Schema{Type: schema.TypeString},
+										},
 									},
 								},
 							},
@@ -155,7 +153,7 @@ func (w *CCEFlavorSpecificationsDSWrapper) showFlavorSpecificationsToSchema(body
 							return map[string]any{
 								"name": values.Get("name").Value(),
 								"azs": schemas.SliceToStrList(values.Get("azs")),
-								"az_fault_domains": schemas.MapToStrMap(values.Get("azFaultDomains")),
+								"az_fault_domains": schemas.MapConverter(values.Get("azFaultDomains"), schemas.SliceToStrList),
 							}
 						},
 					),
