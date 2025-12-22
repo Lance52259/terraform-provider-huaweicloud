@@ -1,7 +1,6 @@
 package cce
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,7 +10,6 @@ import (
 
 func TestAccDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_cluster_configurationdetails.test"
-	rName := acceptance.RandomAccResourceName()
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -21,18 +19,20 @@ func TestAccDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(t *testing
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(rName),
+				Config: testDataSourceHuaweiCloudCceClusterConfigurationDetails_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckOutput("is_results_not_empty", "true"),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceHuaweiCloudCceClusterConfigurationDetails_basic(name string) string {
-	return fmt.Sprintf(`
-
+const testDataSourceHuaweiCloudCceClusterConfigurationDetails_basic = `
 data "huaweicloud_cce_cluster_configurationdetails" "test" {}
-`)
+
+output "is_results_not_empty" {
+  value = length(data.huaweicloud_cce_cluster_configurationdetails.test.configurations) > 0
 }
+`

@@ -1,7 +1,6 @@
 package cce
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,7 +10,6 @@ import (
 
 func TestAccDataSourceHuaweiCloudCceFlavorSpecifications_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_flavor_specifications.test"
-	rName := acceptance.RandomAccResourceName()
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -21,20 +19,22 @@ func TestAccDataSourceHuaweiCloudCceFlavorSpecifications_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceHuaweiCloudCceFlavorSpecifications_basic(rName),
+				Config: testDataSourceHuaweiCloudCceFlavorSpecifications_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckOutput("is_results_not_empty", "true"),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceHuaweiCloudCceFlavorSpecifications_basic(name string) string {
-	return fmt.Sprintf(`
-
+const testDataSourceHuaweiCloudCceFlavorSpecifications_basic = `
 data "huaweicloud_cce_flavor_specifications" "test" {
   cluster_type = "VirtualMachine"
 }
-`)
+
+output "is_results_not_empty" {
+  value = length(data.huaweicloud_cce_flavor_specifications.test.cluster_flavor_specs) > 0
 }
+`

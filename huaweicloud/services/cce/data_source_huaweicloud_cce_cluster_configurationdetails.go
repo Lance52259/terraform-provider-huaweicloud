@@ -2,6 +2,7 @@ package cce
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
@@ -44,14 +45,13 @@ func DataSourceClusterConfigurationDetails() *schema.Resource {
 				Optional: true,
 			},
 			"configurations": {
-				Type:     schema.TypeMap,
+				Type:     schema.TypeString,
 				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Description: "The configurations of the cce cluster.",
 			},
 		},
 	}
 }
-
 
 type ClusterConfigurationDetailsDSWrapper struct {
 	*schemas.ResourceDataWrapper
@@ -86,7 +86,7 @@ func dataSourceClusterConfigurationDetailsRead(_ context.Context, d *schema.Reso
 	return nil
 }
 
-// @API CCE GET /api/v2/flavor/specifications
+// @API CCE GET /api/v3/clusters/configuration/detail
 func (w *ClusterConfigurationDetailsDSWrapper) ShowClusterConfigurationDetails() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
@@ -113,15 +113,14 @@ func (w *ClusterConfigurationDetailsDSWrapper) showClusterConfigurationDetailsTo
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("configurations", schemas.ObjectToList(body.Get("configurations"),
-			func(values gjson.Result) any {
-				return map[string]any{
-					"name": values.Get("name").Value(),
-					"default": values.Get("default").Value(),
-					"valid_at": values.Get("validAt").Value(),
-				}
-			},
-		)),
+		d.Set("configurations", w.setConfigurationsValues(body)),
 	)
 	return mErr.ErrorOrNil()
+}
+
+func (*ClusterConfigurationDetailsDSWrapper) setConfigurationsValues(data *gjson.Result) string {
+	configurationsValues := data.Get("configurations")
+	jsonBytes, _ := json.Marshal(configurationsValues)
+
+	return string(jsonBytes)
 }

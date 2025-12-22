@@ -13,7 +13,6 @@ Use this data source to get the configurations of a CCE cluster within HuaweiClo
 ## Example Usage
 
 ```hcl
-
 data "huaweicloud_cce_cluster_configurationdetails" "test" {}
 ```
 
@@ -24,11 +23,18 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to obtain the CCE cluster configurations. If omitted, the
   provider-level region will be used.
 
+* `cluster_type` - (Optional, String) Specifies the type of cluster.
+
+* `cluster_version` - (Optional, String) Specifies the version of cluster.
+
+* `cluster_id` - (Optional, String) Specifies the cluster id.
+
+* `network_mode` - (Optional, String) Specifies the  network mode.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The data source ID in UUID format.
+* `id` - The data source ID.
 
-* `configurations` - The map of configurations.
+* `configurations` - The data of configurations.

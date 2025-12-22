@@ -148,6 +148,17 @@ func (w *CCEFlavorSpecificationsDSWrapper) showFlavorSpecificationsToSchema(body
 				return map[string]any{
 					"name": values.Get("name").Value(),
 					"node_capacity": values.Get("nodeCapacity").Value(),
+					"is_sold_out": values.Get("isSoldOut").Value(),
+					"is_support_multi_az": values.Get("isSupportMultiAZ").Value(),
+					"available_master_flavors": schemas.ObjectToList(body.Get("availableMasterFlavors"),
+						func(values gjson.Result) any {
+							return map[string]any{
+								"name": values.Get("name").Value(),
+								"azs": schemas.SliceToStrList(values.Get("azs")),
+								"az_fault_domains": schemas.MapToStrMap(values.Get("azFaultDomains")),
+							}
+						},
+					),
 				}
 			},
 		)),
