@@ -27,7 +27,7 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to query the resource.
   If omitted, the provider-level region will be used.
 
-* `cluster_id` - (Required, String) The ID of the cluster.
+* `cluster_id` - (Required, String) Specifies the cluster ID.
 
 * `addon_template_name` - (Optional, String) Specifies the name of the add-on.
 
