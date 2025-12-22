@@ -1,7 +1,6 @@
 package cceautopilot
 
 import (
-    "fmt"
     "testing"
 
     "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,7 +10,6 @@ import (
 
 func TestAccDataSourceCCEAutopilotReleases_basic(t *testing.T) {
     dataSource := "data.huaweicloud_cce_autopilot_releases.test"
-    rName := acceptance.RandomAccResourceName()
     dc := acceptance.InitDataSourceCheck(dataSource)
 
     resource.ParallelTest(t, resource.TestCase{
@@ -21,19 +19,20 @@ func TestAccDataSourceCCEAutopilotReleases_basic(t *testing.T) {
         ProviderFactories: acceptance.TestAccProviderFactories,
         Steps: []resource.TestStep{
             {
-                Config: testDataSourceCCEAutopilotReleases_basic(rName),
+                Config: testDataSourceCCEAutopilotReleases_basic,
                 Check: resource.ComposeTestCheckFunc(
                     dc.CheckResourceExists(),
+                    resource.TestCheckResourceAttrSet(dataSource, "id"),
+					resource.TestCheckResourceAttrSet(dataSource, "region"),
+					resource.TestCheckResourceAttrSet(dataSource, "releases.0.name"),
                 ),
             },
         },
     })
 }
 
-func testDataSourceCCEAutopilotReleases_basic(name string) string {
-    return fmt.Sprintf(`
+const testDataSourceCCEAutopilotReleases_basic = `
 data "huaweicloud_cce_autopilot_releases" "test" {
   cluster_id = "83a085fe-d4f1-11f0-80d0-0255ac10178d"
 }
-`)
-}
+`

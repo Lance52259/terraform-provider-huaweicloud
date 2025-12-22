@@ -4,14 +4,18 @@ layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_cluster_upgrade_info"
 description: |-
   Use this data source to get  the list of CCE Autopilot clusters upgrade info within huaweicloud.
-
 ---
 
 # huaweicloud_cce_autopilot_cluster_upgrade_info
 
+Use this data source to get  the list of CCE Autopilot clusters upgrade info within huaweicloud.
+
 ## Example Usage
 
 ```hcl
+variable "cluster_id" {}
+variable "project_id" {}
+
 data "huaweicloud_cce_autopilot_cluster_upgrade_info" "test" {
   cluster_id = var.cluster_id
   project_id = var.project_id
@@ -34,29 +38,28 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `api_version` - API version.
+* `metadata` - Upgrade status information.
+
+  The [metadata](#metadata_struct) structure is documented below.
+  
+<a name="metadata_struct"></a>
+The `metadata` block supports:
+
+* `uid` - Unique ID identifier.
+
+* `name` - Resource name.
+
+* `labels` - Resource labels, in key/value pair format. These are reserved fields in the interface and will not take effect.
 
 * `annotations` - Resource annotations, which consist of key/value pairs.
 
 * `creation_timestamp` - Creation time.
 
-* `labels` - Resource labels, in key/value pair format. These are reserved fields in the interface and will not take effect.
-
-* `name` - Resource name.
-
-* `uid` - Unique ID identifier.
-
 * `update_timestamp` - Update time.
-
-* `kind` - Type.
 
 * `spec` - Upgrade configuration information.
 
   The [spec](#spec_struct) structure is documented below.
-
-* `status` - Upgrade status information.
-
-  The [status](#status_struct) structure is documented below.
 
 <a name="spec_struct"></a>
 The `spec` block supports:
@@ -65,13 +68,13 @@ The `spec` block supports:
 
   The [last_upgrade_info](#spec_last_upgrade_info_struct) structure is documented below.
 
-* `upgrade_feature_gates` - Cluster upgrade feature switches.
-
-  The [upgrade_feature_gates](#spec_upgrade_feature_gates_struct) structure is documented below.
-
 * `version_info` - Version information.
 
   The [version_info](#spec_version_info_struct) structure is documented below.
+
+* `upgrade_feature_gates` - Cluster upgrade feature switches.
+
+  The [upgrade_feature_gates](#spec_upgrade_feature_gates_struct) structure is documented below.
 
 <a name="spec_last_upgrade_info_struct"></a>
 The `last_upgrade_info` block supports:
@@ -97,6 +100,10 @@ The `version_info` block supports:
 * `suggest_patch` - Recommended target patch version number, e.g., r0.
 
 * `target_versions` - Upgrade target version collection.
+
+* `status` - Upgrade status information.
+
+  The [status](#status_struct) structure is documented below.
 
 <a name="status_struct"></a>
 The `status` block supports:

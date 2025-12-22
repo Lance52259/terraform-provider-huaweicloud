@@ -3,16 +3,18 @@ subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_releases"
 description: |- 
-  Manages the CCE autopilot releases data source in HuaweiCloud.
+  Use this data source to get the list of Autopilot CCE releases within HuaweiCloud.
 ---
 
 # `huaweicloud_cce_autopilot_releases`
 
-This data source provides details about the CCE autopilot releases in HuaweiCloud.
+Use this data source to get the list of Autopilot CCE releases within HuaweiCloud.
 
 ## Example Usage
 
 ```hcl
+variable "cluster_id" {}
+
 data "huaweicloud_cce_autopilot_releases" "test" {
   cluster_id = var.cluster_id
 }
@@ -24,9 +26,9 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
-* `chart_id` - (Optional, String) Chart ID
-
 * `cluster_id` - (Required, String) Clsuter ID
+
+* `chart_id` - (Optional, String) Chart ID
 
 * `namespace` - (Optional, String) Namespace corresponding to the template
 
@@ -34,4 +36,41 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The data source ID.
+* `id` - Indicates a data source ID.
+
+* `releases` - The releases data in the cce cluster.
+
+  The [object](#releases) structure is documented below.
+
+<a name="releases"></a>
+The `releases` block supports:
+
+* `chart_name` - The chart name.
+
+* `chart_public` - The chart is public or not.
+
+* `chart_version` - The chart version.
+
+* `cluster_id` - The cluster ID.
+
+* `cluster_name` - The cluster name.
+
+* `description` - The release description.
+
+* `name` - The release name.
+
+* `namespace` - The namespace of release.
+
+* `parameters` - The release parameters.
+
+* `resources` - The release resources.
+
+* `status` - The release status.
+
+* `status_description` - The release status description.
+
+* `update_at` - The update time of release.
+
+* `values` - The release values.
+
+* `version` - The release version.

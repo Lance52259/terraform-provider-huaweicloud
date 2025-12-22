@@ -27,21 +27,93 @@ func DataSourceCCEAutopilotReleases() *schema.Resource {
                 Computed:    true,
                 Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
             },
-            "chart_id": {
-                Type:        schema.TypeString,
-                Optional:    true,
-                Description: "模板ID",
-            },
             "cluster_id": {
                 Type:        schema.TypeString,
                 Required:    true,
                 Description: "集群ID,获取方式请参见[如何获取接口URI中参数](cce_02_0271.xml)。",
+            },
+            "chart_id": {
+                Type:        schema.TypeString,
+                Optional:    true,
+                Description: "模板ID",
             },
             "namespace": {
                 Type:        schema.TypeString,
                 Optional:    true,
                 Description: "模板对应的命名空间",
             },
+            "releases": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"chart_name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"chart_public": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"chart_version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"cluster_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"cluster_name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"create_at": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"namespace": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"parameters": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"resources": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"status": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"status_description": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"update_at": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"values": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"version": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+					},
+				},
+			},
         },
     }
 }
@@ -106,6 +178,26 @@ func (w *CCEAutopilotReleasesDSWrapper) listAutopilotReleasesToSchema(body *gjso
     d := w.ResourceData
     mErr := multierror.Append(nil,
         d.Set("region", w.Config.GetRegion(w.ResourceData)),
+		d.Set("releases", schemas.SliceToList(*body,
+			func(release gjson.Result) any {
+				return map[string]any{
+					"chart_name":         release.Get("chart_name").Value(),
+					"chart_version":      release.Get("chart_version").Value(),
+					"cluster_id":         release.Get("cluster_id").Value(),
+					"cluster_name":       release.Get("cluster_name").Value(),
+					"create_at":          release.Get("create_at").Value(),
+					"description":        release.Get("description").Value(),
+					"name":               release.Get("name").Value(),
+					"namespace":          release.Get("namespace").Value(),
+					"parameters":         release.Get("parameters").Value(),
+					"resources":          release.Get("resources").Value(),
+					"status":             release.Get("status").Value(),
+					"status_description": release.Get("status_description").Value(),
+					"update_at":          release.Get("update_at").Value(),
+					"values":             release.Get("values").Value(),
+				}
+			},
+		)),
     )
     return mErr.ErrorOrNil()
 }
