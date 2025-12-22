@@ -25,6 +25,66 @@ func DataSourceCceAutopilotChart() *schema.Resource {
 				Computed:    true,
 				Description: `Specifies the region in which to query the resource. If omitted, the provider-level region will be used.`,
 			},
+			"charts": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"values": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"translate": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"instruction": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"description": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"source": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"icon_url": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"public": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"chart_url": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"create_at": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"update_at": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -81,6 +141,25 @@ func (w *ChartDSWrapper) listAutopilotChartsToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
+		d.Set("charts", schemas.SliceToList(*body,
+			func(chart gjson.Result) any {
+				return map[string]any{
+					"id":                 chart.Get("id").Value(),
+					"name":               chart.Get("name").Value(),
+					"values":             chart.Get("values").Value(),
+					"translate":          chart.Get("translate").Value(),
+					"instruction":        chart.Get("instruction").Value(),
+					"version":            chart.Get("version").Value(),
+					"description":        chart.Get("description").Value(),
+					"source":             chart.Get("source").Value(),
+					"icon_url":           chart.Get("icon_url").Value(),
+					"public":             chart.Get("public").Value(),
+					"chart_url":          chart.Get("chart_url").Value(),
+					"create_at":          chart.Get("create_at").Value(),
+					"update_at":          chart.Get("update_at").Value(),
+				}
+			},
+		)),
 	)
 	return mErr.ErrorOrNil()
 }

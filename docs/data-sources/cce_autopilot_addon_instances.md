@@ -13,6 +13,8 @@ Use this datasource to get the list of CCE Autopilot Addon Instances.
 ## Example Usage
 
 ```hcl
+variable "cluster_id" {}
+
 data "huaweicloud_cce_autopilot_addon_instances" "test" {
   cluster_id = var.cluster_id  # Required
 }
@@ -27,128 +29,112 @@ The following arguments are supported:
 
 * `cluster_id` - (Required, String) The ID of the cluster.
 
+* `addon_template_name` - (Optional, String) Specifies the name of the add-on.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `apiVersion` - API version, default value "v3"
+* `items` - The add-on instance list.
 
-* `items` - addon instance list
   The [items](#items_struct) structure is documented below.
 
-* `kind` - API type, default value "Addon"
-
+<a name="items_struct"></a>
 The `items` block supports:
 
-* `apiVersion` - API version, default value "v3"
+* `metadata` - The metadata of the add-on instance.
 
-* `kind` - API type, default value "Addon"
-
-* `metadata` - Basic information, which is the element type of the collection class, containing a set of attributes defined by different names.
   The [metadata](#items_metadata_struct) structure is documented below.
 
-* `spec` - Indicates the element type of the collection class
+* `spec` - The detailed description of the add-on instance.
+
   The [spec](#items_spec_struct) structure is documented below.
 
-* `status` - addon instance status
+* `status` - The add-on instance status.
+
   The [status](#items_status_struct) structure is documented below.
 
+<a name="items_metadata_struct"></a>
 The `metadata` block supports:
 
-* `alias` - addon alias
+* `uid` - The add-on instance ID.
 
-* `annotations` - addon annotation
-  - install:default value is {"addon.install/type":"install"}
-  - upgrade:default value is {"addon.upgrade/type":"upgrade"}
+* `name` - The add-on instance name.
 
-* `creationTimestamp` - creation time
+* `alias` - The add-on instance alias.
 
-* `labels` - addon labels
+* `labels` - The add-on labels in key/value pairs.
 
-* `name` - addon name
+* `annotations` - The add-on annotations in the format of key/value pairs.
 
-* `uid` - addon uid
+* `update_timestamp` - The update time.
 
-* `updateTimestamp` - update time
+* `creation_timestamp` - The creation time.
 
+<a name="items_spec_struct"></a>
 The `spec` block supports:
 
-* `addonTemplateLabels` - addon template labels
+* `addon_template_labels` - The labels of the add-on template.
 
-* `addonTemplateLogo` - addon template logo
+* `description` - The add-on description.
 
-* `addonTemplateName` - addon template name,  for example coredns
+* `values` - The add-on installation parameters.
 
-* `addonTemplateType` - addon template type
+* `cluster_id` - The cluster ID.
 
-* `clusterID` - cluster id
+* `version` - The add-on version.
 
-* `description` - addon description
+* `addon_template_name` - The add-on name.
 
-* `values` - addon template installation parameters
+* `addon_template_type` - The add-on type.
 
-* `version` - addon version, for example 1.0.0
+* `addon_template_logo` - The URL for obtaining the add-on template logo.
 
+<a name="items_status_struct"></a>
 The `status` block supports:
 
-* `Reason` - addon installation failure cause
+* `current_version` - The information about the current add-on version.
 
-* `currentVersion` - addon current version
-  The [currentVersion](#status_currentVersion_struct) structure is documented below.
+  The [current_version](#status_current_version_struct) structure is documented below.
 
-* `isRollbackable` - indicates whether the addon version can be rolled back to the source version.
+* `is_rollbackable` - Whether the add-on version can be rolled back to the source version.
 
-* `message` - installation error details
+* `previous_version` - The add-on version before upgrade or rollback
 
-* `previousVersion` - version before addon upgrade or rollback
+* `status` - The statuses of add-on instances.
 
-* `status` - addon Instance Status, the values are as follows:
-  - running
-  - abnormal
-  - installing
-  - installFailed
-  - upgrading
-  - upgradeFailed
-  - deleting
-  - deleteFailed
-  - deleteSuccess
-  - available
-  - rollbacking
-  - rollbackFailed
-  - unknown
+* `_reason` - The cause of the add-on installation failure.
 
-* `targetVersions` - This addon version is the cluster version that can be upgraded.
+* `message` - The installation error details.
 
-The `currentVersion` block supports:
+* `target_versions` - The versions to which the current add-on version can be upgraded.
 
-* `creationTimestamp` - creation time
+<a name="status_current_version_struct"></a>
+The `current_version` block supports:
 
-* `input` - addon installation parameters
+* `input` - The add-on installation parameters.
 
-* `stable` - is or not the stable version 
+* `stable` - Whether the add-on version is a stable release.
 
-* `supportVersions` - supported cluster version
-  The [supportVersions](#currentVersion_supportVersions_struct) structure is documented below.
+* `translate` - The translation information used by the GUI.
 
-* `translate` - translate info
+* `support_versions` - The cluster versions that support the add-on.
 
-* `updateTimestamp` - update time
+  The [support_versions](#current_version_support_versions_struct) structure is documented below.
 
-* `version` - addon version
+* `creation_timestamp` - The creation time.
 
-The `supportVersions` block supports:
+* `update_timestamp` - The update time.
 
-* `category` - cluster type
-  **Value Range:**
-  - CCE:CCE Standard Cluster
-  - Turbo:CCE Turbo Cluster
-  - Autopilot:CCE Autopilot Cluster
+* `version` - The add-on version.
 
-  **Default Value**
-  default value is CCE Standard,CCE Turbo Cluster
+<a name="current_version_support_versions_struct"></a>
+The `support_versions` block supports:
 
-* `clusterType` - cluster type
+* `cluster_type` - The cluster type that supports the add-on.
 
-* `clusterVersion` - cluster version
+* `cluster_version` - The cluster versions that support the add-on. The value is a regular expression.
+
+* `category` - The current support version category.

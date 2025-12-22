@@ -1,7 +1,6 @@
 package cceautopilot
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -11,7 +10,6 @@ import (
 
 func TestAccDataSourceCceAutopilotAddonInstances_basic(t *testing.T) {
 	dataSource := "data.huaweicloud_cce_autopilot_addon_instances.test"
-	rName := acceptance.RandomAccResourceName()
 
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
@@ -22,19 +20,22 @@ func TestAccDataSourceCceAutopilotAddonInstances_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceCceAutopilotAddonInstances_basic(rName),
+				Config: testDataSourceCceAutopilotAddonInstances_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
+					resource.TestCheckOutput("is_results_not_empty", "true"),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceCceAutopilotAddonInstances_basic(name string) string {
-	return fmt.Sprintf(`
+const testDataSourceCceAutopilotAddonInstances_basic = `
 data "huaweicloud_cce_autopilot_addon_instances" "test" {
   cluster_id = "83a085fe-d4f1-11f0-80d0-0255ac10178d"
 }
-`)
+
+output "is_results_not_empty" {
+  value = length(data.huaweicloud_cce_autopilot_addon_instances.test.items) > 0
 }
+`
