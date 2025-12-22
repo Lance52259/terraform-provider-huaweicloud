@@ -1,19 +1,19 @@
 ---
 subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_cce_autopilot_chart"
+page_title: "HuaweiCloud: huaweicloud_cce_autopilot_charts"
 description: |- 
   Use this data source to get  the list of CCE Autopilot charts within huaweicloud.
 ---
 
-# huaweicloud_cce_autopilot_chart
+# huaweicloud_cce_autopilot_charts
 
 Use this data source to get  the list of CCE Autopilot charts within huaweicloud.
 
 ## Example Usage
 
 ```hcl
-data "huaweicloud_cce_autopilot_chart" "test" {}
+data "huaweicloud_cce_autopilot_charts" "test" {}
 ```
 
 ## Argument Reference

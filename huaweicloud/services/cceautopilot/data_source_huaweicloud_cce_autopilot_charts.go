@@ -14,9 +14,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/schemas"
 )
 
-func DataSourceCceAutopilotChart() *schema.Resource {
+func DataSourceCceAutopilotCharts() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceCceAutopilotChartRead,
+		ReadContext: dataSourceCceAutopilotChartsRead,
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -89,20 +89,20 @@ func DataSourceCceAutopilotChart() *schema.Resource {
 	}
 }
 
-type ChartDSWrapper struct {
+type ChartsDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newChartDSWrapper(d *schema.ResourceData, meta interface{}) *ChartDSWrapper {
-	return &ChartDSWrapper{
+func newChartsDSWrapper(d *schema.ResourceData, meta interface{}) *ChartsDSWrapper {
+	return &ChartsDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
 }
 
-func dataSourceCceAutopilotChartRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	wrapper := newChartDSWrapper(d, meta)
+func dataSourceCceAutopilotChartsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	wrapper := newChartsDSWrapper(d, meta)
 	lisAutChaRst, err := wrapper.ListAutopilotCharts()
 	if err != nil {
 		return diag.FromErr(err)
@@ -123,7 +123,7 @@ func dataSourceCceAutopilotChartRead(_ context.Context, d *schema.ResourceData, 
 }
 
 // @API CCE GET /autopilot/v2/charts
-func (w *ChartDSWrapper) ListAutopilotCharts() (*gjson.Result, error) {
+func (w *ChartsDSWrapper) ListAutopilotCharts() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (w *ChartDSWrapper) ListAutopilotCharts() (*gjson.Result, error) {
 		Result()
 }
 
-func (w *ChartDSWrapper) listAutopilotChartsToSchema(body *gjson.Result) error {
+func (w *ChartsDSWrapper) listAutopilotChartsToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),

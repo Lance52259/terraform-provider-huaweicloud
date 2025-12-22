@@ -15,9 +15,9 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-func DataSourceCceAutopilotAddonInstances() *schema.Resource {
+func DataSourceCceAutopilotAddons() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceCceAutopilotAddonInstancesRead,
+		ReadContext: dataSourceCceAutopilotAddonsRead,
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -53,6 +53,7 @@ func DataSourceCceAutopilotAddonInstances() *schema.Resource {
 									"annotations": {
 										Type:        schema.TypeMap,
 										Computed:    true,
+										Elem:        &schema.Schema{Type: schema.TypeString},
 									},
 									"creation_timestamp": {
 										Type:        schema.TypeString,
@@ -61,6 +62,7 @@ func DataSourceCceAutopilotAddonInstances() *schema.Resource {
 									"labels": {
 										Type:        schema.TypeMap,
 										Computed:    true,
+										Elem:        &schema.Schema{Type: schema.TypeString},
 									},
 									"name": {
 										Type:        schema.TypeString,
@@ -108,8 +110,9 @@ func DataSourceCceAutopilotAddonInstances() *schema.Resource {
 										Computed:    true,
 									},
 									"values": {
-										Type:        schema.TypeMap,
+										Type:        schema.TypeList,
 										Computed:    true,
+										Elem:        &schema.Schema{Type: schema.TypeString},
 									},
 									"version": {
 										Type:        schema.TypeString,
@@ -207,32 +210,30 @@ func itemsStatusCurrentVersionElem() *schema.Resource {
 			"update_timestamp": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `更新时间`,
 			},
 			"version": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `插件版本号`,
 			},
 		},
 	}
 }
 
-type AddonInstancesDSWrapper struct {
+type AddonsDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newAddonInstancesDSWrapper(d *schema.ResourceData, meta interface{}) *AddonInstancesDSWrapper {
-	return &AddonInstancesDSWrapper{
+func newAddonsDSWrapper(d *schema.ResourceData, meta interface{}) *AddonsDSWrapper {
+	return &AddonsDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
 }
 
-func dataSourceCceAutopilotAddonInstancesRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	wrapper := newAddonInstancesDSWrapper(d, meta)
-	lisAutAddInsRst, err := wrapper.ListAutopilotAddonInstances()
+func dataSourceCceAutopilotAddonsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	wrapper := newAddonsDSWrapper(d, meta)
+	lisAutAddInsRst, err := wrapper.ListAutopilotAddons()
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -243,7 +244,7 @@ func dataSourceCceAutopilotAddonInstancesRead(_ context.Context, d *schema.Resou
 	}
 	d.SetId(id)
 
-	err = wrapper.listAutopilotAddonInstancesToSchema(lisAutAddInsRst)
+	err = wrapper.listAutopilotAddonsToSchema(lisAutAddInsRst)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -252,7 +253,7 @@ func dataSourceCceAutopilotAddonInstancesRead(_ context.Context, d *schema.Resou
 }
 
 // @API CCE GET /autopilot/v3/addons
-func (w *AddonInstancesDSWrapper) ListAutopilotAddonInstances() (*gjson.Result, error) {
+func (w *AddonsDSWrapper) ListAutopilotAddons() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -273,7 +274,7 @@ func (w *AddonInstancesDSWrapper) ListAutopilotAddonInstances() (*gjson.Result, 
 		Result()
 }
 
-func (w *AddonInstancesDSWrapper) listAutopilotAddonInstancesToSchema(body *gjson.Result) error {
+func (w *AddonsDSWrapper) listAutopilotAddonsToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
@@ -284,9 +285,9 @@ func (w *AddonInstancesDSWrapper) listAutopilotAddonInstancesToSchema(body *gjso
 						func(metadata gjson.Result) any {
 							return map[string]any{
 								"alias":             metadata.Get("alias").Value(),
-								"annotations":       metadata.Get("annotations").Value(),
+								"annotations":       schemas.MapToStrMap(metadata.Get("annotations")),
 								"creation_timestamp": metadata.Get("creationTimestamp").Value(),
-								"labels":            metadata.Get("labels").Value(),
+								"labels":            schemas.MapToStrMap(metadata.Get("labels")),
 								"name":              metadata.Get("name").Value(),
 								"uid":               metadata.Get("uid").Value(),
 								"update_timestamp":   metadata.Get("updateTimestamp").Value(),
@@ -302,7 +303,7 @@ func (w *AddonInstancesDSWrapper) listAutopilotAddonInstancesToSchema(body *gjso
 								"addon_template_type":   spec.Get("addonTemplateType").Value(),
 								"cluster_id":           spec.Get("clusterID").Value(),
 								"description":         spec.Get("description").Value(),
-								"values":              spec.Get("values").Value(),
+								"values":              schemas.SliceToStrList(spec.Get("values")),
 								"version":             spec.Get("version").Value(),
 							}
 						},
@@ -328,7 +329,7 @@ func (w *AddonInstancesDSWrapper) listAutopilotAddonInstancesToSchema(body *gjso
 	return mErr.ErrorOrNil()
 }
 
-func (*AddonInstancesDSWrapper) setIteStaCurVersion(status gjson.Result) any {
+func (*AddonsDSWrapper) setIteStaCurVersion(status gjson.Result) any {
 	return schemas.SliceToList(status.Get("currentVersion"), func(currentVersion gjson.Result) any {
 		return map[string]any{
 			"creation_timestamp": currentVersion.Get("creationTimestamp").Value(),

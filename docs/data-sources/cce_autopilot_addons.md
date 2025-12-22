@@ -1,12 +1,12 @@
 ---
 subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
-page_title: "HuaweiCloud: huaweicloud_cce_autopilot_addon_instances"
+page_title: "HuaweiCloud: huaweicloud_cce_autopilot_addons"
 description: |-
   Use this datasource to get the list of CCE Autopilot Addon Instances.
 ---
 
-# huaweicloud_cce_autopilot_addon_instances
+# huaweicloud_cce_autopilot_addons
 
 Use this datasource to get the list of CCE Autopilot Addon Instances.
 
@@ -15,7 +15,7 @@ Use this datasource to get the list of CCE Autopilot Addon Instances.
 ```hcl
 variable "cluster_id" {}
 
-data "huaweicloud_cce_autopilot_addon_instances" "test" {
+data "huaweicloud_cce_autopilot_addons" "test" {
   cluster_id = var.cluster_id  # Required
 }
 ```

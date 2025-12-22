@@ -8,9 +8,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccDataSourceCceAutopilotAddonInstances_basic(t *testing.T) {
-	dataSource := "data.huaweicloud_cce_autopilot_addon_instances.test"
-
+func TestAccDataSourceCceAutopilotCharts_basic(t *testing.T) {
+	dataSource := "data.huaweicloud_cce_autopilot_charts.test"
 	dc := acceptance.InitDataSourceCheck(dataSource)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -20,7 +19,7 @@ func TestAccDataSourceCceAutopilotAddonInstances_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceCceAutopilotAddonInstances_basic,
+				Config: testDataSourceCceAutopilotCharts_basic,
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckOutput("is_results_not_empty", "true"),
@@ -30,12 +29,10 @@ func TestAccDataSourceCceAutopilotAddonInstances_basic(t *testing.T) {
 	})
 }
 
-const testDataSourceCceAutopilotAddonInstances_basic = `
-data "huaweicloud_cce_autopilot_addon_instances" "test" {
-  cluster_id = "83a085fe-d4f1-11f0-80d0-0255ac10178d"
-}
+const testDataSourceCceAutopilotCharts_basic = `
+data "huaweicloud_cce_autopilot_charts" "test" {}
 
 output "is_results_not_empty" {
-  value = length(data.huaweicloud_cce_autopilot_addon_instances.test.items) > 0
+  value = length(data.huaweicloud_cce_autopilot_charts.test.charts) > 0
 }
 `
