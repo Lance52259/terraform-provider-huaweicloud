@@ -615,6 +615,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_cce_clusters":               cce.DataSourceCCEClusters(),
 			"huaweicloud_cce_cluster_certificate":    cce.DataSourceCCEClusterCertificate(),
 			"huaweicloud_cce_cluster_openid_jwks":    cce.DataSourceCCEClusterOpenIDJWKS(),
+			"huaweicloud_cce_flavor_specifications":  cce.DataSourceCCEFlavorSpecifications(),
+			"huaweicloud_cce_cluster_configuration_details":  cce.DataSourceClusterConfigurationDetails(),
 			"huaweicloud_cce_node":                   cce.DataSourceNode(),
 			"huaweicloud_cce_nodes":                  cce.DataSourceNodes(),
 			"huaweicloud_cce_node_pool":              cce.DataSourceCCENodePoolV3(),
