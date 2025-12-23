@@ -14,11 +14,9 @@ Use this data source to get the list of CCE Autopilot clusters log configs withi
 
 ```hcl
 variable "cluster_id" {}
-variable "project_id" {}
 
 data "huaweicloud_cce_autopilot_cluster_log_configs" "test" {
   cluster_id = var.cluster_id
-  project_id = var.project_id
 }
 ```
 
@@ -29,8 +27,6 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
 * `cluster_id` - (Required, String) Specifies the cluster ID.
-
-* `project_id` - (Required, String) Specifies the project ID.
 
 * `type` - (Optional, String) Specifies the type of log config.
 

@@ -30,10 +30,6 @@ func DataSourceCceAutopilotClusterLogConfigs() *schema.Resource {
                 Type:        schema.TypeString,
                 Required:    true,
             },
-			"project_id": {
-                Type:        schema.TypeString,
-                Required:    true,
-            },
             "type": {
                 Type:        schema.TypeString,
                 Optional:    true,
@@ -107,7 +103,6 @@ func (w *CceAutopilotClusterLogConfigsDSWrapper) ShowAutopilotClusterLogConfigs(
     }
 
     uri := "/autopilot/v3/projects/{project_id}/cluster/{cluster_id}/log-configs"
-    uri = strings.ReplaceAll(uri, "{project_id}", w.Get("project_id").(string))
     uri = strings.ReplaceAll(uri, "{cluster_id}", w.Get("cluster_id").(string))
 
     params := map[string]any{
