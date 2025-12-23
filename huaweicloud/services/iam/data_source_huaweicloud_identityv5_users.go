@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/users
+// @API IAM GET /v5/users
 func DataSourceIdentityV5Users() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5UserRead,

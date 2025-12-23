@@ -63,7 +63,7 @@ func dataSourceIdentityV5AccessKeyRead(_ context.Context, d *schema.ResourceData
 		return diag.Errorf("not found access key : %s", err)
 	}
 
-	accessKeyId := utils.PathSearch("access_key_id", accessKey, nil).(string)
+	accessKeyId := utils.PathSearch("access_key_id", accessKey, "").(string)
 
 	lastUsedAt, err := getAccessKeyLastUsedV5(client, userId, accessKeyId)
 	if err != nil {
@@ -98,7 +98,7 @@ func getAccessKeyV5(client *golangsdk.ServiceClient, userId string) (interface{}
 		return nil, err
 	}
 
-	accessKey := utils.PathSearch("access_keys", resp, nil).([]interface{})
+	accessKey := utils.PathSearch("access_keys", resp, make([]interface{}, 0)).([]interface{})
 	if len(accessKey) < 1 {
 		return nil, nil
 	}

@@ -14,7 +14,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/authorization-schemas/registered-services
+// @API IAM GET /v5/authorization-schemas/registered-services
 func DataSourceIdentityV5RegisteredServices() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5RegisteredServicesRead,
