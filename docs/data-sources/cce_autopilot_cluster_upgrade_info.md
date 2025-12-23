@@ -14,11 +14,9 @@ Use this data source to get  the list of CCE Autopilot clusters upgrade info wit
 
 ```hcl
 variable "cluster_id" {}
-variable "project_id" {}
 
 data "huaweicloud_cce_autopilot_cluster_upgrade_info" "test" {
   cluster_id = var.cluster_id
-  project_id = var.project_id
 }
 ```
 
@@ -30,8 +28,6 @@ The following arguments are supported:
 
 * `cluster_id` - (Required, String) Specifies the Cluster ID.
 
-* `project_id` - (Required, String) Specifies the Project ID.
-
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -41,6 +37,14 @@ In addition to all arguments above, the following attributes are exported:
 * `metadata` - Upgrade status information.
 
   The [metadata](#metadata_struct) structure is documented below.
+
+* `spec` - Upgrade configuration information.
+
+  The [spec](#spec_struct) structure is documented below.
+
+* `status` - Upgrade status information.
+
+  The [status](#status_struct) structure is documented below.
   
 <a name="metadata_struct"></a>
 The `metadata` block supports:
@@ -56,10 +60,6 @@ The `metadata` block supports:
 * `creation_timestamp` - Creation time.
 
 * `update_timestamp` - Update time.
-
-* `spec` - Upgrade configuration information.
-
-  The [spec](#spec_struct) structure is documented below.
 
 <a name="spec_struct"></a>
 The `spec` block supports:
@@ -100,10 +100,6 @@ The `version_info` block supports:
 * `suggest_patch` - Recommended target patch version number, e.g., r0.
 
 * `target_versions` - Upgrade target version collection.
-
-* `status` - Upgrade status information.
-
-  The [status](#status_struct) structure is documented below.
 
 <a name="status_struct"></a>
 The `status` block supports:

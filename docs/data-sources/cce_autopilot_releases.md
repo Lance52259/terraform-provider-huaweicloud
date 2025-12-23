@@ -6,7 +6,7 @@ description: |-
   Use this data source to get the list of Autopilot CCE releases within HuaweiCloud.
 ---
 
-# `huaweicloud_cce_autopilot_releases`
+# huaweicloud_cce_autopilot_releases
 
 Use this data source to get the list of Autopilot CCE releases within HuaweiCloud.
 

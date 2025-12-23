@@ -29,10 +29,6 @@ func DataSourceCceAutopilotClusterUpgradeInfo() *schema.Resource {
                 Type:        schema.TypeString,
                 Required:    true,
             },
-			"project_id": {
-                Type:        schema.TypeString,
-                Required:    true,
-            },
             "metadata": {
                 Type:        schema.TypeList,
                 Computed:    true,
@@ -197,7 +193,6 @@ func (w *CceAutopilotClusterUpgradeInfoDSWrapper) ShowAutopilotClusterUpgradeInf
     }
 
     uri := "/autopilot/v3/projects/{project_id}/clusters/{cluster_id}/upgradeinfo"
-    uri = strings.ReplaceAll(uri, "{project_id}", w.Get("project_id").(string))
     uri = strings.ReplaceAll(uri, "{cluster_id}", w.Get("cluster_id").(string))
     return httphelper.New(client).
         Method("GET").
