@@ -26,11 +26,11 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
-* `cluster_id` - (Required, String) Clsuter ID
+* `cluster_id` - (Required, String) Specifies the Clsuter ID
 
-* `chart_id` - (Optional, String) Chart ID
+* `chart_id` - (Optional, String) Specifies the Chart ID
 
-* `namespace` - (Optional, String) Namespace corresponding to the template
+* `namespace` - (Optional, String) Specifies the Namespace corresponding to the template
 
 ## Attribute Reference
 

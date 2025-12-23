@@ -24,55 +24,45 @@ func DataSourceCceAutopilotClusterUpgradeInfo() *schema.Resource {
                 Type:        schema.TypeString,
                 Optional:    true,
                 Computed:    true,
-                Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
             },
             "cluster_id": {
                 Type:        schema.TypeString,
                 Required:    true,
-                Description: "Cluster ID, which can be obtained from the parameter in the interface URI.",
             },
 			"project_id": {
                 Type:        schema.TypeString,
                 Required:    true,
-                Description: "project ID, which can be obtained from the parameter in the interface URI.",
             },
             "metadata": {
                 Type:        schema.TypeList,
                 Computed:    true,
-                Description: `The metadata of the upgrade info.`,
                 Elem: &schema.Resource{
                     Schema: map[string]*schema.Schema{
                         "uid": {
                             Type:        schema.TypeString,
                             Computed:    true,
-                            Description: `The upgrade info ID.`,
                         },
                         "name": {
                             Type:        schema.TypeString,
                             Computed:    true,
-                            Description: `The upgrade info name.`,
                         },
                         "labels": {
                             Type:        schema.TypeMap,
                             Computed:    true,
                             Elem:        &schema.Schema{Type: schema.TypeString},
-                            Description: `The upgrade info labels in key/value pairs.`,
                         },
                         "annotations": {
                             Type:        schema.TypeMap,
                             Computed:    true,
                             Elem:        &schema.Schema{Type: schema.TypeString},
-                            Description: `The upgrade info annotations in the format of key/value pairs.`,
                         },
                         "update_timestamp": {
                             Type:        schema.TypeString,
                             Computed:    true,
-                            Description: `The update time.`,
                         },
                         "creation_timestamp": {
                             Type:        schema.TypeString,
                             Computed:    true,
-                            Description: `The creation time.`,
                         },
                     },
                 },

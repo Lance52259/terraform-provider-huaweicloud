@@ -25,22 +25,18 @@ func DataSourceCCEAutopilotReleases() *schema.Resource {
                 Type:        schema.TypeString,
                 Optional:    true,
                 Computed:    true,
-                Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
             },
             "cluster_id": {
                 Type:        schema.TypeString,
                 Required:    true,
-                Description: "集群ID,获取方式请参见[如何获取接口URI中参数](cce_02_0271.xml)。",
             },
             "chart_id": {
                 Type:        schema.TypeString,
                 Optional:    true,
-                Description: "模板ID",
             },
             "namespace": {
                 Type:        schema.TypeString,
                 Optional:    true,
-                Description: "模板对应的命名空间",
             },
             "releases": {
 				Type:     schema.TypeList,
