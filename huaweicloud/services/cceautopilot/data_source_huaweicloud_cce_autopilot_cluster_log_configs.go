@@ -25,43 +25,39 @@ func DataSourceCceAutopilotClusterLogConfigs() *schema.Resource {
                 Type:        schema.TypeString,
                 Optional:    true,
                 Computed:    true,
-                Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
             },
             "cluster_id": {
                 Type:        schema.TypeString,
                 Required:    true,
-                Description: "Cluster ID, which can be obtained from the parameter in the interface URI.",
             },
 			"project_id": {
                 Type:        schema.TypeString,
                 Required:    true,
-                Description: "project ID, which can be obtained from the parameter in the interface URI.",
             },
             "type": {
                 Type:        schema.TypeString,
                 Optional:    true,
-                Description: "Component Type.",
             },
             "ttl_in_days": {
                 Type:        schema.TypeInt,
                 Computed:    true,
-                Description: "Storage duration.",
             },
             "log_configs": {
                 Type:        schema.TypeList,
                 Computed:    true,
-                Description: `all log configs`,
                 Elem: &schema.Resource{
                     Schema: map[string]*schema.Schema{
                         "name": {
                             Type:        schema.TypeString,
                             Computed:    true,
-                            Description: `log service name`,
                         },
                         "enable": {
                             Type:        schema.TypeBool,
                             Computed:    true,
-                            Description: `Collected or Not`,
+                        },
+                        "type": {
+                            Type:        schema.TypeString,
+                            Computed:    true,
                         },
                     },
                 },
@@ -131,6 +127,16 @@ func (w *CceAutopilotClusterLogConfigsDSWrapper) showAutopilotClusterLogConfigsT
     d := w.ResourceData
     mErr := multierror.Append(nil,
         d.Set("region", w.Config.GetRegion(w.ResourceData)),
+        d.Set("ttl_in_days", body.Get("ttl_in_days").Value()),
+        d.Set("log_configs", schemas.SliceToList(body.Get("log_configs"),
+			func(logconfig gjson.Result) any {
+				return map[string]any{
+					"name":         logconfig.Get("name").Value(),
+					"enable":       logconfig.Get("enable").Value(),
+					"type":         logconfig.Get("type").Value(),
+				}
+			},
+		)),
     )
     return mErr.ErrorOrNil()
 }

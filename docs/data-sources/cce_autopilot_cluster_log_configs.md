@@ -3,14 +3,19 @@ subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_cluster_log_configs"
 description: |-
-  Use this data source to get  the list of CCE Autopilot clusters log configs within huaweicloud.
+  Use this data source to get the list of CCE Autopilot clusters log configs within huaweicloud.
 ---
 
 # huaweicloud_cce_autopilot_cluster_log_configs
 
+Use this data source to get the list of CCE Autopilot clusters log configs within huaweicloud.
+
 ## Example Usage
 
 ```hcl
+variable "cluster_id" {}
+variable "project_id" {}
+
 data "huaweicloud_cce_autopilot_cluster_log_configs" "test" {
   cluster_id = var.cluster_id
   project_id = var.project_id
@@ -23,9 +28,11 @@ The following arguments are supported:
 
 * `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
 
-* `cluster_id` - (Required, String) Cluster ID, which can be obtained from the parameter in the interface URI.
+* `cluster_id` - (Required, String) Specifies the cluster ID.
 
-* `project_id` - (Required, String) Project ID, which can be obtained from the parameter in the interface URI.
+* `project_id` - (Required, String) Specifies the project ID.
+
+* `type` - (Optional, String) Specifies the type of log config.
 
 ## Attribute Reference
 
@@ -42,4 +49,6 @@ The `log_configs` block supports:
 
 * `name` - Last config server name.
 
-* `enable` - Collected or Not.
+* `enable` - Collected or not.
+
+* `type` - The type of log config.
