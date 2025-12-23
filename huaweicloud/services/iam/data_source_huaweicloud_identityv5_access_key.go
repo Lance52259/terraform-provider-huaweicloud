@@ -14,8 +14,8 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/users/{user_id}/access-keys
-// @API GET /v5/users/{user_id}/access-keys/{access_key_id}/last-used
+// @API IAM GET /v5/users/{user_id}/access-keys
+// @API IAM GET /v5/users/{user_id}/access-keys/{access_key_id}/last-used
 func DataSourceIdentityV5AccessKey() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5AccessKeyRead,
