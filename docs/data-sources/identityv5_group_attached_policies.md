@@ -31,9 +31,9 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `attached_policies` - Indicate the attached policies list.
-  The [attached_policies](#IdentityV5Attached_policies) structure is documented below.
+  The [attached_policies](#IdentityV5_group_attached_policies) structure is documented below.
  
-<a name="IdentityV5Attached_policies"></a>
+<a name="IdentityV5_group_attached_policies"></a>
 The `attached_policies` block contains:
 
 * `attached_at` - Indicate the time when the policy was attached.
