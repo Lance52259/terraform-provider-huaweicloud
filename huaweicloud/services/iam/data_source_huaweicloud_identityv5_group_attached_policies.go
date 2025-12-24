@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/groups/{group_id}/attached-policies
+// @API IAM GET /v5/groups/{group_id}/attached-policies
 func DataSourceIdentityV5GroupAttachedPolicies() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5GroupAttachedPoliciesRead,

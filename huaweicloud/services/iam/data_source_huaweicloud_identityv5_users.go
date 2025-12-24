@@ -16,6 +16,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IAM GET /v5/users
 // @API GET /v5/users
 // @API GET /v5/users/{user_id}
 // @API GET /v5/users/{user_id}/last-login

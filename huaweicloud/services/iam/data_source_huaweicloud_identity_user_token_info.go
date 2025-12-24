@@ -2,17 +2,19 @@ package iam
 
 import (
 	"context"
+
 	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v3/auth/tokens
+// @API IAM GET /v3/auth/tokens
 func DataSourceIdentityUserTokenInfo() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityUserTokenInfoRead,

@@ -17,7 +17,7 @@ import (
 )
 
 // DataSourceIdentityV5Agencies
-// @API GET /v5/agencies
+// @API IAM GET /v5/agencies
 func DataSourceIdentityV5Agencies() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5AgenciesRead,

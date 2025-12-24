@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/mfa-devices
+// @API IAM GET /v5/mfa-devices
 func DataSourceIdentityV5VirtualMfaDevices() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5VirtualMfaDevicesRead,
