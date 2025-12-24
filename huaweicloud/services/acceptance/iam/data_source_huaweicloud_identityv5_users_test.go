@@ -11,8 +11,7 @@ import (
 
 func TestAccDataSourceIdentityV5Users_basic(t *testing.T) {
 	dataSourceName := "data.huaweicloud_identityv5_users.test"
-	name := "TestDataSourceUsers_xxxqvccav"
-
+	name := acceptance.RandomAccResourceName()
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
 		ProviderFactories: acceptance.TestAccProviderFactories,
