@@ -17,7 +17,7 @@ import (
 )
 
 // DataSourceIdentityV5PolicyAttachedEntities
-// @API GET /v5/policies/{policy_id}/attached-entities
+// @API IAM GET /v5/policies/{policy_id}/attached-entities
 func DataSourceIdentityV5PolicyAttachedEntities() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5PolicyAttachedEntitiesRead,

@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API GET /v5/features/{feature_name}
+// @API IAM GET /v5/features/{feature_name}
 func DataSourceIdentityV5AccountFeatureStatus() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityV5AccountFeatureStatusRead,

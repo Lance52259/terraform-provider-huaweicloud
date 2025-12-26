@@ -16,6 +16,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+// @API IAM GET v5/{resource_type}/{resource_id}/tags
 func DataSourceIdentityv5ResourceTags() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIAMIdentityv5TagsRead,
