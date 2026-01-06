@@ -1,0 +1,26 @@
+name: Coding Quality Check
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'huaweicloud/services/**/*.go'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deleted-error-format-tracing:
+    name: Check Error Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Error Format Tracing for CheckDeletedDiag Error Input
+        uses: Lance52259/errors-format-tracing@v1
+        with:
+          directory: 'huaweicloud/services'
+          show-progress: 'false'
