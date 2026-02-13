@@ -2821,6 +2821,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_ccm_certificate":                ccm.ResourceCCMCertificate(),
 			"huaweicloud_ccm_csr":                        ccm.ResourceCsr(),
 			"huaweicloud_ccm_certificate_apply":          ccm.ResourceCertificateApply(),
+			"huaweicloud_ccm_certificate_cancel_request": ccm.ResourceCertificateCancelRequest(),
 			"huaweicloud_ccm_certificate_deploy":         ccm.ResourceCertificateDeploy(),
 			"huaweicloud_ccm_certificate_import":         ccm.ResourceCertificateImport(),
 			"huaweicloud_ccm_certificate_push":           ccm.ResourceCertificatePush(),
