@@ -3421,7 +3421,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_identity_unscoped_token_saml":          iam.ResourceIdentityUnscopedTokenSaml(),
 			"huaweicloud_identity_unscoped_token_with_id_token": iam.ResourceIdentityUnscopedTokenWithIdToken(),
 			"huaweicloud_identity_policy":                       iam.ResourceIdentityPolicy(),
-			"huaweicloud_identity_policy_agency_attach":         iam.ResourceIdentityPolicyAgencyAttach(),
 			"huaweicloud_identity_provider_conversion":          iam.ResourceV3ProviderConversion(),
 			"huaweicloud_identity_temporary_access_key":         iam.ResourceIdentityTemporaryAccessKey(),
 
@@ -4288,6 +4287,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_csbs_backup_policy_v1":          deprecated.ResourceCSBSBackupPolicyV1(),
 			"huaweicloud_csbs_backup_v1":                 deprecated.ResourceCSBSBackupV1(),
 			"huaweicloud_fgs_trigger":                    deprecated.ResourceFunctionGraphTrigger(),
+			"huaweicloud_identity_policy_agency_attach":  deprecated.ResourceIdentityPolicyAgencyAttach(),
 			"huaweicloud_network_acl":                    deprecated.ResourceNetworkACL(),
 			"huaweicloud_network_acl_rule":               deprecated.ResourceNetworkACLRule(),
 			"huaweicloud_networking_network_v2":          deprecated.ResourceNetworkingNetworkV2(),
