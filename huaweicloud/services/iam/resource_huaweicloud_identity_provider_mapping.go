@@ -74,7 +74,7 @@ func resourceV3ProviderMappingCreate(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("error creating IAM client without version: %s", err)
 	}
 	providerID := d.Get("provider_id").(string)
-	mappingID := generateMappingID(providerID)
+	mappingID := generateV3ProviderMappingID(providerID)
 
 	// Check if the mappingID exists, update if it exists, otherwise create it.
 	r, err := mappings.List(client).AllPages()
