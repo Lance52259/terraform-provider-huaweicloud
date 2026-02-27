@@ -3396,8 +3396,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_hss_app_whitelist_policy_process":                   hss.ResourceAppWhitelistPolicyProcess(),
 			"huaweicloud_hss_associated_asset_importance":                    hss.ResourceAssociatedAssetImportance(),
 
-			"huaweicloud_identity_access_key":                   iam.ResourceAccessKey(),
-			"huaweicloud_identity_acl":                          iam.ResourceAcl(),
+			"huaweicloud_identity_access_key":                   iam.ResourceV3AccessKey(),
+			"huaweicloud_identity_acl":                          iam.ResourceV3Acl(),
 			"huaweicloud_identity_agency":                       iam.ResourceV3Agency(),
 			"huaweicloud_identity_group":                        iam.ResourceV3Group(),
 			"huaweicloud_identity_group_membership":             iam.ResourceV3GroupMembership(),
