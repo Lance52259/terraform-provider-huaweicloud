@@ -25,6 +25,7 @@ var (
 	DefaultVersion = "CSE2"
 
 	microserviceEngineNotFoundCodes = []string{
+		"SVCSTG.00401116",
 		"SVCSTG.00501116",
 		"SVCSTG.00501125",
 	}
