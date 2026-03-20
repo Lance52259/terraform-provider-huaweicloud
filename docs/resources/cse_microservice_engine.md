@@ -102,7 +102,7 @@ The following arguments are supported:
   microservice engine belongs.  
   If omitted and the version is **Nacos2**, the default enterprise project will be used.
 
-* `description` - (Optional, String, NonUpdatable) Specifies the description of the microservice engine.
+* `description` - (Optional, String) Specifies the description of the microservice engine.  
   The description can contain a maximum of `255` characters.
 
 * `eip_id` - (Optional, String, NonUpdatable) Specifies the EIP ID bound to the microservice engine.

@@ -38,7 +38,6 @@ var (
 		"version",
 		"admin_pass",
 		"enterprise_project_id",
-		"description",
 		"eip_id",
 		"extend_params",
 	}
@@ -49,6 +48,7 @@ var (
 // @API CSE POST /v2/{project_id}/enginemgr/engines
 // @API CSE GET /v2/{project_id}/enginemgr/engines/{engine_id}/jobs/{job_id}
 // @API CSE GET /v2/{project_id}/enginemgr/engines/{engine_id}
+// @API CSE PUT /v2/{project_id}/enginemgr/engines/{engine_id}
 // @API CSE DELETE /v2/{project_id}/enginemgr/engines/{engine_id}
 func ResourceMicroserviceEngine() *schema.Resource {
 	return &schema.Resource{
@@ -128,6 +128,7 @@ func ResourceMicroserviceEngine() *schema.Resource {
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
+				Computed:    true,
 				Description: `The description of the microservice engine.`,
 			},
 			"eip_id": {
@@ -526,8 +527,50 @@ func resourceMicroserviceEngineRead(_ context.Context, d *schema.ResourceData, m
 	return diagErr
 }
 
-func resourceMicroserviceEngineUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	return nil
+func buildUpdateMicroserviceEngineBodyParams(d *schema.ResourceData) map[string]interface{} {
+	return map[string]interface{}{
+		// The description does not support changing an empty string, so we need to pass a null value.
+		"description": utils.ValueIgnoreEmpty(d.Get("description").(string)),
+	}
+}
+
+func updateMicroserviceEngine(client *golangsdk.ServiceClient, d *schema.ResourceData, engineId, epsId string) (interface{}, error) {
+	httpUrl := "v2/{project_id}/enginemgr/engines/{engine_id}"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{engine_id}", engineId)
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      buildRequestMoreHeaders(epsId),
+		JSONBody:         utils.RemoveNil(buildUpdateMicroserviceEngineBodyParams(d)),
+	}
+
+	_, err := client.Request("PUT", updatePath, &updateOpt)
+	return nil, err
+}
+
+func resourceMicroserviceEngineUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var (
+		cfg                 = meta.(*config.Config)
+		region              = cfg.GetRegion(d)
+		engineId            = d.Id()
+		enterpriseProjectId = cfg.GetEnterpriseProjectID(d)
+	)
+
+	client, err := cfg.NewServiceClient("cse", region)
+	if err != nil {
+		return diag.Errorf("error creating CSE client: %s", err)
+	}
+
+	if d.HasChange("description") {
+		_, err := updateMicroserviceEngine(client, d, engineId, enterpriseProjectId)
+		if err != nil {
+			return diag.Errorf("error updating microservice engine: %s", err)
+		}
+	}
+
+	return resourceMicroserviceEngineRead(ctx, d, meta)
 }
 
 func deleteMicroserviceEngine(client *golangsdk.ServiceClient, engineId, epsId string) (interface{}, error) {
