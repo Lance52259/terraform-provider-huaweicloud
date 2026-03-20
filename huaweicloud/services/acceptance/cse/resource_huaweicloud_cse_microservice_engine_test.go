@@ -112,6 +112,11 @@ func testAccMicroserviceEngineImportStateFunc(rName string) resource.ImportState
 
 func testAccMicroserviceEngine_base(name string) string {
 	return fmt.Sprintf(`
+variable "eip_id" {
+  type    = string
+  default = "%[1]s"
+}
+
 resource "random_string" "test" {
   length           = 16
   min_numeric      = 1
@@ -127,23 +132,8 @@ data "huaweicloud_cse_microservice_engine_flavors" "test" {
   version = "CSE2"
 }
 
-%[1]s
-
-resource "huaweicloud_vpc_eip" "test" {
-  enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
-
-  publicip {
-    type = "5_bgp"
-  }
-
-  bandwidth {
-    share_type  = "PER"
-    size        = 5
-    name        = "%[2]s"
-    charge_mode = "traffic"
-  }
-}
-`, common.TestVpc(name, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST), name)
+%[2]s
+`, acceptance.HW_EIP_ID, common.TestVpc(name, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST))
 }
 
 func testAccMicroserviceEngine_basic_step1(name string) string {
@@ -155,7 +145,7 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   description           = "Created by terraform test"
   flavor                = data.huaweicloud_cse_microservice_engine_flavors.test.flavors[0].id
   network_id            = huaweicloud_vpc_subnet.test.id
-  # eip_id                = huaweicloud_vpc_eip.test.id
+  eip_id                = var.eip_id != "" ? var.eip_id : null
   availability_zones    = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
   enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
 
@@ -174,7 +164,7 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   description           = "Updated by terraform test"
   flavor                = data.huaweicloud_cse_microservice_engine_flavors.test.flavors[0].id
   network_id            = huaweicloud_vpc_subnet.test.id
-  # eip_id                = huaweicloud_vpc_eip.test.id
+  eip_id                = var.eip_id != "" ? var.eip_id : null
   availability_zones    = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
   enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
   
