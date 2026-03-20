@@ -72,6 +72,9 @@ func TestAccMicroserviceEngine_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "service_limit"),
 					resource.TestCheckResourceAttrSet(resourceName, "service_registry_addresses.0.private"),
 					resource.TestCheckResourceAttrSet(resourceName, "config_center_addresses.0.private"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
 				),
 			},
 			{
@@ -79,6 +82,9 @@ func TestAccMicroserviceEngine_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "description", "Updated by terraform test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "baar"),
+					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
 				),
 			},
 			{
@@ -151,6 +157,11 @@ resource "huaweicloud_cse_microservice_engine" "test" {
 
   auth_type  = "RBAC"
   admin_pass = format("pwdPrefix%%s", random_string.test.result) // Avoid the password starting with a special character
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
 }
 `, testAccMicroserviceEngine_base(name), name)
 }
@@ -170,6 +181,11 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   
   auth_type  = "RBAC"
   admin_pass = format("pwdPrefix%%s", random_string.test.result) // Avoid the password starting with a special character
+
+  tags = {
+    foo   = "baar"
+    owner = "terraform"
+  }
 }
 `, testAccMicroserviceEngine_base(name), name)
 }
