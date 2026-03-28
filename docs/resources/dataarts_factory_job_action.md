@@ -51,6 +51,30 @@ The following arguments are supported:
 * `workspace_id` - (Optional, String, NonUpdatable) Specified the ID of the workspace to which the job belongs.
   If this parameter is not set, the default workspace is used by default.
 
+* `job_params` - (Optional, List) Specifies the parameters of the job action.  
+  The [job_params](#dataarts_factory_job_action_job_params) structure is documented below.  
+  Only used when `action` is **start**.
+
+* `start_date` - (Optional, Int) Specifies the start date of the job action when starting the job.  
+  The format is **YYmmDD**, such as **20060102**.  
+  Only used when `action` is **start**.
+
+* `ignore_first_self_dep` - (Optional, Bool) Specifies whether to ignore the first self dependence when starting the
+  job.  
+  Only used when `action` is **start**.
+
+<a name="dataarts_factory_job_action_job_params"></a>
+The `job_params` block supports:
+
+* `name` - (Required, String) Specifies the name of the job parameter.
+
+* `value` - (Required, String) Specifies the value of the job parameter.
+
+* `type` - (Optional, String) Specifies the type of the job parameter.  
+  The valid values are as follows:
+  + **variable**
+  + **constants**
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:

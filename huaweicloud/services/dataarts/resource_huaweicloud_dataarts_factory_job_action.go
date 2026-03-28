@@ -78,6 +78,40 @@ func ResourceFactoryJobAction() *schema.Resource {
 				Optional:    true,
 				Description: `The ID of the workspace to which the job belongs.`,
 			},
+			"job_params": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: `The name of the job parameter.`,
+						},
+						"value": {
+							Type:        schema.TypeString,
+							Required:    true,
+							Description: `The value of the job parameter.`,
+						},
+						"type": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: `The type of the job parameter.`,
+						},
+					},
+				},
+				Description: `The parameters of the job action.`,
+			},
+			"start_date": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: `The start date of the job action when start job.`,
+			},
+			"ignore_first_self_dep": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: `Whether to ignore the first self dependence when start job.`,
+			},
 
 			// Attribute.
 			"status": {
@@ -101,6 +135,33 @@ func buildFactoryRequestMoreHeaders(workspaceId string) map[string]string {
 	return results
 }
 
+func buildStartJobJobParams(jobParams []interface{}) []interface{} {
+	if len(jobParams) < 1 {
+		return nil
+	}
+
+	result := make([]interface{}, 0, len(jobParams))
+	for _, jobParam := range jobParams {
+		result = append(result, map[string]interface{}{
+			// Required parameters.
+			"name":  utils.PathSearch("name", jobParam, nil),
+			"value": utils.PathSearch("value", jobParam, nil),
+			// Optional parameters.
+			"paramType": utils.ValueIgnoreEmpty(utils.PathSearch("type", jobParam, nil)),
+		})
+	}
+	return result
+}
+
+func buildStartJobBodyParams(d *schema.ResourceData) map[string]interface{} {
+	return map[string]interface{}{
+		// Optional parameters.
+		"jobParams":                    utils.ValueIgnoreEmpty(buildStartJobJobParams(d.Get("job_params").([]interface{}))),
+		"start_date":                   utils.ValueIgnoreEmpty(d.Get("start_date").(int)),
+		"ignore_first_self_dependence": utils.ValueIgnoreEmpty(d.Get("ignore_first_self_dep").(bool)),
+	}
+}
+
 func startJob(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	var (
 		httpUrl     = "v1/{project_id}/jobs/{job_name}/start"
@@ -115,6 +176,8 @@ func startJob(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	actionOpts := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		MoreHeaders:      buildFactoryRequestMoreHeaders(workspaceId),
+		JSONBody:         utils.RemoveNil(buildStartJobBodyParams(d)),
+		OkCodes:          []int{204},
 	}
 
 	_, err := client.Request("POST", actionPath, &actionOpts)
@@ -135,6 +198,7 @@ func stopJob(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	actionOpts := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		MoreHeaders:      buildFactoryRequestMoreHeaders(workspaceId),
+		OkCodes:          []int{204},
 	}
 
 	_, err := client.Request("POST", actionPath, &actionOpts)
@@ -191,7 +255,8 @@ func getJobByName(client *golangsdk.ServiceClient, workspaceId, jobName, jobType
 	}
 }
 
-func jobStateRefreshFunc(client *golangsdk.ServiceClient, workspaceId, jobName, jobType string) resource.StateRefreshFunc {
+func jobStateRefreshFunc(client *golangsdk.ServiceClient, workspaceId, jobName, jobType string,
+	targets []string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getJobByName(client, workspaceId, jobName, jobType)
 		if err != nil {
@@ -206,7 +271,7 @@ func jobStateRefreshFunc(client *golangsdk.ServiceClient, workspaceId, jobName, 
 			return respBody, "ERROR", fmt.Errorf("unexpected job status (%s)", jobStatus)
 		}
 
-		if utils.StrSliceContains([]string{"NORMAL", "STOPPED", "SCHEDULING"}, jobStatus) {
+		if utils.StrSliceContains(targets, jobStatus) {
 			return respBody, "COMPLETED", nil
 		}
 
@@ -221,13 +286,16 @@ func doActionJob(ctx context.Context, client *golangsdk.ServiceClient, d *schema
 		processType = d.Get("process_type").(string)
 		actionType  = d.Get("action").(string)
 		err         error
+		targets     []string
 	)
 
 	switch actionType {
 	case "start":
 		err = startJob(client, d)
+		targets = []string{"NORMAL", "SCHEDULING"}
 	case "stop":
 		err = stopJob(client, d)
+		targets = []string{"STOPPED", "PAUSED"}
 	default:
 		return fmt.Errorf("invalid action type (%s)", actionType)
 	}
@@ -239,7 +307,7 @@ func doActionJob(ctx context.Context, client *golangsdk.ServiceClient, d *schema
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
-		Refresh:      jobStateRefreshFunc(client, workspaceId, jobName, processType),
+		Refresh:      jobStateRefreshFunc(client, workspaceId, jobName, processType, targets),
 		Timeout:      timeout,
 		Delay:        10 * time.Second,
 		PollInterval: 20 * time.Second,
@@ -279,6 +347,7 @@ func resourceFactoryJobActionRead(_ context.Context, d *schema.ResourceData, met
 		workspaceId = d.Get("workspace_id").(string)
 		jobName     = d.Get("job_name").(string)
 		jobType     = d.Get("process_type").(string)
+		actionType  = d.Get("action").(string)
 	)
 
 	client, err := cfg.NewServiceClient("dataarts-dlf", region)
@@ -296,7 +365,7 @@ func resourceFactoryJobActionRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("region", region),
 		d.Set("job_name", utils.PathSearch("name", job, nil)),
 		d.Set("status", utils.PathSearch("status", job, nil)),
-		d.Set("action", jobType),
+		d.Set("action", actionType),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error saving the fields of the job action: %s", err)
@@ -312,7 +381,7 @@ func resourceFactoryJobActionUpdate(ctx context.Context, d *schema.ResourceData,
 	}
 
 	if d.HasChange("action") {
-		jobName := d.Get("name").(string)
+		jobName := d.Get("job_name").(string)
 		err = doActionJob(ctx, client, d, d.Timeout(schema.TimeoutUpdate))
 		if err != nil {
 			return diag.Errorf("error updating DataArts job (%s) status: %s", jobName, err)
