@@ -2449,6 +2449,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_dws_cluster_topo_rings":              dws.DataSourceDwsClusterTopoRings(),
 			"huaweicloud_dws_cluster_upgrade_records":         dws.DataSourceClusterUpgradeRecords(),
 			"huaweicloud_dws_cluster_user_authorities":        dws.DataSourceClusterUserAuthorities(),
+			"huaweicloud_dws_cluster_exception_rules":         dws.DataSourceClusterExceptionRules(),
 			"huaweicloud_dws_clusters":                        dws.DataSourceDwsClusters(),
 			"huaweicloud_dws_disaster_recovery_tasks":         dws.DataSourceDisasterRecoveryTasks(),
 			"huaweicloud_dws_disk_details":                    dws.DataSourceDiskDetails(),
