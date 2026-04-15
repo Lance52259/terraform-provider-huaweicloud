@@ -1082,6 +1082,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_dataarts_dataservice_messages":        dataarts.DataSourceDataServiceMessages(),
 			// DataArts Quality
 			"huaweicloud_dataarts_quality_tasks": dataarts.DataSourceQualityTasks(),
+			// DataArts Security
+			"huaweicloud_dataarts_security_permission_set_privileges": dataarts.DataSourceSecurityPermissionSetPrivileges(),
 			// DataArts Factory
 			"huaweicloud_dataarts_factory_jobs":      dataarts.DataSourceFactoryJobs(),
 			"huaweicloud_dataarts_factory_resources": dataarts.DataSourceFactoryResources(),
