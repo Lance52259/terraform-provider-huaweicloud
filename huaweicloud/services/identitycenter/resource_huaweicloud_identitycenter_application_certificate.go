@@ -2,13 +2,14 @@ package identitycenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -20,7 +21,7 @@ import (
 var identityCenterApplicationCertificateNonUpdateParams = []string{"instance_id", "application_instance_id"}
 
 // @API IdentityCenter POST /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates
-// @API IdentityCenter POST /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}
+// @API IdentityCenter PUT /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}
 // @API IdentityCenter GET /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates
 // @API IdentityCenter DELETE /v1/instances/{instance_id}/application-instances/{application_instance_id}/certificates/{certificate_id}
 func ResourceIdentityCenterApplicationCertificate() *schema.Resource {
@@ -200,26 +201,26 @@ func resourceIdentityCenterApplicationCertificateUpdate(ctx context.Context, d *
 	)
 
 	if d.HasChange("status") {
-		if d.Get("status").(string) == "ACTIVE" {
-			client, err := cfg.NewServiceClient(updateProduct, region)
-			if err != nil {
-				return diag.Errorf("error creating Identity Center Client: %s", err)
-			}
-
-			updatePath := client.Endpoint + updateHttpUrl
-			updatePath = strings.ReplaceAll(updatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
-			updatePath = strings.ReplaceAll(updatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
-			updatePath = strings.ReplaceAll(updatePath, "{certificate_id}", d.Id())
-
-			updateOpt := golangsdk.RequestOpts{
-				KeepResponseBody: true,
-			}
-			_, err = client.Request("PUT", updatePath, &updateOpt)
-			if err != nil {
-				return diag.Errorf("error updating Identity Center application certificate status: %s", err)
-			}
-		} else {
+		if d.Get("status").(string) != "ACTIVE" {
 			return diag.Errorf("status must be set to 'ACTIVE'")
+		}
+
+		client, err := cfg.NewServiceClient(updateProduct, region)
+		if err != nil {
+			return diag.Errorf("error creating Identity Center Client: %s", err)
+		}
+
+		updatePath := client.Endpoint + updateHttpUrl
+		updatePath = strings.ReplaceAll(updatePath, "{instance_id}", fmt.Sprintf("%v", d.Get("instance_id")))
+		updatePath = strings.ReplaceAll(updatePath, "{application_instance_id}", fmt.Sprintf("%v", d.Get("application_instance_id")))
+		updatePath = strings.ReplaceAll(updatePath, "{certificate_id}", d.Id())
+
+		updateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		_, err = client.Request("PUT", updatePath, &updateOpt)
+		if err != nil {
+			return diag.Errorf("error updating Identity Center application certificate status: %s", err)
 		}
 	}
 
@@ -260,7 +261,7 @@ func resourceIdentityCenterApplicationCertificateDelete(_ context.Context, d *sc
 func resourceIdentityCenterApplicationCertificateImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid id format, must be <instance_id>/<application_instance_id>/<certificate_id>")
+		return nil, errors.New("invalid id format, must be <instance_id>/<application_instance_id>/<certificate_id>")
 	}
 	d.SetId(parts[2])
 	mErr := multierror.Append(nil,

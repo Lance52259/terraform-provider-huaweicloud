@@ -30,7 +30,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `application_templates` - The list of the application templates.The [application_templates](#application_templates_struct) structure is documented below.
+* `application_templates` - The list of the application templates.
+  The [application_templates](#application_templates_struct) structure is documented below.
 
 <a name="application_templates_struct"></a>
 The `application_templates` block supports:
@@ -51,9 +52,11 @@ The `application_templates` block supports:
 
 * `response_schema_config` - The response schema configuration of the application.
 
-* `security_config` - The security configuration of the application.The [security_config](#security_config_struct) structure is documented below.
+* `security_config` - The security configuration of the application.
+  The [security_config](#security_config_struct) structure is documented below.
 
-* `service_provider_config` - The service provider configuration of the application.The [service_provider_config](#service_provider_config_struct) structure is documented below.
+* `service_provider_config` - The service provider configuration of the application.
+  The [service_provider_config](#service_provider_config_struct) structure is documented below.
 
 <a name="security_config_struct"></a>
 The `security_config` block supports:

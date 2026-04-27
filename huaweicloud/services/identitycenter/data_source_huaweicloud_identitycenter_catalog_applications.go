@@ -3,11 +3,14 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -128,6 +131,7 @@ func dataSourceIdentityCenterCatalogApplicationsRead(_ context.Context, d *schem
 	d.SetId(dataSourceId)
 
 	mErr := multierror.Append(nil,
+		d.Set("region", region),
 		d.Set("applications", flattenCatalogApplications(applications)),
 	)
 	return diag.FromErr(mErr.ErrorOrNil())

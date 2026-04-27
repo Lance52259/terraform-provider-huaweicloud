@@ -10,8 +10,9 @@ description: |-
 
 Manages an Identity Center application instance profile delete resource within HuaweiCloud.
 
--> This resource is only a one-time action resource for operating the API. 
-Deleting this resource will not clear the corresponding request record, but will only remove the resource information from the tfstate file.
+-> This resource is only a one-time action resource for operating the API.
+  Deleting this resource will not clear the corresponding request record,
+  but will only remove the resource information from the tfstate file.
 
 ## Example Usage
 
@@ -33,13 +34,14 @@ The following arguments are supported:
 
 * `instance_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center instance.
 
-* `application_instance_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center application instance.
+* `application_instance_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center
+  application instance.
 
-* `profile_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center application instance profile.
+* `profile_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center application
+  instance profile.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The resource ID.
-

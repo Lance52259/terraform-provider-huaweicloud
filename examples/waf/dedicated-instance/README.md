@@ -8,7 +8,7 @@ This example provides best practice code for using Terraform to create a WAF ded
 * Terraform installed
 * HuaweiCloud access key and secret key (AK/SK)
 
-## Required Variables
+## Variable Introduction
 
 The following variables need to be configured:
 
@@ -87,5 +87,5 @@ The following variables need to be configured:
 
 | Name | Version |
 | ---- | ---- |
-| terraform | >= 0.12.0 |
-| huaweicloud | >= 1.28.0 |
+| terraform | >= 0.14.0 |
+| huaweicloud | >= 1.27.2 |

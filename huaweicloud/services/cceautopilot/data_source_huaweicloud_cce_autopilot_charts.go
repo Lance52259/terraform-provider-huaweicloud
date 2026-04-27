@@ -20,10 +20,9 @@ func DataSourceCceAutopilotCharts() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"region": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Description: `Specifies the region in which to query the resource. If omitted, the provider-level region will be used.`,
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"charts": {
 				Type:     schema.TypeList,
@@ -144,19 +143,19 @@ func (w *ChartsDSWrapper) listAutopilotChartsToSchema(body *gjson.Result) error 
 		d.Set("charts", schemas.SliceToList(*body,
 			func(chart gjson.Result) any {
 				return map[string]any{
-					"id":                 chart.Get("id").Value(),
-					"name":               chart.Get("name").Value(),
-					"values":             chart.Get("values").Value(),
-					"translate":          chart.Get("translate").Value(),
-					"instruction":        chart.Get("instruction").Value(),
-					"version":            chart.Get("version").Value(),
-					"description":        chart.Get("description").Value(),
-					"source":             chart.Get("source").Value(),
-					"icon_url":           chart.Get("icon_url").Value(),
-					"public":             chart.Get("public").Value(),
-					"chart_url":          chart.Get("chart_url").Value(),
-					"create_at":          chart.Get("create_at").Value(),
-					"update_at":          chart.Get("update_at").Value(),
+					"id":          chart.Get("id").Value(),
+					"name":        chart.Get("name").Value(),
+					"values":      chart.Get("values").Value(),
+					"translate":   chart.Get("translate").Value(),
+					"instruction": chart.Get("instruction").Value(),
+					"version":     chart.Get("version").Value(),
+					"description": chart.Get("description").Value(),
+					"source":      chart.Get("source").Value(),
+					"icon_url":    chart.Get("icon_url").Value(),
+					"public":      chart.Get("public").Value(),
+					"chart_url":   chart.Get("chart_url").Value(),
+					"create_at":   chart.Get("create_at").Value(),
+					"update_at":   chart.Get("update_at").Value(),
 				}
 			},
 		)),

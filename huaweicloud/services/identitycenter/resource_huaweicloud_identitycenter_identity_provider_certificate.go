@@ -2,13 +2,14 @@ package identitycenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -236,10 +237,11 @@ func resourceIdentityCenterIdentityProviderCertificateDelete(_ context.Context, 
 	return nil
 }
 
-func resourceIdentityCenterIdentityProviderCertificateImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
+func resourceIdentityCenterIdentityProviderCertificateImport(_ context.Context, d *schema.ResourceData, _ interface{}) (
+	[]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid id format, must be <identity_store_id>/<idp_id>/<certificate_id>")
+		return nil, errors.New("invalid id format, must be <identity_store_id>/<idp_id>/<certificate_id>")
 	}
 	d.SetId(parts[2])
 	mErr := multierror.Append(nil,

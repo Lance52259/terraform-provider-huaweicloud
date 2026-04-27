@@ -31,7 +31,7 @@ The following arguments are supported:
 
 * `provider_id` - (Required, String) Name of an identity provider.
 
-* `protocol_id` - (Optional, String) Specifies the protocol id. 
+* `protocol_id` - (Optional, String) Specifies the protocol id.
 
 ## Attribute Reference
 

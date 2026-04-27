@@ -22,7 +22,8 @@ data "huaweicloud_identity_keystone_metadata_file" "test2" {
 
 ## Argument Reference
 
-* `unsigned` - (Optional, Bool) Specifies whether to sign the metadata according to the SAML2.0 specification, default is false.
+* `unsigned` - (Optional, Bool) Specifies whether to sign the metadata according to the SAML2.0 specification, default
+  is false.
 
 ## Attribute Reference
 

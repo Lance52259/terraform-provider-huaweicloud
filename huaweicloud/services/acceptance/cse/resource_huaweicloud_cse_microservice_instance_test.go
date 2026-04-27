@@ -7,8 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk/openstack/cse/dedicated/v4/instances"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -16,27 +14,35 @@ import (
 )
 
 func getMicroserviceInstanceFunc(_ *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	token, err := cse.GetAuthorizationToken(getAuthAddress(state.Primary.Attributes),
-		state.Primary.Attributes["admin_user"], state.Primary.Attributes["admin_pass"])
-	if err != nil {
-		return nil, err
-	}
+	var (
+		// Querying microservice instances requires building a client based on the microservice engine's connection address,
+		// which does not use IAM authentication.
+		client   = common.NewCustomClient(true, state.Primary.Attributes["connect_address"])
+		authInfo = cse.MicroserviceEngineAuthInfo{
+			AuthAddress:         getAuthAddress(state.Primary.Attributes),
+			AdminUser:           state.Primary.Attributes["admin_user"],
+			AdminPass:           state.Primary.Attributes["admin_pass"],
+			EnterpriseProjectId: state.Primary.Attributes["enterprise_project_id"],
+		}
+		microserviceId = state.Primary.Attributes["microservice_id"]
+		instanceId     = state.Primary.ID
+	)
 
-	client := common.NewCustomClient(true, state.Primary.Attributes["connect_address"], "v4", "default")
-	return instances.Get(client, state.Primary.Attributes["microservice_id"], state.Primary.ID, token)
+	return cse.GetInstance(client, authInfo, microserviceId, instanceId)
 }
 
 // Beforce testing, please bind the EIP and open the access rules according to the resource ducoment appendix.
 func TestAccMicroserviceInstance_basic(t *testing.T) {
 	var (
-		instance instances.Instance
-		randName = acceptance.RandomAccResourceName()
+		obj interface{}
 
 		withAuthAddress   = "huaweicloud_cse_microservice_instance.with_auth_address"
-		rcWithAuthAddress = acceptance.InitResourceCheck(withAuthAddress, &instance, getMicroserviceInstanceFunc)
+		rcWithAuthAddress = acceptance.InitResourceCheck(withAuthAddress, &obj, getMicroserviceInstanceFunc)
 
 		withoutAuthAddress   = "huaweicloud_cse_microservice_instance.without_auth_address"
-		rcWithoutAuthAddress = acceptance.InitResourceCheck(withoutAuthAddress, &instance, getMicroserviceInstanceFunc)
+		rcWithoutAuthAddress = acceptance.InitResourceCheck(withoutAuthAddress, &obj, getMicroserviceInstanceFunc)
+
+		randName = acceptance.RandomAccResourceName()
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -52,7 +58,7 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 		),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccMicroserviceInstance_basic(randName),
+				Config: testAccMicroserviceInstance_basic_step1(randName),
 				Check: resource.ComposeTestCheckFunc(
 					// With auth_address parameter.
 					rcWithAuthAddress.CheckResourceExists(),
@@ -71,7 +77,7 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(withAuthAddress, "data_center.0.region", acceptance.HW_REGION_NAME),
 					resource.TestCheckResourceAttrPair(withAuthAddress, "data_center.0.availability_zone",
 						"data.huaweicloud_availability_zones.test", "names.0"),
-					resource.TestCheckResourceAttr(withAuthAddress, "status", "UP"),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "DOWN"),
 					// Without auth_address parameter.
 					rcWithoutAuthAddress.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(withAuthAddress, "microservice_id",
@@ -89,7 +95,25 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(withoutAuthAddress, "data_center.0.region", acceptance.HW_REGION_NAME),
 					resource.TestCheckResourceAttrPair(withoutAuthAddress, "data_center.0.availability_zone",
 						"data.huaweicloud_availability_zones.test", "names.0"),
+					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "DOWN"),
+				),
+			},
+			{
+				Config: testAccMicroserviceInstance_basic_step2(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rcWithAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "UP"),
+					rcWithoutAuthAddress.CheckResourceExists(),
 					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "UP"),
+				),
+			},
+			{
+				Config: testAccMicroserviceInstance_basic_step3(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rcWithAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "OUTOFSERVICE"),
+					rcWithoutAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "OUTOFSERVICE"),
 				),
 			},
 			{
@@ -113,7 +137,7 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 
 func testAccMicroserviceInstanceImportStateIdFunc(resName string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
-		var authAddr, connAddr, addrPart, microserviceId, username, password, instanceId string
+		var authAddr, connAddr, addrPart, microserviceId, username, password, enterpriseProjectId, instanceId string
 		rs, ok := s.RootModule().Resources[resName]
 		if !ok {
 			return "", fmt.Errorf("resource (%s) not found", resName)
@@ -124,6 +148,7 @@ func testAccMicroserviceInstanceImportStateIdFunc(resName string) resource.Impor
 		microserviceId = rs.Primary.Attributes["microservice_id"]
 		username = rs.Primary.Attributes["admin_user"]
 		password = rs.Primary.Attributes["admin_pass"]
+		enterpriseProjectId = rs.Primary.Attributes["enterprise_project_id"]
 		instanceId = rs.Primary.ID
 
 		addrPart = connAddr
@@ -131,6 +156,13 @@ func testAccMicroserviceInstanceImportStateIdFunc(resName string) resource.Impor
 			addrPart = fmt.Sprintf("%s/%s", authAddr, addrPart)
 		}
 		if addrPart != "" && microserviceId != "" && instanceId != "" {
+			if enterpriseProjectId != "" {
+				if username != "" && password != "" {
+					return fmt.Sprintf("%s/%s/%s/%s/%s/%s", addrPart, microserviceId, instanceId, username, password, enterpriseProjectId), nil
+				}
+				return fmt.Sprintf("%s/%s/%s/%s", addrPart, microserviceId, instanceId, enterpriseProjectId), nil
+			}
+
 			if username != "" && password != "" {
 				return fmt.Sprintf("%s/%s/%s/%s/%s", addrPart, microserviceId, instanceId, username, password), nil
 			}
@@ -142,28 +174,33 @@ func testAccMicroserviceInstanceImportStateIdFunc(resName string) resource.Impor
 
 func testAccMicroserviceInstance_base(name string) string {
 	return fmt.Sprintf(`
+variable "enterprise_project_id" {
+  type    = string
+  default = "%[1]s"
+}
+
 data "huaweicloud_availability_zones" "test" {}
 
 data "huaweicloud_cse_microservice_engines" "test" {}
 
 locals {
   id_filter_result = [
-    for o in data.huaweicloud_cse_microservice_engines.test.engines : o if o.id == "%[1]s"
+    for o in data.huaweicloud_cse_microservice_engines.test.engines : o if o.id == "%[2]s"
   ]
 }
 
 resource "huaweicloud_cse_microservice" "test" {
-  auth_address    = local.id_filter_result[0].service_registry_addresses[0].public
-  connect_address = local.id_filter_result[0].service_registry_addresses[0].public
+  auth_address    = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  connect_address = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  admin_user      = "root"
+  admin_pass      = "%[3]s"
 
-  name        = "%[2]s"
-  app_name    = "%[2]s"
-  environment = "development"
-  version     = "1.0.1"
-  level       = "BACK"
-
-  admin_user = "root"
-  admin_pass = "%[3]s"
+  name                  = "%[4]s"
+  app_name              = "%[4]s"
+  environment           = "development"
+  version               = "1.0.1"
+  level                 = "BACK"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
 
   lifecycle {
     ignore_changes = [
@@ -171,23 +208,27 @@ resource "huaweicloud_cse_microservice" "test" {
     ]
   }
 }
-`, acceptance.HW_CSE_MICROSERVICE_ENGINE_ID,
-		name,
-		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD)
+`, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST,
+		acceptance.HW_CSE_MICROSERVICE_ENGINE_ID,
+		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD,
+		name)
 }
 
-func testAccMicroserviceInstance_basic(name string) string {
+func testAccMicroserviceInstance_basic_with_status(name, status string) string {
 	return fmt.Sprintf(`
 %[1]s
 
 resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
-  auth_address    = local.id_filter_result[0].service_registry_addresses[0].public
-  connect_address = local.id_filter_result[0].service_registry_addresses[0].public
+  auth_address    = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  connect_address = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  admin_user      = "root"
+  admin_pass      = "%[2]s"
 
-  microservice_id = huaweicloud_cse_microservice.test.id
-  host_name       = "localhost_with_auth_address"
-  endpoints       = ["grpc://127.0.1.132:9980", "rest://127.0.0.111:8081"]
-  version         = "1.0.1"
+  microservice_id       = huaweicloud_cse_microservice.test.id
+  host_name             = "localhost_with_auth_address"
+  endpoints             = ["grpc://127.0.1.132:9980", "rest://127.0.0.111:8081"]
+  version               = "1.0.1"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
 
   properties = {
     "nodeIP" = "127.0.0.1"
@@ -201,12 +242,11 @@ resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
 
   data_center {
     name              = "dc1"
-    region            = "%[2]s"
+    region            = "%[3]s"
     availability_zone = data.huaweicloud_availability_zones.test.names[0]
   }
 
-  admin_user = "root"
-  admin_pass = "%[3]s"
+  status = "%[4]s"
 
   lifecycle {
     ignore_changes = [
@@ -216,12 +256,16 @@ resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
 }
 
 resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
-  connect_address = local.id_filter_result[0].service_registry_addresses[0].public
+  auth_address    = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  connect_address = try(local.id_filter_result[0].service_registry_addresses[0].public, null)
+  admin_user      = "root"
+  admin_pass      = "%[2]s"
 
-  microservice_id = huaweicloud_cse_microservice.test.id
-  host_name       = "localhost_without_auth_address"
-  endpoints       = ["grpc://127.0.1.132:9980", "rest://127.0.0.111:8081"]
-  version         = "1.0.1"
+  microservice_id       = huaweicloud_cse_microservice.test.id
+  host_name             = "localhost_without_auth_address"
+  endpoints             = ["grpc://127.0.1.132:9980", "rest://127.0.0.111:8081"]
+  version               = "1.0.1"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
 
   properties = {
     "nodeIP" = "127.0.0.1"
@@ -235,12 +279,11 @@ resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
 
   data_center {
     name              = "dc1"
-    region            = "%[2]s"
+    region            = "%[3]s"
     availability_zone = data.huaweicloud_availability_zones.test.names[0]
   }
 
-  admin_user = "root"
-  admin_pass = "%[3]s"
+  status = "%[4]s"
 
   lifecycle {
     ignore_changes = [
@@ -249,6 +292,19 @@ resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
   }
 }
 `, testAccMicroserviceInstance_base(name),
+		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD,
 		acceptance.HW_REGION_NAME,
-		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD)
+		status)
+}
+
+func testAccMicroserviceInstance_basic_step1(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "DOWN")
+}
+
+func testAccMicroserviceInstance_basic_step2(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "UP")
+}
+
+func testAccMicroserviceInstance_basic_step3(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "OUTOFSERVICE")
 }

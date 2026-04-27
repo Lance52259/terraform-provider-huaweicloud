@@ -127,16 +127,15 @@ The following arguments are supported:
     in [DCS Instance Specifications](https://support.huaweicloud.com/intl/en-us/productdesc-dcs/dcs-pd-200713003.html)
   + Log in to the DCS console, click *Buy DCS Instance*, and find the corresponding instance specification.
 
-* `availability_zones` - (Required, List, ForceNew) The code of the AZ where the cache node resides.
+* `availability_zones` - (Required, List) The code of the AZ where the cache node resides.
   Master/Standby, Proxy Cluster, and Redis Cluster DCS instances support cross-AZ deployment.
   You can specify an AZ for the standby node. When specifying AZs for nodes, use commas (,) to separate AZs.
-  Changing this creates a new instance.
+  Supports changes from single-AZ to cross-AZ.
 
 * `vpc_id` - (Required, String, ForceNew) The ID of VPC which the instance belongs to.
   Changing this creates a new instance resource.
 
-* `subnet_id` - (Required, String, ForceNew) The ID of subnet which the instance belongs to.
-  Changing this creates a new instance resource.
+* `subnet_id` - (Required, String) The ID of subnet which the instance belongs to.
 
 * `security_group_id` - (Optional, String) The ID of the security group which the instance belongs to.
   This parameter is mandatory for Memcached and Redis 3.0 version.
@@ -196,7 +195,8 @@ The following arguments are supported:
 
 * `rename_commands` - (Optional, Map) Critical command renaming, which is supported only by Redis 4.0 and
   Redis 5.0 instances but not by Redis 3.0 instance.
-  The valid commands that can be renamed are: **command**, **keys**, **flushdb**, **flushall** and **hgetall**.
+  The valid commands that can be renamed are: **command**, **keys**, **flushdb**, **flushall**, **hgetall**, **scan**,
+  **hscan**, **sscan** and **zscan**.
 
 * `big_key_enable_auto_scan` - (Optional, Bool) Specifies whether to enable scheduled cache analysis for big key.
 
@@ -221,7 +221,11 @@ The following arguments are supported:
 * `expire_key_scan_keys_count` - (Optional, Int) Specifies the number of keys scanned in iteration for expire key. It is
   mandatory when `expire_key_enable_auto_scan` is set to **true**.
 
-* `transparent_client_ip_enable` - (Optional, Bool) Specifies whether client IP pass-through is enabled.
+* `transparent_client_ip_enable` - (Optional, String) Specifies whether client IP pass-through is enabled.
+  Value options: **true**, **false**.
+
+* `auto_scaling` - (Optional, List) Specifies the auto-scaling policies.
+  The [auto_scaling](#auto_scaling_struct) structure is documented below.
 
 * `enterprise_project_id` - (Optional, String) The enterprise project id of the dcs instance.
 
@@ -295,6 +299,18 @@ The `parameters` block supports:
 * `name` - (Required, String) Specifies the name of the configuration item.
 
 * `value` - (Required, String) Specifies the value of the configuration item.
+
+<a name="auto_scaling_struct"></a>
+The `auto_scaling` block supports:
+
+* `window_size` - (Required, Int) Specifies the monitoring period of bandwidth increases, in minutes. The value can be
+  **1**, **5**, **10**, **15**, or **30**.
+
+* `bandwidth_usage_upper_threshold` - (Required, Int) Specifies the threshold percentage of the average bandwidth usage
+  that triggers an auto bandwidth increase. The value can be **50**, **60**, **70**, **80**, **90**, or **95**.
+
+* `scale_out_cooldown` - (Required, Int) Specifies the silence time (minimum interval) between two bandwidth increases,
+  in seconds. Default value: 0 Value range: 0–86,400.
 
 ## Attribute Reference
 

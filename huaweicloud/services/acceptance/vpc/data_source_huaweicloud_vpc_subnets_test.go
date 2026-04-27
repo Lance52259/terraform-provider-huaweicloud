@@ -227,11 +227,6 @@ resource "huaweicloud_vpc_subnet" "test" {
   vpc_id     = huaweicloud_vpc.test.id
   cidr       = "%s"
   gateway_ip = "%s"
-
-  tags = {
-    foo = "bar"
-    key = "value"
-  }
 }`, rName, cidr, rName, cidr, gatewayIp)
 }
 

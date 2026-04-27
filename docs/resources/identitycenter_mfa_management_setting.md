@@ -32,7 +32,8 @@ The following arguments are supported:
 
 * `identity_store_id` - (Required, String) Specifies the ID of the identity store.
 
-* `user_permission` - (Required, String) Whether to allow users to manage MFA themselves. Value Options: **READ_ACTIONS**, **ALL_ACTIONS**.
+* `user_permission` - (Required, String) Whether to allow users to manage MFA themselves.
+  Value Options: **READ_ACTIONS**, **ALL_ACTIONS**.
 
 ## Attribute Reference
 

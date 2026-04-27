@@ -8,7 +8,7 @@ This example provides best practice code for using Terraform to create a basic E
 * Terraform installed
 * HuaweiCloud access key and secret key (AK/SK)
 
-## Required Variables
+## Variable Introduction
 
 The following variables need to be configured:
 
@@ -82,3 +82,10 @@ The following variables need to be configured:
 * Make sure to keep your credentials secure and never commit them to version control
 * The administrator password must meet the complexity requirements of HuaweiCloud
 * All resources will be created in the specified region
+
+## Requirements
+
+| Name | Version |
+| ---- | ---- |
+| terraform | >= 0.14.0 |
+| huaweicloud | >= 1.57.0 |

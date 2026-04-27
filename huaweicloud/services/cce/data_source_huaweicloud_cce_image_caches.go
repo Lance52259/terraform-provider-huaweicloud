@@ -48,8 +48,9 @@ func DataSourceCCEImageCaches() *schema.Resource {
 							Computed: true,
 						},
 						"images": {
-							Type:     schema.TypeString,
+							Type:     schema.TypeList,
 							Computed: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"image_cache_size": {
 							Type:     schema.TypeInt,
@@ -58,6 +59,23 @@ func DataSourceCCEImageCaches() *schema.Resource {
 						"retention_days": {
 							Type:     schema.TypeInt,
 							Computed: true,
+						},
+						"building_config": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"cluster": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"image_pull_secrets": {
+										Type:     schema.TypeList,
+										Computed: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+								},
+							},
 						},
 						"status": {
 							Type:     schema.TypeString,
@@ -74,13 +92,13 @@ func DataSourceCCEImageCaches() *schema.Resource {
 	}
 }
 
-type CCEImageCachesDSWrapper struct {
+type ImageCachesDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newCCEImageCachesDSWrapper(d *schema.ResourceData, meta interface{}) *CCEImageCachesDSWrapper {
-	return &CCEImageCachesDSWrapper{
+func newCCEImageCachesDSWrapper(d *schema.ResourceData, meta interface{}) *ImageCachesDSWrapper {
+	return &ImageCachesDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
@@ -108,7 +126,7 @@ func dataSourceCCEImageCachesRead(_ context.Context, d *schema.ResourceData, met
 }
 
 // @API CCE GET /v5/imagecaches
-func (w *CCEImageCachesDSWrapper) getImageCaches() (*gjson.Result, error) {
+func (w *ImageCachesDSWrapper) getImageCaches() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -127,24 +145,32 @@ func (w *CCEImageCachesDSWrapper) getImageCaches() (*gjson.Result, error) {
 		Result()
 }
 
-func (w *CCEImageCachesDSWrapper) imageCachesToSchema(body *gjson.Result) error {
+func (w *ImageCachesDSWrapper) imageCachesToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
 		d.Set("image_caches", schemas.SliceToList(body.Get("image_caches"),
-		func(imagecache gjson.Result) any {
-			return map[string]any{
-				"name":          imagecache.Get("kind").Value(),
-				"id":            imagecache.Get("apiVersion").Value(),
-				"created_at":    imagecache.Get("name").Value(),
-				"images":        imagecache.Get("policyId").Value(),
-				"image_cache_size":   imagecache.Get("policyType").Value(),
-				"retention_days":     imagecache.Get("createTime").Value(),
-				"status":    imagecache.Get("updateTime").Value(),
-				"message":   imagecache.Get("updateTime").Value(),
-			}
-		},
-	)),
+			func(imagecache gjson.Result) any {
+				return map[string]any{
+					"name":             imagecache.Get("name").Value(),
+					"id":               imagecache.Get("id").Value(),
+					"created_at":       imagecache.Get("created_at").Value(),
+					"images":           imagecache.Get("images").Value(),
+					"image_cache_size": imagecache.Get("image_cache_size").Value(),
+					"retention_days":   imagecache.Get("retention_days").Value(),
+					"building_config": schemas.SliceToList(imagecache.Get("building_config"),
+						func(buildingConfig gjson.Result) any {
+							return map[string]any{
+								"cluster":            buildingConfig.Get("cluster").Value(),
+								"image_pull_secrets": buildingConfig.Get("image_pull_secrets").Value(),
+							}
+						},
+					),
+					"status":  imagecache.Get("status").Value(),
+					"message": imagecache.Get("message").Value(),
+				}
+			},
+		)),
 	)
 	return mErr.ErrorOrNil()
 }

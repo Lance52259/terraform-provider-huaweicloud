@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -39,9 +40,12 @@ var (
 // @API DCS POST /v2/{project_id}/instances
 // @API DCS GET /v2/{project_id}/instances/{instance_id}
 // @API DCS PUT /v2/{project_id}/instance/{instance_id}/whitelist
+// @API DCS GET /v2/{project_id}/instance/{instance_id}/groups
 // @API DCS GET /v2/{project_id}/instance/{instance_id}/whitelist
 // @API DCS PUT /v2/{project_id}/instances/{instance_id}/async-configs
 // @API DCS PUT /v2/{project_id}/{instance_id}/client-ip-transparent-transmission
+// @API DCS PUT /v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth
+// @API DCS DELETE /v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth
 // @API DCS GET /v2/{project_id}/jobs/{job_id}
 // @API DCS PUT /v2/{project_id}/instances/{instance_id}/bigkey/autoscan
 // @API DCS PUT /v2/{project_id}/instances/{instance_id}/hotkey/autoscan
@@ -50,6 +54,7 @@ var (
 // @API DCS PUT /v2/{project_id}/instances/{instance_id}/scan-expire-keys/autoscan-config
 // @API DCS GET /v2/{project_id}/instances/{instance_id}/scan-expire-keys/autoscan-config
 // @API DCS GET /v2/{project_id}/instances/{instance_id}/configs
+// @API DCS GET /v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth
 // @API DCS PUT /v2/{project_id}/instances/status
 // @API DCS PUT /v2/{project_id}/instances/{instance_id}/ssl
 // @API DCS GET /v2/{project_id}/instances/{instance_id}/ssl
@@ -58,6 +63,7 @@ var (
 // @API DCS POST /v2/{project_id}/instances/{instance_id}/password/reset
 // @API DCS POST /v2/{project_id}/instances/{instance_id}/resize
 // @API DCS POST /v3/{project_id}/instances/{instance_id}/tags/action
+// @API DCS POST /v2/{project_id}/instances/{instance_id}/resources/subnet
 // @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources-migrat
 // @API DCS DELETE /v2/{project_id}/instances/{instance_id}
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
@@ -79,6 +85,8 @@ func ResourceDcsInstance() *schema.Resource {
 			Update: schema.DefaultTimeout(60 * time.Minute),
 			Delete: schema.DefaultTimeout(15 * time.Minute),
 		},
+
+		CustomizeDiff: config.MergeDefaultTags(),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -120,7 +128,6 @@ func ResourceDcsInstance() *schema.Resource {
 				Type:        schema.TypeList,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "schema: Required",
 			},
@@ -132,7 +139,6 @@ func ResourceDcsInstance() *schema.Resource {
 			"subnet_id": {
 				Type:     schema.TypeString,
 				Required: true,
-				ForceNew: true,
 			},
 			"security_group_id": {
 				Type:          schema.TypeString,
@@ -320,9 +326,16 @@ func ResourceDcsInstance() *schema.Resource {
 				Computed: true,
 			},
 			"transparent_client_ip_enable": {
-				Type:     schema.TypeBool,
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+			},
+			"auto_scaling": {
+				Type:     schema.TypeList,
 				Optional: true,
-				Computed: true,
+				MaxItems: 1,
+				Elem:     autoScalingSchema(),
 			},
 			"charging_mode": common.SchemaChargingMode(nil),
 			"period_unit":   common.SchemaPeriodUnit(nil),
@@ -439,7 +452,6 @@ func ResourceDcsInstance() *schema.Resource {
 			"available_zones": {
 				Type:         schema.TypeList,
 				Optional:     true,
-				ForceNew:     true,
 				Elem:         &schema.Schema{Type: schema.TypeString},
 				AtLeastOneOf: []string{"available_zones", "availability_zones"},
 				Deprecated:   "Deprecated, please use `availability_zones` instead",
@@ -555,6 +567,25 @@ func bandwidthSchema() *schema.Resource {
 		},
 	}
 	return &sc
+}
+
+func autoScalingSchema() *schema.Resource {
+	return &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"window_size": {
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+			"bandwidth_usage_upper_threshold": {
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+			"scale_out_cooldown": {
+				Type:     schema.TypeInt,
+				Required: true,
+			},
+		},
+	}
 }
 
 func resourceDcsInstancesCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -676,8 +707,15 @@ func resourceDcsInstancesCreate(ctx context.Context, d *schema.ResourceData, met
 		}
 	}
 
-	if d.Get("transparent_client_ip_enable").(bool) {
+	if v, ok := d.GetOk("transparent_client_ip_enable"); ok && v.(string) == "false" {
 		err = updateTransparentClientIpEnable(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok = d.GetOk("auto_scaling"); ok {
+		err = updateAutoScaling(ctx, d, client)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -937,9 +975,7 @@ func resourceDcsInstancesRead(ctx context.Context, d *schema.ResourceData, meta 
 		d.Set("name", utils.PathSearch("name", instance, nil)),
 		d.Set("engine", utils.PathSearch("engine", instance, nil)),
 		d.Set("engine_version", utils.PathSearch("engine_version", instance, nil)),
-		d.Set("capacity", utils.PathSearch("capacity", instance, nil)),
 		d.Set("flavor", utils.PathSearch("spec_code", instance, nil)),
-		d.Set("availability_zones", utils.PathSearch("az_codes", instance, nil)),
 		d.Set("vpc_id", utils.PathSearch("vpc_id", instance, nil)),
 		d.Set("vpc_name", utils.PathSearch("vpc_name", instance, nil)),
 		d.Set("subnet_id", utils.PathSearch("subnet_id", instance, nil)),
@@ -969,7 +1005,8 @@ func resourceDcsInstancesRead(ctx context.Context, d *schema.ResourceData, meta 
 		d.Set("cpu_type", utils.PathSearch("cpu_type", instance, nil)),
 		d.Set("readonly_domain_name", utils.PathSearch("readonly_domain_name", instance, nil)),
 		d.Set("replica_count", utils.PathSearch("replica_count", instance, nil)),
-		d.Set("transparent_client_ip_enable", utils.PathSearch("transparent_client_ip_enable", instance, nil)),
+		d.Set("transparent_client_ip_enable", strconv.FormatBool(utils.PathSearch("transparent_client_ip_enable",
+			instance, false).(bool))),
 		d.Set("bandwidth_info", flattenInstanceBandWidth(instance)),
 		d.Set("product_type", utils.PathSearch("product_type", instance, nil)),
 		d.Set("sharding_count", utils.PathSearch("sharding_count", instance, nil)),
@@ -977,13 +1014,35 @@ func resourceDcsInstancesRead(ctx context.Context, d *schema.ResourceData, meta 
 		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("tags", instance, make([]interface{}, 0)))),
 	)
 
+	mErr = multierror.Append(mErr, setDcsInstanceAzCodes(d, client))
+	mErr = multierror.Append(mErr, setDcsInstanceCapacity(d, instance))
 	mErr = multierror.Append(mErr, setDcsInstanceWhitelist(d, client)...)
 	mErr = multierror.Append(mErr, setDcsInstanceBigKeyAutoScan(d, client)...)
 	mErr = multierror.Append(mErr, setDcsInstanceHotKeyAutoScan(d, client)...)
 	mErr = multierror.Append(mErr, setDcsInstanceExpireKeyAutoScan(d, client)...)
+	mErr = multierror.Append(mErr, setDcsInstanceAutoScaling(d, client))
 
 	diagErr := setDcsInstanceParameters(ctx, d, client, d.Id())
 	return append(diagErr, diag.FromErr(mErr.ErrorOrNil())...)
+}
+
+// lintignore:R014
+func setDcsInstanceCapacity(d *schema.ResourceData, instance interface{}) error {
+	capacity := utils.PathSearch("capacity", instance, float64(0)).(float64)
+	if capacity > 0 {
+		return d.Set("capacity", capacity)
+	}
+
+	capacityMinor := utils.PathSearch("capacity_minor", instance, "").(string)
+	if strings.HasPrefix(capacityMinor, ".") {
+		capacityMinor = fmt.Sprintf("0%s", capacityMinor)
+	}
+	capacity, err := strconv.ParseFloat(capacityMinor, 64)
+	if err != nil {
+		log.Printf("[WARN] error convert DCS instance(%s) capacity minor(%s): %s", d.Id(), capacityMinor, err)
+		return nil
+	}
+	return d.Set("capacity", capacity)
 }
 
 func getDcsInstanceByID(client *golangsdk.ServiceClient, instanceId string) (interface{}, error) {
@@ -1148,6 +1207,55 @@ func setDcsInstanceExpireKeyAutoScan(d *schema.ResourceData, client *golangsdk.S
 	return errs
 }
 
+func setDcsInstanceAutoScaling(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
+	if err != nil {
+		log.Printf("[WARN] error fetching DCS instance(%s) auto scaling: %s", d.Id(), err)
+		return nil
+	}
+	if len(getRespBody.(map[string]interface{})) == 0 {
+		return d.Set("auto_scaling", nil)
+	}
+
+	autoScaling := []interface{}{
+		map[string]interface{}{
+			"window_size":                     utils.PathSearch("window_size", getRespBody, nil),
+			"bandwidth_usage_upper_threshold": utils.PathSearch("bandwidth_usage_upper_threshold", getRespBody, nil),
+			"scale_out_cooldown":              utils.PathSearch("scale_out_cooldown", getRespBody, nil),
+		},
+	}
+
+	return d.Set("auto_scaling", autoScaling)
+}
+
+// the az codes order may be different from the input az codes order, so it is needed to get the az codes from groups
+func setDcsInstanceAzCodes(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v2/{project_id}/instance/{instance_id}/groups",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
+	if err != nil {
+		log.Printf("[WARN] error fetching DCS instance(%s) group replication: %s", d.Id(), err)
+		return nil
+	}
+
+	azCodeSearchPath := "group_list[0].replication_list[?replication_role=='%s']|[0].az_code"
+	masterAzCode := utils.PathSearch(fmt.Sprintf(azCodeSearchPath, "master"), getRespBody, "").(string)
+	slaveAzCode := utils.PathSearch(fmt.Sprintf(azCodeSearchPath, "slave"), getRespBody, "").(string)
+
+	azCodes := []string{masterAzCode}
+	if slaveAzCode != "" && masterAzCode != slaveAzCode {
+		azCodes = append(azCodes, slaveAzCode)
+	}
+
+	return d.Set("availability_zones", azCodes)
+}
+
 func setDcsInstanceParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	instanceID string) diag.Diagnostics {
 	params, needStartParams, err := getParameters(client, instanceID, d.Get("parameters").(*schema.Set).List())
@@ -1193,18 +1301,24 @@ func resourceDcsInstancesUpdate(ctx context.Context, d *schema.ResourceData, met
 	}
 
 	// update basic params
-	if d.HasChanges("port", "name", "description", "security_group_id", "backup_policy",
-		"maintain_begin", "maintain_end", "rename_commands") {
+	if d.HasChanges("name", "description", "security_group_id", "backup_policy", "maintain_begin", "maintain_end") {
 		err = updateInstance(ctx, d, client)
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		if d.HasChange("port") {
-			// Modifying the port is asynchronous and needs to wait for completion.
-			err = waitForPortUpdated(ctx, client, d)
-			if err != nil {
-				return diag.FromErr(err)
-			}
+	}
+
+	if d.HasChange("rename_commands") {
+		err = updateInstanceRenameCommands(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("port") {
+		err = updateInstancePort(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -1284,6 +1398,27 @@ func resourceDcsInstancesUpdate(ctx context.Context, d *schema.ResourceData, met
 		}
 	}
 
+	if d.HasChange("subnet_id") {
+		err = updateSubnetId(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("auto_scaling") {
+		err = updateAutoScaling(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChanges("availability_zones", "available_zones") {
+		err = updateAvailabilityZones(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("enterprise_project_id") {
 		migrateOpts := config.MigrateResourceOpts{
 			ResourceId:   d.Id(),
@@ -1315,6 +1450,8 @@ func updateInstance(ctx context.Context, d *schema.ResourceData, client *golangs
 		httpMethod:       "PUT",
 		pathParams:       map[string]string{"instance_id": d.Id()},
 		updateBodyParams: utils.RemoveNil(buildUpdateInstanceBodyParams(d)),
+		isRetry:          true,
+		timeout:          schema.TimeoutUpdate,
 	})
 	if err != nil {
 		return fmt.Errorf("error updating instance: %s", err)
@@ -1326,8 +1463,6 @@ func buildUpdateInstanceBodyParams(d *schema.ResourceData) map[string]interface{
 	bodyParams := map[string]interface{}{
 		"name":                   d.Get("name"),
 		"description":            d.Get("description"),
-		"port":                   d.Get("port"),
-		"rename_commands":        buildInstanceRenameCommandsBodyParams(d),
 		"maintain_begin":         d.Get("maintain_begin"),
 		"maintain_end":           d.Get("maintain_end"),
 		"security_group_id":      utils.ValueIgnoreEmpty(d.Get("security_group_id")),
@@ -1336,42 +1471,61 @@ func buildUpdateInstanceBodyParams(d *schema.ResourceData) map[string]interface{
 	return bodyParams
 }
 
-func waitForPortUpdated(ctx context.Context, c *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	op, np := d.GetChange("port")
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{strconv.Itoa(op.(int))},
-		Target:       []string{strconv.Itoa(np.(int))},
-		Refresh:      refreshDcsInstancePort(c, d.Id()),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		Delay:        10 * time.Second,
-		PollInterval: 10 * time.Second,
-	}
-	_, err := stateConf.WaitForStateContext(ctx)
+func updateInstanceRenameCommands(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:             "v2/{project_id}/instances/{instance_id}",
+		httpMethod:          "PUT",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    utils.RemoveNil(buildUpdateInstanceRenameCommandsBodyParams(d)),
+		isRetry:             true,
+		timeout:             schema.TimeoutUpdate,
+		isWaitInstanceReady: true,
+	})
 	if err != nil {
-		return fmt.Errorf("error while waiting for DCS instance(%s) port update completed: %#v", d.Id(), err)
+		return fmt.Errorf("error updating instance rename commands: %s", err)
 	}
 	return nil
 }
 
-func refreshDcsInstancePort(c *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
-	return func() (interface{}, string, error) {
-		instance, err := getDcsInstanceByID(c, id)
-		if err != nil {
-			return nil, "ERROR", err
-		}
-		port := utils.PathSearch("port", instance, float64(0)).(float64)
-		return instance, strconv.Itoa(int(port)), nil
+func buildUpdateInstanceRenameCommandsBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"rename_commands": buildInstanceRenameCommandsBodyParams(d),
 	}
+	return bodyParams
+}
+
+func updateInstancePort(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:             "v2/{project_id}/instances/{instance_id}",
+		httpMethod:          "PUT",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    utils.RemoveNil(buildUpdateInstancePortBodyParams(d)),
+		isRetry:             true,
+		timeout:             schema.TimeoutUpdate,
+		isWaitInstanceReady: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating instance port: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateInstancePortBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"port": d.Get("port"),
+	}
+	return bodyParams
 }
 
 func updateInstancePassword(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	_, err := updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
-		httpUrl:          "v2/{project_id}/instances/{instance_id}/password/reset",
-		httpMethod:       "POST",
-		pathParams:       map[string]string{"instance_id": d.Id()},
-		updateBodyParams: buildUpdateInstancePasswordBodyParams(d),
-		isRetry:          true,
-		timeout:          schema.TimeoutUpdate,
+		httpUrl:             "v2/{project_id}/instances/{instance_id}/password/reset",
+		httpMethod:          "POST",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    buildUpdateInstancePasswordBodyParams(d),
+		isRetry:             true,
+		timeout:             schema.TimeoutUpdate,
+		isWaitInstanceReady: true,
 	})
 	if err != nil {
 		return fmt.Errorf("error updating instance password: %s", err)
@@ -1423,17 +1577,6 @@ func resizeDcsInstance(ctx context.Context, d *schema.ResourceData, client *gola
 	})
 	if err != nil {
 		return fmt.Errorf("error updating instance(%s) flavor: %s", d.Id(), err)
-	}
-
-	// check the result of the change
-	instance, err := getDcsInstanceByID(client, d.Id())
-	if err != nil {
-		return fmt.Errorf("error getting DCS instance: %s", err)
-	}
-	specCode := utils.PathSearch("spec_code", instance, "").(string)
-	if specCode != newSpecCode {
-		return fmt.Errorf("change flavor failed, after changed the DCS flavor still is: %s, expected: %s",
-			specCode, newSpecCode)
 	}
 	return nil
 }
@@ -1724,8 +1867,111 @@ func updateTransparentClientIpEnable(ctx context.Context, d *schema.ResourceData
 }
 
 func buildUpdateTransparentClientIpEnableBodyParams(d *schema.ResourceData) map[string]interface{} {
+	transparentClientIpEnable, _ := strconv.ParseBool(d.Get("transparent_client_ip_enable").(string))
 	bodyParams := map[string]interface{}{
-		"transparent_client_ip_enable": d.Get("transparent_client_ip_enable"),
+		"transparent_client_ip_enable": transparentClientIpEnable,
+	}
+	return bodyParams
+}
+
+func updateSubnetId(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:             "v2/{project_id}/instances/{instance_id}/resources/subnet",
+		httpMethod:          "POST",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    buildUpdateSubnetIdBodyParams(d),
+		isRetry:             true,
+		isWaitInstanceReady: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating instance subnet ID: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateSubnetIdBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"action":    "switch",
+		"vpc_id":    d.Get("vpc_id"),
+		"subnet_id": d.Get("subnet_id"),
+	}
+	return bodyParams
+}
+
+func updateAutoScaling(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	rawParams := d.Get("auto_scaling").([]interface{})
+	if len(rawParams) == 0 {
+		return deleteAutoScaling(d, client)
+	}
+	return setAutoScaling(ctx, d, client)
+}
+
+func setAutoScaling(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildSetAutoScalingBodyParams(d),
+	})
+	if err != nil {
+		return fmt.Errorf("error setting instance auto scaling: %s", err)
+	}
+	return nil
+}
+
+func buildSetAutoScalingBodyParams(d *schema.ResourceData) map[string]interface{} {
+	rawParams := d.Get("auto_scaling").([]interface{})
+	if len(rawParams) == 0 {
+		return nil
+	}
+	autoScaling := rawParams[0].(map[string]interface{})
+	bodyParams := map[string]interface{}{
+		"window_size":                     autoScaling["window_size"],
+		"bandwidth_usage_upper_threshold": autoScaling["bandwidth_usage_upper_threshold"],
+		"scale_out_cooldown":              autoScaling["scale_out_cooldown"],
+	}
+	return bodyParams
+}
+
+func deleteAutoScaling(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	httpUrl := "v2/{project_id}/instances/{instance_id}/autoscaling-policy/bandwidth"
+	deletePath := client.Endpoint + httpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{project_id}", client.ProjectID)
+	deletePath = strings.ReplaceAll(deletePath, "{instance_id}", d.Id())
+	deleteOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	_, err := client.Request("DELETE", deletePath, &deleteOpt)
+	if err != nil {
+		return fmt.Errorf("error deleting instance auto scaling: %s", err)
+	}
+	return nil
+}
+
+func updateAvailabilityZones(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	azIds, err := getAzId(d, client)
+	if err != nil {
+		return err
+	}
+	_, err = updateDcsInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:             "v2/{project_id}/instances/{instance_id}/available-zones",
+		httpMethod:          "PUT",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    buildUpdateAvailabilityZonesBodyParams(azIds),
+		isRetry:             true,
+		isWaitInstanceReady: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating instance availability zones: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateAvailabilityZonesBodyParams(azIds []string) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"new_available_zones": azIds,
+		"execute_immediately": true,
 	}
 	return bodyParams
 }
@@ -1828,12 +2074,80 @@ func getAzCode(d *schema.ResourceData, client *golangsdk.ServiceClient) ([]strin
 	return azCodes, nil
 }
 
+func getAzId(d *schema.ResourceData, client *golangsdk.ServiceClient) ([]string, error) {
+	var azIds []string
+	availabilityZones, ok := d.GetOk("availability_zones")
+	if ok {
+		availableZonesIds, err := getAvailableZoneIdByCode(client, availabilityZones.([]interface{}))
+		if err != nil {
+			return nil, err
+		}
+		azIds = availableZonesIds
+	} else {
+		azIds = utils.ExpandToStringList(d.Get("available_zones").([]interface{}))
+	}
+	return azIds, nil
+}
+
+func getAvailableZoneIdByCode(client *golangsdk.ServiceClient, azCodes []interface{}) ([]string, error) {
+	azIds := make([]string, 0, len(azCodes))
+	if len(azCodes) == 0 {
+		return azIds, errors.New("availability_zones are required")
+	}
+
+	availableZones, err := getAvailableZone(client)
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := make(map[string]string)
+	for _, v := range availableZones {
+		id := utils.PathSearch("id", v, "").(string)
+		code := utils.PathSearch("code", v, "").(string)
+		mapping[code] = id
+	}
+
+	for _, code := range azCodes {
+		azCode := code.(string)
+		if _, ok := mapping[azCode]; !ok {
+			return azIds, fmt.Errorf("invalid available zone code: %s", azCode)
+		}
+		azIds = append(azIds, mapping[azCode])
+	}
+
+	return azIds, nil
+}
+
 func getAvailableZoneCodeByID(client *golangsdk.ServiceClient, azIds []interface{}) ([]string, error) {
 	azCodes := make([]string, 0, len(azIds))
 	if len(azIds) == 0 {
-		return azCodes, fmt.Errorf("availability_zones are required")
+		return azCodes, errors.New("availability_zones are required")
 	}
 
+	availableZones, err := getAvailableZone(client)
+	if err != nil {
+		return nil, err
+	}
+
+	mapping := make(map[string]string)
+	for _, v := range availableZones {
+		id := utils.PathSearch("id", v, "").(string)
+		code := utils.PathSearch("code", v, "").(string)
+		mapping[id] = code
+	}
+
+	for _, id := range azIds {
+		azID := id.(string)
+		if _, ok := mapping[azID]; !ok {
+			return azCodes, fmt.Errorf("invalid available zone code: %s", azID)
+		}
+		azCodes = append(azCodes, mapping[azID])
+	}
+
+	return azCodes, nil
+}
+
+func getAvailableZone(client *golangsdk.ServiceClient) ([]interface{}, error) {
 	var (
 		httpUrl = "v2/available-zones"
 	)
@@ -1853,20 +2167,5 @@ func getAvailableZoneCodeByID(client *golangsdk.ServiceClient, azIds []interface
 	}
 
 	availableZones := utils.PathSearch("available_zones", getRespBody, make([]interface{}, 0)).([]interface{})
-	mapping := make(map[string]string)
-	for _, v := range availableZones {
-		id := utils.PathSearch("id", v, "").(string)
-		code := utils.PathSearch("code", v, "").(string)
-		mapping[id] = code
-	}
-
-	for _, id := range azIds {
-		azID := id.(string)
-		if _, ok := mapping[azID]; !ok {
-			return azCodes, fmt.Errorf("invalid available zone code: %s", azID)
-		}
-		azCodes = append(azCodes, mapping[azID])
-	}
-
-	return azCodes, nil
+	return availableZones, nil
 }

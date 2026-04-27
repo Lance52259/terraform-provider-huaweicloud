@@ -17,7 +17,9 @@ data "huaweicloud_rgc_pre_launch_check" "test" {}
 ```
 
 ## Argument Reference
+
 The following arguments are supported:
+
 * `region` - (Optional, String) Specifies the region in which to query the data source.
   If omitted, the provider-level region will be used.
 

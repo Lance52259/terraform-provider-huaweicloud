@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -168,10 +169,10 @@ resource "huaweicloud_rgc_template" "test" {
 }
 
 func testTemplate_predefined_vpc() string {
-	return fmt.Sprintf(`
+	return `
 resource "huaweicloud_rgc_template" "test" {
   template_name = "VPC"
   template_type = "predefined"
 }
-`)
+`
 }

@@ -1,0 +1,68 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_identityv5_user": {
+          "block": {
+            "attributes": {
+              "created_at": {
+                "type": "string",
+                "description": "The creation time of the user.",
+                "computed": true
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the user.",
+                "optional": true
+              },
+              "enabled": {
+                "type": "bool",
+                "description": "Whether to enable the user.",
+                "optional": true,
+                "default": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "is_root_user": {
+                "type": "bool",
+                "description": "Whether the user is root user.",
+                "computed": true
+              },
+              "last_login_at": {
+                "type": "string",
+                "description": "The last login time of the user.",
+                "computed": true
+              },
+              "name": {
+                "type": "string",
+                "description": "The name of the user.",
+                "required": true
+              },
+              "tags": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "tag_key": "string",
+                      "tag_value": "string"
+                    }
+                  ]
+                ],
+                "description": "The list of tags associated with the user.",
+                "computed": true
+              },
+              "urn": {
+                "type": "string",
+                "description": "The uniform resource name of the user.",
+                "computed": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

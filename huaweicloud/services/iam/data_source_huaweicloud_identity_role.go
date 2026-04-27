@@ -15,7 +15,7 @@ import (
 )
 
 // @API IAM GET /v3/roles
-// @API IAM GET	/v3/roles/{role_id}
+// @API IAM GET /v3/roles/{role_id}
 func DataSourceIdentityRole() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityRoleRead,

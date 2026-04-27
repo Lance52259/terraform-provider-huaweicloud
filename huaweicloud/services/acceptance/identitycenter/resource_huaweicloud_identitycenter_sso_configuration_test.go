@@ -62,7 +62,7 @@ func TestAccIdentityCenterSsoConfiguration_basic(t *testing.T) {
 		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
-				Config: testSsoConfiguration_basic(),
+				Config: testSsoConfiguration_basic,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "mfa_mode", "CONTEXT_AWARE"),
@@ -73,7 +73,7 @@ func TestAccIdentityCenterSsoConfiguration_basic(t *testing.T) {
 				),
 			},
 			{
-				Config: testSsoConfiguration_basic_update(),
+				Config: testSsoConfiguration_basic_update,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "mfa_mode", "DISABLED"),
@@ -87,8 +87,7 @@ func TestAccIdentityCenterSsoConfiguration_basic(t *testing.T) {
 	})
 }
 
-func testSsoConfiguration_basic() string {
-	return fmt.Sprintf(`
+const testSsoConfiguration_basic = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_sso_configuration" "test" {
@@ -100,11 +99,9 @@ resource "huaweicloud_identitycenter_sso_configuration" "test" {
   max_authentication_age      = "PT12H"
   configuration_type          = "APP_AUTHENTICATION_CONFIGURATION"
 }
-`)
-}
+`
 
-func testSsoConfiguration_basic_update() string {
-	return fmt.Sprintf(`
+const testSsoConfiguration_basic_update = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_sso_configuration" "test" {
@@ -116,5 +113,4 @@ resource "huaweicloud_identitycenter_sso_configuration" "test" {
   max_authentication_age      = "PT4H"
   configuration_type          = "APP_AUTHENTICATION_CONFIGURATION"
 }
-`)
-}
+`

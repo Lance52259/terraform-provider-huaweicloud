@@ -1,10 +1,15 @@
 package rocketmq
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
+	"time"
 
 	"github.com/chnsz/golangsdk"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -31,4 +36,113 @@ func handleMultiOperationsError(err error) (bool, error) {
 		}
 	}
 	return false, err
+}
+
+func getInstanceTaskById(client *golangsdk.ServiceClient, instanceId, taskId string) (interface{}, error) {
+	getTaskHttpUrl := "v2/{project_id}/instances/{instance_id}/tasks/{task_id}"
+	getTaskPath := client.Endpoint + getTaskHttpUrl
+	getTaskPath = strings.ReplaceAll(getTaskPath, "{project_id}", client.ProjectID)
+	getTaskPath = strings.ReplaceAll(getTaskPath, "{instance_id}", instanceId)
+	getTaskPath = strings.ReplaceAll(getTaskPath, "{task_id}", taskId)
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+	resp, err := client.Request("GET", getTaskPath, &opt)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.FlattenResponse(resp)
+}
+
+func refreshInstanceTaskStatus(client *golangsdk.ServiceClient, instanceID, taskId string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		respBody, err := getInstanceTaskById(client, instanceID, taskId)
+		if err != nil {
+			return respBody, "ERROR", err
+		}
+
+		// status options: DELETED, SUCCESS, EXECUTING, FAILED, CREATED
+		// CREATED means the task is in progress.
+		status := utils.PathSearch("tasks[0].status", respBody, "").(string)
+		if status == "FAILED" {
+			return respBody, "FAILED", fmt.Errorf("unexpect status (%s)", status)
+		}
+
+		if status == "SUCCESS" {
+			return respBody, "COMPLETED", nil
+		}
+
+		return "continue", "PENDING", nil
+	}
+}
+
+func waitForInstanceTaskStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId, taskId string,
+	timeout time.Duration) error {
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      refreshInstanceTaskStatus(client, instanceId, taskId),
+		Timeout:      timeout,
+		Delay:        10 * time.Second,
+		PollInterval: 20 * time.Second,
+	}
+
+	_, err := stateConf.WaitForStateContext(ctx)
+	return err
+}
+
+func getInstanceById(client *golangsdk.ServiceClient, instanceId string) (interface{}, error) {
+	httpUrl := "v2/{project_id}/instances/{instance_id}"
+	getPath := client.Endpoint + httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
+
+	getOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	resp, err := client.Request("GET", getPath, &getOpt)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.FlattenResponse(resp)
+}
+
+func refreshInstanceStatus(client *golangsdk.ServiceClient, instanceId string, targets []string) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		instance, err := getInstanceById(client, instanceId)
+		if err != nil {
+			if _, ok := err.(golangsdk.ErrDefault404); ok {
+				return "deleted", "DELETED", nil
+			}
+			return instance, "ERROR", err
+		}
+
+		status := utils.PathSearch("status", instance, "").(string)
+		if status == "ERROR" {
+			return instance, "ERROR", fmt.Errorf("unexpect status (%s)", status)
+		}
+
+		if utils.StrSliceContains(targets, status) {
+			return instance, "COMPLETED", nil
+		}
+
+		return "continue", "PENDING", nil
+	}
+}
+
+func waitForInstanceStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId string, targets []string,
+	timeout time.Duration) error {
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      refreshInstanceStatus(client, instanceId, targets),
+		Timeout:      timeout,
+		Delay:        10 * time.Second,
+		PollInterval: 20 * time.Second,
+	}
+	_, err := stateConf.WaitForStateContext(ctx)
+	return err
 }

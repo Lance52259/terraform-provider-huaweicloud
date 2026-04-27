@@ -21,25 +21,43 @@ func TestAccDataSourceCcBandwidthPackageTags_basic(t *testing.T) {
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testDataSourceDataSourceCcBandwidthPackageTags_basic(rName),
+				Config: testDataSourceCcBandwidthPackageTags_basic(rName),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(dataSource, "tags.foo"),
+					resource.TestCheckResourceAttrSet(dataSource, "tags.#"),
+					resource.TestCheckResourceAttrSet(dataSource, "tags.0.key"),
+					resource.TestCheckResourceAttrSet(dataSource, "tags.0.values.#"),
 				),
 			},
 		},
 	})
 }
 
-func testDataSourceDataSourceCcBandwidthPackageTags_basic(name string) string {
+func testDataSourceCcBandwidthPackageTags_base(name string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_cc_bandwidth_package" "test" {
+  name           = "%s"
+  local_area_id  = "Chinese-Mainland"
+  remote_area_id = "Chinese-Mainland"
+  charge_mode    = "bandwidth"
+  billing_mode   = 3
+  bandwidth      = 5
+  description    = "This is an accaptance test"
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+`, name)
+}
+
+func testDataSourceCcBandwidthPackageTags_basic(name string) string {
 	return fmt.Sprintf(`
 %s
 
 data "huaweicloud_cc_bandwidth_package_tags" "test" {
-  depends_on = [
-    huaweicloud_cc_bandwidth_package.test1,
-    huaweicloud_cc_bandwidth_package.test2,
-  ]
+  depends_on = [huaweicloud_cc_bandwidth_package.test]
 }
-`, testDataSourceCcBandwidthPackages_base(name))
+`, testDataSourceCcBandwidthPackageTags_base(name))
 }

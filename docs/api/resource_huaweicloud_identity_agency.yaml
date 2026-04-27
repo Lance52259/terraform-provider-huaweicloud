@@ -8,6 +8,9 @@ host: huaweicloud.com
 tags:
     - name: IAM
 paths:
+    /v1.0/enterprise-projects:
+        GET:
+            tag: EPS
     /v3.0/OS-AGENCY/agencies:
         POST:
             tag: IAM
@@ -26,10 +29,10 @@ paths:
             tag: IAM
         PUT:
             tag: IAM
-    /v3.0/OS-AGENCY/projects/{projectID}/agencies/{agency_id}/roles:
+    /v3.0/OS-AGENCY/projects/{project_id}/agencies/{agency_id}/roles:
         GET:
             tag: IAM
-    /v3.0/OS-AGENCY/projects/{projectID}/agencies/{agency_id}/roles/{role_id}:
+    /v3.0/OS-AGENCY/projects/{project_id}/agencies/{agency_id}/roles/{role_id}:
         DELETE:
             tag: IAM
         PUT:
@@ -39,12 +42,20 @@ paths:
             tag: IAM
         PUT:
             tag: IAM
-    /v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/inherited_to_projects:
-        GET:
+    /v3.0/OS-PERMISSION/subjects/agency/scopes/enterprise-project/role-assignments:
+        DELETE:
+            tag: IAM
+        PUT:
             tag: IAM
     /v3/projects:
         GET:
             tag: IAM
     /v3/roles:
         GET:
+            tag: IAM
+    /v5/agencies/{agency_id}/attached-policies:
+        GET:
+            tag: IAM
+    /v5/policies/{policy_id}/detach-agency:
+        POST:
             tag: IAM

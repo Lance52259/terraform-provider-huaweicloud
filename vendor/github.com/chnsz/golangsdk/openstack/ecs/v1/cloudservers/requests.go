@@ -54,6 +54,10 @@ type CreateOpts struct {
 	Description string `json:"description,omitempty"`
 
 	AutoTerminateTime string `json:"auto_terminate_time,omitempty"`
+
+	EnclaveOptions *EnclaveOptions `json:"enclave_options,omitempty"`
+
+	EnableJumboFrame *bool `json:"enable_jumbo_frame,omitempty"`
 }
 
 // CreateOptsBuilder allows extensions to add additional parameters to the
@@ -144,6 +148,8 @@ type RootVolume struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 	// The cluster type is default to DSS
 	ClusterType string `json:"cluster_type,omitempty"`
+
+	PassThrough *bool `json:"hw:passthrough,omitempty"`
 }
 
 type DataVolume struct {
@@ -162,7 +168,11 @@ type DataVolume struct {
 
 	Extendparam *VolumeExtendParam `json:"extendparam,omitempty"`
 
+	DataImageId string `json:"data_image_id,omitempty"`
+
 	Metadata *VolumeMetadata `json:"metadata,omitempty"`
+
+	DeleteOnTermination *bool `json:"delete_on_termination,omitempty"`
 
 	ClusterId string `json:"cluster_id,omitempty"`
 	// The cluster type is default to DSS
@@ -222,6 +232,10 @@ type SchedulerHints struct {
 
 	// DedicatedHostID specifies a DeH ID.
 	DedicatedHostID string `json:"dedicated_host_id,omitempty"`
+}
+
+type EnclaveOptions struct {
+	Enabled bool `json:"enabled" required:"true"`
 }
 
 // Create requests a server to be provisioned to the user in the current tenant.

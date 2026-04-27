@@ -159,8 +159,11 @@ The following arguments are supported:
 * `vpc_id` - (Required, String, ForceNew) Specifies the VPC ID.
   Changing this parameter will create a new resource.
 
-* `subnet_id` - (Required, String, ForceNew) Specifies the Subnet ID.
-  Changing this parameter will create a new resource.
+* `subnet_id` - (Required, String) Specifies the Subnet ID.
+
+  -> By default, subnets with the same VPC are connected. Ensure that the new subnet can reach your service system.
+    Note that a cluster with automatic IPv6 address creation enabled can only be switched to a new subnet that uses
+    IPv6 addresses.
 
 * `security_group_id` - (Required, String) Specifies the security group ID.
 
@@ -169,6 +172,9 @@ The following arguments are supported:
   than or equal to the number of AZs. If the number of nodes is a multiple of the number of AZs, the nodes are evenly
   distributed to each AZ. If the number of nodes is not a multiple of the number of AZs, the absolute difference
   between node quantity in any two AZs is **1** at most.
+
+* `disk_encryption` - (Optional, List, NonUpdatable) Specifies the disk encryption information.
+  The [disk_encryption](#disk_encryption_struct) structure is documented below.
 
 * `backup_strategy` - (Optional, List) Specifies the advanced backup policy. Structure is documented below.
 
@@ -211,6 +217,19 @@ The `ess_node_config` and `cold_node_config` block supports:
 * `instance_number` - (Required, Int) Specifies the number of cluster instances.
   + When it is `ess_node_config`, The value range is `1` to `200`.
   + When it is `cold_node_config`, The value range is `1` to `32`.
+
+* `type` - (Optional, String) Specifies the instance type.
+  The valid values are as follows:
+  + **ess**
+  + **chinese**
+  + **english**
+  + **arabic**
+  + **tools**
+  + **thai**
+  + **turkish**
+  + **portuguese**
+  + **chinese-english**
+  + **spanish**
 
 * `volume` - (Optional, List, ForceNew) Specifies the information about the volume. This field should not be specified
   when `flavor` is set to a local dist flavor. But It is required when `flavor` is not a local disk flavor.
@@ -311,6 +330,24 @@ The `backup_strategy` block supports:
   -> **NOTE:**  If the `bucket`, `backup_path`, and `agency` parameters are empty at the same time, the system will
   automatically create an OBS bucket and IAM agent, otherwise the configured parameter values will be used.
 
+<a name="disk_encryption_struct"></a>
+The `disk_encryption` block supports:
+
+* `system_encrypted` - (Optional, String, NonUpdatable) Specifies whether disk encryption is enabled. KMS is used to
+  encrypt the data disks of cluster nodes to ensure the security of stored data. Disk encryption and decryption do not
+  alter cluster management or O&M processes. However, they do increase the system's processing load, potentially affecting
+  the system's operational performance. Value options:
+  + **0**: Disable disk encryption.
+  + **1**: Enable disk encryption.
+
+* `system_cmk_id` - (Optional, String, NonUpdatable) Specifies the disk key ID. This parameter is valid only when
+  `system_encrypted` is set to **1**. If the KMS key used by the cluster is disabled, the cluster cannot be scaled or
+  upgraded, its node specifications or AZs cannot be changed, and its nodes cannot be replaced (by specifying the nodes
+  that need replacement). To solve this problem, you will have to create a new cluster and migrate your data to that new
+  cluster. Set a key that meets the following requirements:
+  + Cryptographic algorithm: **AES**.
+  + Key usage: **ENCRYPT_DECRYPT**.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -384,4 +421,23 @@ The CSS cluster can be imported by `id`, e.g.
 
 ```bash
 terraform import huaweicloud_css_cluster.test <id>
+```
+
+Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
+API response, security or some other reason.
+The missing attributes include: `ess_node_config.0.type`, `cold_node_config.0.type`.
+It is generally recommended running `terraform plan` after importing a cluster.
+You can then decide if changes should be applied to the cluster, or the resource definition should be updated to
+align with the cluster. Also you can ignore changes as below.
+
+```hcl
+resource "huaweicloud_css_cluster" "test" {
+  ...
+
+  lifecycle {
+    ignore_changes = [
+      ess_node_config.0.type, cold_node_config.0.type,
+    ]
+  }
+}
 ```

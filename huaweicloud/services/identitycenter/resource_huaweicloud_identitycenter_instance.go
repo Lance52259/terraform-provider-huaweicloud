@@ -3,18 +3,19 @@ package identitycenter
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"strings"
-	"time"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API IdentityCenter POST /v1/service/start
@@ -137,7 +138,8 @@ func buildCreateAliasBodyParams(d *schema.ResourceData) map[string]interface{} {
 	return bodyParams
 }
 
-func identityCenterServiceStatusRefreshFunc(getRequestStatusHttpUrl, searchExpression string, client *golangsdk.ServiceClient) resource.StateRefreshFunc {
+func identityCenterServiceStatusRefreshFunc(getRequestStatusHttpUrl, searchExpression string,
+	client *golangsdk.ServiceClient) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getPath := client.Endpoint + getRequestStatusHttpUrl
 

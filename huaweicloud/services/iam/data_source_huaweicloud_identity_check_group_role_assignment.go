@@ -67,7 +67,8 @@ func dataSourceIdentityCheckGroupRoleAssignmentRead(_ context.Context, d *schema
 		if projectId == "all" {
 			// "all" means to check whether the user group has the specified permissions
 			// for all projects, including existing and future projects.
-			checkGroupRoleAssignmentPath = iamClient.Endpoint + "v3/OS-INHERIT/domains/{domain_id}/groups/{group_id}/roles/{role_id}/inherited_to_projects"
+			checkGroupRoleAssignmentPath = iamClient.Endpoint +
+				"v3/OS-INHERIT/domains/{domain_id}/groups/{group_id}/roles/{role_id}/inherited_to_projects"
 			checkGroupRoleAssignmentPath = strings.ReplaceAll(checkGroupRoleAssignmentPath, "{domain_id}", cfg.DomainID)
 		} else {
 			checkGroupRoleAssignmentPath = iamClient.Endpoint + "v3/projects/{project_id}/groups/{group_id}/roles/{role_id}"

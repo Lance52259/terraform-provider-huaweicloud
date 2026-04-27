@@ -57,7 +57,7 @@ resource "huaweicloud_identity_temporary_access_key" "test" {
 * `domain_name` - (Optional, String, ForceNew) Specifies the account(domain) name of the agency.
   When the `methods` is `assume_role`, `domain_id` or `domain_name` are mandatory.
 
-* `duration_seconds` - (Optional, String, ForceNew) Specifies the validity period of AK/SK and security token.
+* `duration_seconds` - (Optional, Int, ForceNew) Specifies the validity period of AK/SK and security token.
   It's measured in seconds. The range is from 15 minutes to 24 hours, with a default value of 15 minutes.
 
 * `session_user_name` - (Optional, String, ForceNew) Specifies the enterprise user information corresponding to the
@@ -70,6 +70,6 @@ resource "huaweicloud_identity_temporary_access_key" "test" {
 
 * `access` - Indicates the access key (AK).
 
-* `secret ` - Indicates the secret key (SK).
+* `secret` - Indicates the secret key (SK).
 
 * `securitytoken` - Indicates an encrypted string containing the obtained AK, SK and other security information.

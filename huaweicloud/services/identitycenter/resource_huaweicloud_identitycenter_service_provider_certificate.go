@@ -2,13 +2,14 @@ package identitycenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -186,25 +187,25 @@ func resourceIdentityCenterServiceProviderCertificateUpdate(ctx context.Context,
 	)
 
 	if d.HasChange("state") {
-		if d.Get("state").(string) == "ACTIVE" {
-			client, err := cfg.NewServiceClient(activeProduct, region)
-			if err != nil {
-				return diag.Errorf("error creating Identity Center Client: %s", err)
-			}
-
-			activePath := client.Endpoint + activeHttpUrl
-			activePath = strings.ReplaceAll(activePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
-			activePath = strings.ReplaceAll(activePath, "{certificate_id}", d.Id())
-
-			activeOpt := golangsdk.RequestOpts{
-				KeepResponseBody: true,
-			}
-			_, err = client.Request("POST", activePath, &activeOpt)
-			if err != nil {
-				return diag.Errorf("error activing Identity Center identity provider certificate: %s", err)
-			}
-		} else {
+		if d.Get("state").(string) != "ACTIVE" {
 			return diag.Errorf("state must be set to 'ACTIVE'")
+		}
+
+		client, err := cfg.NewServiceClient(activeProduct, region)
+		if err != nil {
+			return diag.Errorf("error creating Identity Center Client: %s", err)
+		}
+
+		activePath := client.Endpoint + activeHttpUrl
+		activePath = strings.ReplaceAll(activePath, "{identity_store_id}", fmt.Sprintf("%v", d.Get("identity_store_id")))
+		activePath = strings.ReplaceAll(activePath, "{certificate_id}", d.Id())
+
+		activeOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		_, err = client.Request("POST", activePath, &activeOpt)
+		if err != nil {
+			return diag.Errorf("error activing Identity Center identity provider certificate: %s", err)
 		}
 	}
 	return resourceIdentityCenterServiceProviderCertificateRead(ctx, d, meta)
@@ -238,10 +239,11 @@ func resourceIdentityCenterServiceProviderCertificateDelete(_ context.Context, d
 	return nil
 }
 
-func resourceIdentityCenterServiceProviderCertificateImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
+func resourceIdentityCenterServiceProviderCertificateImport(_ context.Context, d *schema.ResourceData, _ interface{}) (
+	[]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid id format, must be <identity_store_id>/<certificate_id>")
+		return nil, errors.New("invalid id format, must be <identity_store_id>/<certificate_id>")
 	}
 	d.SetId(parts[1])
 	mErr := multierror.Append(nil,

@@ -3,14 +3,16 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -111,7 +113,6 @@ func dataSourceIdentityCenterMfaDevicesRead(_ context.Context, d *schema.Resourc
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
-
 }
 
 func flattenMfaDevices(data interface{}) []interface{} {

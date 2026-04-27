@@ -137,7 +137,8 @@ func GetGroupEnterpriseProjectsRead(iamClient *golangsdk.ServiceClient, groupId 
 	if err != nil {
 		return nil, fmt.Errorf("error flattening response for group %s: %w", groupId, err)
 	}
-	enterpriseProjectList := flattenEnterpriseProjectList(utils.PathSearch("\"enterprise-projects\"", respBody, make([]interface{}, 0)).([]interface{}))
+	enterpriseProjectList := flattenEnterpriseProjectList(utils.PathSearch("\"enterprise-projects\"",
+		respBody, make([]interface{}, 0)).([]interface{}))
 	return enterpriseProjectList, nil
 }
 

@@ -37,17 +37,40 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `control` - Information about the enabled control policy.
+* `control_detail` - Information about the enabled control policy.
+  The [control_detail](#control_detail_struct) structure is documented below.
 
-The [control](#control) structure is documented below.
+* `regions` - Information about the enabled control policy.
+  The [regions](#regions_struct) structure is documented below.
 
-<a name="control"></a>
-The `control` block supports:
+* `state` - The enablement status of the control policy.
+
+* `message` - The message of the control policy.
+
+* `version` - The current version number of the control policy.
+
+<a name="control_detail_struct"></a>
+The `control_detail` block supports:
+
+* `manage_account_id` - The ID of the management account.
+
+* `control_identifier` - The identifier of the control.
 
 * `name` - The name of the control policy.
 
 * `description` - The description of the control policy.
 
-* `behavior` - The type of the control policy. It can be Proactive, Detective, or Preventive.
+* `control_objective` - The objective of the control policy.
 
-* `owner` - The source of the managed account creation.
+* `behavior` - The type of the control policy. It can be **Proactive**, **Detective** or **Preventive**.
+
+* `owner` - The owner of the control policy.
+
+* `regional_preference` - The regional preference of the control.
+
+<a name="regions_struct"></a>
+The `regions` block supports:
+
+* `region` - The name of the region.
+
+* `region_configuration_status` - The status of the region.

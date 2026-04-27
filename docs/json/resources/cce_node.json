@@ -197,8 +197,7 @@
                       "type": "string",
                       "required": true
                     }
-                  },
-                  "description": "schema:{\"Required\":true};"
+                  }
                 },
                 "nesting_mode": "list"
               },
@@ -215,6 +214,10 @@
                     },
                     "kube_reserved_mem": {
                       "type": "number",
+                      "optional": true
+                    },
+                    "market_type": {
+                      "type": "string",
                       "optional": true
                     },
                     "max_pods": {
@@ -242,6 +245,10 @@
                       "optional": true
                     },
                     "security_reinforcement_type": {
+                      "type": "string",
+                      "optional": true
+                    },
+                    "spot_price": {
                       "type": "string",
                       "optional": true
                     },

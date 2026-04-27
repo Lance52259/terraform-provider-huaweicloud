@@ -33,12 +33,12 @@ func DataSourceCCEReleases() *schema.Resource {
 				Description: "Specifies the cluster id in which to query the resource.",
 			},
 			"chart_id": {
-				Type:        schema.TypeString,
-				Optional:    true,
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"namespace": {
-				Type:        schema.TypeString,
-				Optional:    true,
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"releases": {
 				Type:     schema.TypeList,
@@ -116,13 +116,13 @@ func DataSourceCCEReleases() *schema.Resource {
 	}
 }
 
-type CCEListReleasesDSWrapper struct {
+type ListReleasesDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newCCEListReleasesDSWrapper(d *schema.ResourceData, meta interface{}) *CCEListReleasesDSWrapper {
-	return &CCEListReleasesDSWrapper{
+func newCCEListReleasesDSWrapper(d *schema.ResourceData, meta interface{}) *ListReleasesDSWrapper {
+	return &ListReleasesDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
@@ -150,7 +150,7 @@ func dataSourceCCEListReleasesRead(_ context.Context, d *schema.ResourceData, me
 }
 
 // @API CCE GET /cce/cam/v3/clusters/{cluster_id}/releases
-func (w *CCEListReleasesDSWrapper) ListReleases() (*gjson.Result, error) {
+func (w *ListReleasesDSWrapper) ListReleases() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (w *CCEListReleasesDSWrapper) ListReleases() (*gjson.Result, error) {
 		Result()
 }
 
-func (w *CCEListReleasesDSWrapper) listReleasesToSchema(body *gjson.Result) error {
+func (w *ListReleasesDSWrapper) listReleasesToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),

@@ -296,6 +296,11 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Version: "v5",
 		Product: "EVS",
 	},
+	"esw": {
+		Name:    "esw",
+		Version: "v3",
+		Product: "ESW",
+	},
 	"sfs": {
 		Name:    "sfs",
 		Version: "v2",
@@ -780,6 +785,11 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Name:    "cdm",
 		Version: "v1.1",
 		Product: "CDM",
+	},
+	"lakeformation": {
+		Name:    "lakeformation",
+		Version: "v1",
+		Product: "LakeFormation",
 	},
 
 	// catalog for Application

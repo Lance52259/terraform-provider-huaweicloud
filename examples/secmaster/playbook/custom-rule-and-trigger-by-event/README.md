@@ -19,7 +19,7 @@ This example demonstrates the complete SecMaster playbook deployment workflow wi
 * HuaweiCloud access key and secret key (AK/SK)
 * SecMaster workspace already exists and is configured
 
-## Required Variables
+## Variable Introduction
 
 The following variables need to be configured:
 
@@ -115,5 +115,5 @@ The following variables need to be configured:
 
 | Name | Version |
 | ---- | ---- |
-| terraform | >= 0.12.0 |
-| huaweicloud | >= 1.72.1 |
+| terraform | >= 1.9.0 |
+| huaweicloud | >= 1.69.0 |

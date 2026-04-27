@@ -6,11 +6,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 var v5UserPasswordNonUpdatableParams = []string{"new_password", "old_password"}
@@ -47,7 +47,7 @@ func ResourceIdentityV5UserPassword() *schema.Resource {
 	}
 }
 
-func resourceIdentityV5UserPasswordCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserPasswordCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMNoVersionClient(cfg.GetRegion(d))
 	if err != nil {
@@ -67,15 +67,18 @@ func resourceIdentityV5UserPasswordCreate(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("error change password: %s", err)
 	}
 	userId, err := getUserId(cfg)
+	if err != nil {
+		return diag.Errorf("error retrieving user id: %s", err)
+	}
 	d.SetId(userId)
 	return nil
 }
 
-func resourceIdentityV5UserPasswordRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserPasswordRead(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 
-func resourceIdentityV5UserPasswordDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5UserPasswordDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	errorMsg := "Deleting password is not supported. The password is only removed from the state, but it remains in the cloud."
 	return diag.Diagnostics{
 		diag.Diagnostic{

@@ -1,0 +1,39 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_identityv5_group_attached_policies": {
+          "block": {
+            "attributes": {
+              "attached_policies": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "attached_at": "string",
+                      "policy_id": "string",
+                      "policy_name": "string",
+                      "urn": "string"
+                    }
+                  ]
+                ],
+                "description": "The list of policies attached to the user group.",
+                "computed": true
+              },
+              "group_id": {
+                "type": "string",
+                "description": "The ID of the IAM user group.",
+                "required": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

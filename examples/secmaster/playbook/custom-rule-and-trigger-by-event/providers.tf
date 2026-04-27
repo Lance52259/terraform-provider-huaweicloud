@@ -1,8 +1,10 @@
 terraform {
+  required_version = ">= 1.9.0"
+
   required_providers {
     huaweicloud = {
       source  = "huaweicloud/huaweicloud"
-      version = ">= 1.72.1"
+      version = ">= 1.69.0"
     }
   }
 }

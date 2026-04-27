@@ -9,7 +9,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccIdentityTokenWithIdToken(t *testing.T) {
+func TestAccIdentityTokenWithIdToken_basic(t *testing.T) {
 	idpId := "YourIdpId"
 	idToken := "YourIdToken"
 	domainName := "YourDomainName"
@@ -22,6 +22,7 @@ func TestAccIdentityTokenWithIdToken(t *testing.T) {
 			acceptance.TestAccPreCheck(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIdentityTokenWithIdToken(idpId, idToken),

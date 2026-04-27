@@ -49,6 +49,11 @@
                 "type": "string",
                 "computed": true
               },
+              "ignore_initial_node_count": {
+                "type": "bool",
+                "optional": true,
+                "default": true
+              },
               "initial_node_count": {
                 "type": "number",
                 "required": true
@@ -227,8 +232,7 @@
                       "type": "string",
                       "required": true
                     }
-                  },
-                  "description": "schema:{\"Required\":true};"
+                  }
                 },
                 "nesting_mode": "list"
               },
@@ -247,6 +251,11 @@
                     },
                     "kube_reserved_mem": {
                       "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "market_type": {
+                      "type": "string",
                       "optional": true,
                       "computed": true
                     },
@@ -281,6 +290,11 @@
                       "computed": true
                     },
                     "security_reinforcement_type": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "spot_price": {
                       "type": "string",
                       "optional": true,
                       "computed": true

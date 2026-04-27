@@ -2,10 +2,10 @@ package identitycenter
 
 import (
 	"context"
-	"github.com/hashicorp/go-uuid"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 

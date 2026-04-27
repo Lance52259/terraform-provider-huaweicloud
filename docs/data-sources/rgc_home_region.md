@@ -17,6 +17,7 @@ data "huaweicloud_rgc_home_region" "test" {}
 ```
 
 ## Argument Reference
+
 There are no arguments available for this data source.
 
 ## Attribute Reference

@@ -44,7 +44,8 @@ The `users` block contains:
 
 * `policy_num` - Indicates number of user strategies
 
-* `lastest_policy_time` - Indicates the time when the user was recently associated with the enterprise project strategy
+* `lastest_policy_time` - Indicates the time when the user was recently associated with the
+  enterprise project strategy.
 
 * `enterprise_projects` - Indicates the projects contains.
   The [enterprise_projects](#IdentityEnterpriseProjects_projects) structure is documented below.

@@ -61,7 +61,7 @@ func TestAccIdentityCenterPasswordPolicy_basic(t *testing.T) {
 		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
-				Config: testPasswordPolicy_basic(),
+				Config: testPasswordPolicy_basic,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "max_password_age", "10"),
@@ -74,7 +74,7 @@ func TestAccIdentityCenterPasswordPolicy_basic(t *testing.T) {
 				),
 			},
 			{
-				Config: testPasswordPolicy_basic_update(),
+				Config: testPasswordPolicy_basic_update,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "max_password_age", "100"),
@@ -90,8 +90,7 @@ func TestAccIdentityCenterPasswordPolicy_basic(t *testing.T) {
 	})
 }
 
-func testPasswordPolicy_basic() string {
-	return fmt.Sprintf(`
+const testPasswordPolicy_basic = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_password_policy" "test" {
@@ -104,11 +103,9 @@ resource "huaweicloud_identitycenter_password_policy" "test" {
   require_symbols              = true
   require_uppercase_characters = true
 }
-`)
-}
+`
 
-func testPasswordPolicy_basic_update() string {
-	return fmt.Sprintf(`
+const testPasswordPolicy_basic_update = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_password_policy" "test" {
@@ -121,5 +118,4 @@ resource "huaweicloud_identitycenter_password_policy" "test" {
   require_symbols              = false
   require_uppercase_characters = false
 }
-`)
-}
+`

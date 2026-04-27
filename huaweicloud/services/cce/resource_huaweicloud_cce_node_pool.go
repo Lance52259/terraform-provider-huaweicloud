@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-
 	"github.com/jmespath/go-jmespath"
 
 	"github.com/chnsz/golangsdk"
@@ -33,27 +32,248 @@ import (
 // @API CCE DELETE /api/v3/projects/{project_id}/clusters/{cluster_id}/nodepools/{nodepool_id}
 
 var nodePoolNonUpdatableParams = []string{
-	"cluster_id", "flavor_id", "type",
-	"root_volume", "root_volume.*.size", "root_volume.*.volumetype", "root_volume.*.extend_params", "root_volume.*.kms_key_id",
-	"root_volume.*.dss_pool_id", "root_volume.*.iops", "root_volume.*.throughput", "root_volume.*.hw_passthrough", "root_volume.*.extend_param",
-	"data_volumes", "data_volumes.*.size", "data_volumes.*.volumetype", "data_volumes.*.extend_params", "data_volumes.*.kms_key_id",
-	"data_volumes.*.dss_pool_id", "data_volumes.*.iops", "data_volumes.*.throughput", "data_volumes.*.hw_passthrough",
-	"data_volumes.*.extend_param",
-	"availability_zone", "key_pair", "password",
-	"storage", "storage.*.selectors", "storage.*.selectors.*.name", "storage.*.selectors.*.type", "storage.*.selectors.*.match_label_size",
-	"storage.*.selectors.*.match_label_volume_type", "storage.*.selectors.*.match_label_metadata_encrypted",
-	"storage.*.selectors.*.match_label_metadata_cmkid", "storage.*.selectors.*.match_label_count",
-	"storage.*.groups", "storage.*.groups.*.name", "storage.*.groups.*.cce_managed", "storage.*.groups.*.selector_names",
-	"storage.*.groups.*.virtual_spaces",
-	"storage.*.groups.*.virtual_spaces.*.name", "storage.*.groups.*.virtual_spaces.*.size", "storage.*.groups.*.virtual_spaces.*.lvm_lv_type",
-	"storage.*.groups.*.virtual_spaces.*.lvm_path", "storage.*.groups.*.virtual_spaces.*.runtime_lv_type",
-	"charging_mode", "period_unit", "period", "auto_renew", "runtime",
-	"extend_params", "extend_params.*.max_pods", "extend_params.*.docker_base_size", "extend_params.*.preinstall",
-	"extend_params.*.postinstall", "extend_params.*.node_image_id", "extend_params.*.node_multi_queue", "extend_params.*.nic_threshold",
-	"extend_params.*.agency_name", "extend_params.*.kube_reserved_mem", "extend_params.*.system_reserved_mem",
-	"extend_params.*.security_reinforcement_type", "extend_params.*.market_type", "extend_params.*.spot_price",
-	"security_groups", "pod_security_groups", "ecs_group_id", "hostname_config", "hostname_config.*.type",
-	"max_pods", "preinstall", "postinstall", "extend_param", "partition",
+	"cluster_id", "flavor_id", "type", "availability_zone", "charging_mode", "period_unit", "period", "runtime",
+	"ecs_group_id", "hostname_config", "hostname_config.*.type", "max_pods", "preinstall", "postinstall", "extend_param",
+	"partition",
+}
+
+var nodePoolSchema = map[string]*schema.Schema{
+	"region": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+		ForceNew: true,
+	},
+	"name": {
+		Type:     schema.TypeString,
+		Required: true,
+	},
+	"initial_node_count": {
+		Type:     schema.TypeInt,
+		Required: true,
+		DiffSuppressFunc: func(_, oldVal, _ string, d *schema.ResourceData) bool {
+			return oldVal != "" && d.Get("ignore_initial_node_count").(bool)
+		},
+	},
+	"cluster_id": {
+		Type:     schema.TypeString,
+		Required: true,
+	},
+	"flavor_id": {
+		Type:     schema.TypeString,
+		Required: true,
+	},
+	"ignore_initial_node_count": {
+		Type:     schema.TypeBool,
+		Optional: true,
+		Default:  true,
+	},
+	"type": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"labels": { // (k8s_tags)
+		Type:     schema.TypeMap,
+		Optional: true,
+		Elem:     &schema.Schema{Type: schema.TypeString},
+	},
+	"root_volume":  resourceNodeRootVolume(),
+	"data_volumes": resourceNodeDataVolume(),
+	"availability_zone": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "random",
+	},
+	"os": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"key_pair": {
+		Type:         schema.TypeString,
+		Optional:     true,
+		ExactlyOneOf: []string{"password", "key_pair"},
+	},
+	"password": {
+		Type:      schema.TypeString,
+		Optional:  true,
+		Sensitive: true,
+	},
+	"storage": resourceNodeStorageSchema(),
+	"taints": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"key": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"value": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"effect": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			}},
+	},
+	"tags": common.TagsSchema(),
+	// charge info: charging_mode, period_unit, period, auto_renew
+	"charging_mode": schemaChargingMode(nil),
+	"period_unit":   schemaPeriodUnit(nil),
+	"period":        schemaPeriod(nil),
+	"auto_renew":    schemaAutoRenewComputed(nil),
+
+	"runtime": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+		ValidateFunc: validation.StringInSlice([]string{
+			"docker", "containerd",
+		}, false),
+	},
+	"extend_params": resourceNodePoolExtendParamsSchema([]string{
+		"max_pods", "preinstall", "postinstall", "extend_param",
+	}),
+	"subnet_id": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"subnet_list": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem:     &schema.Schema{Type: schema.TypeString},
+	},
+	"scall_enable": {
+		Type:     schema.TypeBool,
+		Optional: true,
+	},
+	"min_node_count": {
+		Type:     schema.TypeInt,
+		Optional: true,
+	},
+	"max_node_count": {
+		Type:     schema.TypeInt,
+		Optional: true,
+	},
+	"scale_down_cooldown_time": {
+		Type:     schema.TypeInt,
+		Optional: true,
+	},
+	"priority": {
+		Type:     schema.TypeInt,
+		Optional: true,
+	},
+	"security_groups": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Computed: true,
+		Elem:     &schema.Schema{Type: schema.TypeString},
+	},
+	"pod_security_groups": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem: &schema.Schema{
+			Type: schema.TypeString,
+		},
+	},
+	"ecs_group_id": {
+		Type:     schema.TypeString,
+		Optional: true,
+	},
+	"initialized_conditions": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Computed: true,
+		Elem:     &schema.Schema{Type: schema.TypeString},
+	},
+	"label_policy_on_existing_nodes": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"tag_policy_on_existing_nodes": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"taint_policy_on_existing_nodes": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"hostname_config": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Computed: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"type": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+		},
+	},
+	"partition": {
+		Type:     schema.TypeString,
+		Optional: true,
+	},
+	"enterprise_project_id": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Computed: true,
+	},
+	"extension_scale_groups": resourceExtensionScaleGroupsSchema(),
+	"enable_force_new": {
+		Type:         schema.TypeString,
+		Optional:     true,
+		ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+		Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
+	},
+	"current_node_count": {
+		Type:     schema.TypeInt,
+		Computed: true,
+	},
+	"billing_mode": {
+		Type:     schema.TypeInt,
+		Computed: true,
+	},
+	"status": {
+		Type:     schema.TypeString,
+		Computed: true,
+	},
+
+	// Deprecated parameters
+	"max_pods": {
+		Type:        schema.TypeInt,
+		Optional:    true,
+		Computed:    true,
+		Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
+	},
+	"preinstall": {
+		Type:        schema.TypeString,
+		Optional:    true,
+		StateFunc:   utils.DecodeHashAndHexEncode,
+		Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
+	},
+	"postinstall": {
+		Type:        schema.TypeString,
+		Optional:    true,
+		StateFunc:   utils.DecodeHashAndHexEncode,
+		Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
+	},
+	"extend_param": {
+		Type:        schema.TypeMap,
+		Optional:    true,
+		Elem:        &schema.Schema{Type: schema.TypeString},
+		Description: "schema: Deprecated; This parameter has been replaced by the 'extend_params' parameter.",
+	},
 }
 
 func ResourceNodePool() *schema.Resource {
@@ -64,7 +284,7 @@ func ResourceNodePool() *schema.Resource {
 		DeleteContext: resourceNodePoolDelete,
 
 		CustomizeDiff: customdiff.All(
-			config.FlexibleForceNew(nodePoolNonUpdatableParams),
+			config.FlexibleForceNew(nodePoolNonUpdatableParams, nodePoolSchema),
 			ignoreDiffIfScaleGroupsEqual(),
 			config.MergeDefaultTags(),
 		),
@@ -75,239 +295,11 @@ func ResourceNodePool() *schema.Resource {
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
 			Delete: schema.DefaultTimeout(20 * time.Minute),
 		},
 
-		Schema: map[string]*schema.Schema{
-			"region": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-				ForceNew: true,
-			},
-			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"initial_node_count": {
-				Type:     schema.TypeInt,
-				Required: true,
-			},
-			"cluster_id": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"flavor_id": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"type": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"labels": { // (k8s_tags)
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-			"root_volume":  resourceNodeRootVolume(),
-			"data_volumes": resourceNodeDataVolume(),
-			"availability_zone": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "random",
-			},
-			"os": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"key_pair": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ExactlyOneOf: []string{"password", "key_pair"},
-			},
-			"password": {
-				Type:      schema.TypeString,
-				Optional:  true,
-				Sensitive: true,
-			},
-			"storage": resourceNodeStorageSchema(),
-			"taints": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"key": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"value": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"effect": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					}},
-			},
-			"tags": common.TagsSchema(),
-			// charge info: charging_mode, period_unit, period, auto_renew
-			"charging_mode": schemaChargingMode(nil),
-			"period_unit":   schemaPeriodUnit(nil),
-			"period":        schemaPeriod(nil),
-			"auto_renew":    schemaAutoRenewComputed(nil),
-
-			"runtime": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-				ValidateFunc: validation.StringInSlice([]string{
-					"docker", "containerd",
-				}, false),
-			},
-			"extend_params": resourceNodePoolExtendParamsSchema([]string{
-				"max_pods", "preinstall", "postinstall", "extend_param",
-			}),
-			"subnet_id": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"subnet_list": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-			"scall_enable": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"min_node_count": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			"max_node_count": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			"scale_down_cooldown_time": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			"priority": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-			"security_groups": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-			"pod_security_groups": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-			"ecs_group_id": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"initialized_conditions": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-			"label_policy_on_existing_nodes": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"tag_policy_on_existing_nodes": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"taint_policy_on_existing_nodes": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"hostname_config": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"type": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-					},
-				},
-			},
-			"partition": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"enterprise_project_id": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"extension_scale_groups": resourceExtensionScaleGroupsSchema(),
-			"enable_force_new": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
-				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
-			},
-			"current_node_count": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"billing_mode": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"status": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-
-			// Deprecated parameters
-			"max_pods": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Computed:    true,
-				Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
-			},
-			"preinstall": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				StateFunc:   utils.DecodeHashAndHexEncode,
-				Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
-			},
-			"postinstall": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				StateFunc:   utils.DecodeHashAndHexEncode,
-				Description: "schema: Deprecated; This parameter can be configured in the 'extend_params' parameter.",
-			},
-			"extend_param": {
-				Type:        schema.TypeMap,
-				Optional:    true,
-				Elem:        &schema.Schema{Type: schema.TypeString},
-				Description: "schema: Deprecated; This parameter has been replaced by the 'extend_params' parameter.",
-			},
-		},
+		Schema: nodePoolSchema,
 	}
 }
 
@@ -467,31 +459,40 @@ func buildPodSecurityGroups(ids []interface{}) []nodepools.PodSecurityGroupSpec 
 }
 
 func buildExtensionScaleGroups(d *schema.ResourceData) []nodepools.ExtensionScaleGroups {
-	if v, ok := d.GetOk("extension_scale_groups"); ok {
-		groups := v.([]interface{})
-		res := make([]nodepools.ExtensionScaleGroups, len(groups))
-		for i, v := range groups {
-			if group, ok := v.(map[string]interface{}); ok {
-				res[i] = nodepools.ExtensionScaleGroups{
-					Metadata: buildExtensionScaleGroupsMetadata(utils.PathSearch("metadata", group, nil)),
-					Spec:     buildExtensionScaleGroupsSpec(utils.PathSearch("spec", group, nil)),
-				}
-			}
-		}
-
-		return res
+	_, ok := d.GetOk("extension_scale_groups")
+	if !ok {
+		return nil
 	}
 
-	return nil
+	oldRaw, newRaw := d.GetChange("extension_scale_groups")
+	oldGroups := oldRaw.([]interface{})
+	oldGroupsMap := make(map[string]string)
+	for _, oldGroup := range oldGroups {
+		name := utils.PathSearch("metadata[0].name", oldGroup, "").(string)
+		uid := utils.PathSearch("metadata[0].uid", oldGroup, "").(string)
+		oldGroupsMap[name] = uid
+	}
+	newGroups := newRaw.([]interface{})
+	res := make([]nodepools.ExtensionScaleGroups, len(newGroups))
+	for i, newGroup := range newGroups {
+		if group, ok := newGroup.(map[string]interface{}); ok {
+			res[i] = nodepools.ExtensionScaleGroups{
+				Metadata: buildExtensionScaleGroupsMetadata(utils.PathSearch("metadata", group, nil), oldGroupsMap),
+				Spec:     buildExtensionScaleGroupsSpec(utils.PathSearch("spec", group, nil)),
+			}
+		}
+	}
+
+	return res
 }
 
-func buildExtensionScaleGroupsMetadata(metadata interface{}) *nodepools.ExtensionScaleGroupsMetadata {
+func buildExtensionScaleGroupsMetadata(metadata interface{}, oldGroupsMap map[string]string) *nodepools.ExtensionScaleGroupsMetadata {
 	if len(metadata.([]interface{})) == 0 {
 		return nil
 	}
 
 	res := nodepools.ExtensionScaleGroupsMetadata{
-		Uid:  utils.PathSearch("[0].uid", metadata, "").(string),
+		Uid:  oldGroupsMap[utils.PathSearch("[0].name", metadata, "").(string)],
 		Name: utils.PathSearch("[0].name", metadata, "").(string),
 	}
 
@@ -671,8 +672,8 @@ func resourceNodePoolCreate(ctx context.Context, d *schema.ResourceData, meta in
 		Target:       []string{"COMPLETED"},
 		Refresh:      nodePoolStateRefreshFunc(cceClient, clusterId, d.Id(), []string{""}),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
-		Delay:        120 * time.Second,
-		PollInterval: 20 * time.Second,
+		Delay:        30 * time.Second,
+		PollInterval: 10 * time.Second,
 	}
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
@@ -697,7 +698,7 @@ func resourceNodePoolRead(_ context.Context, d *schema.ResourceData, meta interf
 	}
 
 	// The following parameters are not returned:
-	// password, initial_node_count, pod_security_groups
+	// password, ignore_initial_node_count, pod_security_groups
 	// extension_scale_groups not save, because the order of groups will change and computed not working in TypeSet
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
@@ -710,6 +711,7 @@ func resourceNodePoolRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("scall_enable", s.Spec.Autoscaling.Enable),
 		d.Set("min_node_count", s.Spec.Autoscaling.MinNodeCount),
 		d.Set("max_node_count", s.Spec.Autoscaling.MaxNodeCount),
+		d.Set("initial_node_count", s.Spec.InitialNodeCount),
 		d.Set("current_node_count", s.Status.CurrentNode),
 		d.Set("scale_down_cooldown_time", s.Spec.Autoscaling.ScaleDownCooldownTime),
 		d.Set("priority", s.Spec.Autoscaling.Priority),
@@ -731,7 +733,7 @@ func resourceNodePoolRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("subnet_list", s.Spec.NodeTemplate.NodeNicSpec.PrimaryNic.SubnetList),
 		d.Set("extend_params", flattenExtendParams(s.Spec.NodeTemplate.ExtendParam)),
 		d.Set("taints", flattenResourceNodeTaints(s.Spec.NodeTemplate.Taints)),
-		d.Set("extension_scale_groups", flattenExtensionScaleGroups(s.Spec.ExtensionScaleGroups)),
+		d.Set("extension_scale_groups", sortExtensionScaleGroups(d, flattenExtensionScaleGroups(s.Spec.ExtensionScaleGroups))),
 	)
 
 	if s.Spec.NodeTemplate.BillingMode != 0 {
@@ -775,6 +777,32 @@ func flattenExtensionScaleGroups(extensionScaleGroups []nodepools.ExtensionScale
 		}
 	}
 
+	return res
+}
+
+func sortExtensionScaleGroups(d *schema.ResourceData, groups []map[string]interface{}) []map[string]interface{} {
+	groupsRaw, ok := d.GetOk("extension_scale_groups")
+	if !ok {
+		return groups
+	}
+	groupsMap := make(map[string]map[string]interface{})
+	for _, group := range groups {
+		groupName := utils.PathSearch("metadata[0].name", group, "").(string)
+		groupsMap[groupName] = group
+	}
+
+	res := make([]map[string]interface{}, 0, len(groups))
+	for _, groupRaw := range groupsRaw.([]interface{}) {
+		groupName := utils.PathSearch("metadata[0].name", groupRaw, "").(string)
+		if group, exist := groupsMap[groupName]; exist {
+			res = append(res, group)
+			delete(groupsMap, groupName)
+		}
+	}
+
+	for _, group := range groupsMap {
+		res = append(res, group)
+	}
 	return res
 }
 
@@ -847,12 +875,22 @@ func flattenExtensionScaleGroupsSpecAutoscaling(spec interface{}) []map[string]i
 }
 
 func buildNodePoolUpdateOpts(d *schema.ResourceData, cfg *config.Config) (*nodepools.UpdateOpts, error) {
+	var initialNodeCount int
+	if !d.Get("ignore_initial_node_count").(bool) {
+		initialNodeCount = d.Get("initial_node_count").(int)
+	}
+	rootVolume := buildResourceNodeRootVolume(d)
+	loginSpec, err := buildUpdateResourceNodeLoginSpec(d)
+	if err != nil {
+		return nil, err
+	}
 	updateOpts := nodepools.UpdateOpts{
 		Metadata: nodepools.UpdateMetaData{
 			Name: d.Get("name").(string),
 		},
 		Spec: nodepools.UpdateSpec{
-			InitialNodeCount: utils.Int(d.Get("initial_node_count").(int)),
+			InitialNodeCount:       initialNodeCount,
+			IgnoreInitialNodeCount: d.Get("ignore_initial_node_count").(bool),
 			Autoscaling: nodepools.AutoscalingSpec{
 				Enable:                d.Get("scall_enable").(bool),
 				MinNodeCount:          d.Get("min_node_count").(int),
@@ -861,14 +899,21 @@ func buildNodePoolUpdateOpts(d *schema.ResourceData, cfg *config.Config) (*nodep
 				Priority:              d.Get("priority").(int),
 			},
 			NodeTemplate: nodepools.UpdateNodeTemplate{
+				Login:                     loginSpec,
+				RootVolume:                &rootVolume,
+				DataVolumes:               buildResourceNodeDataVolume(d),
+				Storage:                   buildResourceNodeStorage(d),
 				UserTags:                  utils.ExpandResourceTags(d.Get("tags").(map[string]interface{})),
 				K8sTags:                   buildResourceNodeK8sTags(d),
+				ExtendParam:               buildExtendParams(d),
 				Taints:                    buildResourceNodeTaint(d),
 				InitializedConditions:     utils.ExpandToStringList(d.Get("initialized_conditions").([]interface{})),
 				ServerEnterpriseProjectID: cfg.GetEnterpriseProjectID(d),
 				Os:                        d.Get("os").(string),
 				NodeNicSpecUpdate:         buildResourceNodePoolNicSpec(d),
 			},
+			PodSecurityGroups:            buildPodSecurityGroups(d.Get("pod_security_groups").([]interface{})),
+			CustomSecurityGroups:         utils.ExpandToStringList(d.Get("security_groups").([]interface{})),
 			LabelPolicyOnExistingNodes:   d.Get("label_policy_on_existing_nodes").(string),
 			UserTagPolicyOnExistingNodes: d.Get("tag_policy_on_existing_nodes").(string),
 			TaintPolicyOnExistingNodes:   d.Get("taint_policy_on_existing_nodes").(string),
@@ -876,6 +921,36 @@ func buildNodePoolUpdateOpts(d *schema.ResourceData, cfg *config.Config) (*nodep
 		},
 	}
 	return &updateOpts, nil
+}
+
+func buildUpdateResourceNodeLoginSpec(d *schema.ResourceData) (nodes.LoginSpec, error) {
+	var loginSpec nodes.LoginSpec
+	if !d.HasChanges("key_pair", "password") {
+		return loginSpec, nil
+	}
+	loginSpec = nodes.LoginSpec{}
+	if d.HasChange("key_pair") {
+		if v := d.Get("key_pair"); v != "" {
+			loginSpec.SshKey = v.(string)
+		} else {
+			loginSpec.RemoveSshKey = true
+		}
+	}
+	if d.HasChange("password") {
+		if v := d.Get("password"); v != "" {
+			password, err := utils.TryPasswordEncrypt(d.Get("password").(string))
+			if err != nil {
+				return loginSpec, err
+			}
+			loginSpec.UserPassword = nodes.UserPassword{
+				Username: "root",
+				Password: password,
+			}
+		} else {
+			loginSpec.RemoveUserPassword = true
+		}
+	}
+	return loginSpec, nil
 }
 
 func resourceNodePoolUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -901,8 +976,8 @@ func resourceNodePoolUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      nodePoolStateRefreshFunc(cceClient, clusterId, nodePoolId, []string{""}),
-		Timeout:      d.Timeout(schema.TimeoutCreate),
-		Delay:        60 * time.Second,
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        30 * time.Second,
 		PollInterval: 10 * time.Second,
 	}
 	_, err = stateConf.WaitForStateContext(ctx)
@@ -933,8 +1008,8 @@ func resourceNodePoolDelete(ctx context.Context, d *schema.ResourceData, meta in
 		Target:       []string{"COMPLETED"},
 		Refresh:      nodePoolStateRefreshFunc(cceClient, clusterId, nodePoolId, nil),
 		Timeout:      d.Timeout(schema.TimeoutDelete),
-		Delay:        60 * time.Second,
-		PollInterval: 20 * time.Second,
+		Delay:        30 * time.Second,
+		PollInterval: 10 * time.Second,
 	}
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {

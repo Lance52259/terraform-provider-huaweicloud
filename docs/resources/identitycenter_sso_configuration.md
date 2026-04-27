@@ -38,17 +38,22 @@ The following arguments are supported:
 
 * `instance_id` - (Required, String, NonUpdatable) Specifies the ID of the Identity Center instance.
 
-* `configuration_type` - (Required, String) Specifies the sso configuration type. Value Options: **APP_AUTHENTICATION_CONFIGURATION**, **SESSION**.
+* `configuration_type` - (Required, String) Specifies the sso configuration type.
+  Value Options: **APP_AUTHENTICATION_CONFIGURATION**, **SESSION**.
 
-* `mfa_mode` - (Optional, String) Specifies the mfa mode. Value Options: **CONTEXT_AWARE**, **DISABLED**, **ALWAYS_ON**.
+* `mfa_mode` - (Required, String) Specifies the mfa mode.
+  Value Options: **CONTEXT_AWARE**, **DISABLED**, **ALWAYS_ON**.
 
-* `allowed_mfa_types` - (Optional, List) Specifies the mfa types. Value Options: **TOTP**, **WEBAUTHN**, **WEBAUTHN_SECURITY_KEY**.
+* `allowed_mfa_types` - (Required, List) Specifies the mfa types.
+  Value Options: **TOTP**, **WEBAUTHN**, **WEBAUTHN_SECURITY_KEY**.
 
-* `no_mfa_signin_behavior` - (Optional, String) Specifies the sign in behavior if not have mfa. Value Options: **ALLOWED_WITH_ENROLLMENT**, **ALLOWED**, **EMAIL_OTP**, **BLOCKED**.
+* `no_mfa_signin_behavior` - (Required, String) Specifies the sign in behavior if not have mfa.
+  Value Options: **ALLOWED_WITH_ENROLLMENT**, **ALLOWED**, **EMAIL_OTP**, **BLOCKED**.
 
-* `no_password_signin_behavior` - (Optional, String) Specifies the sign in behavior if not have password. Value Options: **BLOCKED**, **EMAIL_OTP**.
+* `no_password_signin_behavior` - (Required, String) Specifies the sign in behavior if not have password.
+  Value Options: **BLOCKED**, **EMAIL_OTP**.
 
-* `max_authentication_age` - (Optional, String) Specifies the max authentication age.
+* `max_authentication_age` - (Required, String) Specifies the max authentication age.
 
 ## Attribute Reference
 

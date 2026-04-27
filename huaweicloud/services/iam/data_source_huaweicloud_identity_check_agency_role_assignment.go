@@ -67,7 +67,8 @@ func dataSourceIdentityCheckAgencyRoleAssignmentRead(_ context.Context, d *schem
 		if projectId == "all" {
 			// "all" means to check whether the agency has the specified permissions
 			// for all projects, including existing and future projects.
-			checkAgencyRoleAssignmentPath = iamClient.Endpoint + "v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}/inherited_to_projects"
+			checkAgencyRoleAssignmentPath = iamClient.Endpoint +
+				"v3.0/OS-INHERIT/domains/{domain_id}/agencies/{agency_id}/roles/{role_id}/inherited_to_projects"
 			checkAgencyRoleAssignmentPath = strings.ReplaceAll(checkAgencyRoleAssignmentPath, "{domain_id}", cfg.DomainID)
 		} else {
 			checkAgencyRoleAssignmentPath = iamClient.Endpoint + "v3.0/OS-AGENCY/projects/{project_id}/agencies/{agency_id}/roles/{role_id}"

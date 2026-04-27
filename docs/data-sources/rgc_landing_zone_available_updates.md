@@ -37,5 +37,3 @@ In addition to all arguments above, the following attributes are exported:
 * `service_landing_zone_version` - The latest version number of Landing Zone.
 
 * `user_landing_zone_version` - The current version of the user's Landing Zone.
-
-

@@ -3,17 +3,17 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"strings"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 var identityCenterProfileDisassociateNonUpdateParams = []string{"instance_id", "identity_store_id", "accessor_type", "accessor_id"}
@@ -55,7 +55,7 @@ func ResourceIdentityCenterProfileDisassociate() *schema.Resource {
 	}
 }
 
-func resourceIdentityCenterProfileDisassociateCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterProfileDisassociateCreate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -99,15 +99,15 @@ func buildDisassociateProfileUserBodyParams(d *schema.ResourceData) map[string]i
 	return bodyParams
 }
 
-func resourceIdentityCenterProfileDisassociateRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterProfileDisassociateRead(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 
-func resourceIdentityCenterProfileDisassociateUpdate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterProfileDisassociateUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 
-func resourceIdentityCenterProfileDisassociateDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterProfileDisassociateDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	errorMsg := `This resource is only a one-time action resource for operating the component. Deleting this resource will
 not clear the corresponding request record, but will only remove the resource information from the tfstate file.`
 	return diag.Diagnostics{

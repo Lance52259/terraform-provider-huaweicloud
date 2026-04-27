@@ -22,56 +22,18 @@ func TestAccDataSourceCcBandwidthPackageSites_basic(t *testing.T) {
 				Config: testDataSourceCcBandwidthPackageSites_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_code"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.region_id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_type"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_cn"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_en"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.created_at"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.updated_at"),
-				),
-			},
-			{
-				Config: testDataSourceCcBandwidthPackageSites_site_code(),
-				Check: resource.ComposeTestCheckFunc(
-					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSource, "bandwidth_package_sites.0.site_code", "cn-south-guangzhou"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.region_id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_type"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_cn"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_en"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.created_at"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.updated_at"),
-				),
-			},
-			{
-				Config: testDataSourceCcBandwidthPackageSites_region_id(),
-				Check: resource.ComposeTestCheckFunc(
-					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSource, "bandwidth_package_sites.0.region_id", "cn-south-1"),
+					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.#"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.id"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_code"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_type"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_cn"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_en"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.created_at"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.updated_at"),
-				),
-			},
-			{
-				Config: testDataSourceCcBandwidthPackageSites_name(),
-				Check: resource.ComposeTestCheckFunc(
-					dc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(dataSource, "bandwidth_package_sites.0.name_en", "CN-South-Guangzhou"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_code"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.region_id"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.site_type"),
-					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.name_cn"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.created_at"),
 					resource.TestCheckResourceAttrSet(dataSource, "bandwidth_package_sites.0.updated_at"),
+					resource.TestCheckOutput("site_code_filter_is_useful", "true"),
+					resource.TestCheckOutput("region_id_filter_is_useful", "true"),
+					resource.TestCheckOutput("name_filter_is_useful", "true"),
 				),
 			},
 		},
@@ -79,26 +41,45 @@ func TestAccDataSourceCcBandwidthPackageSites_basic(t *testing.T) {
 }
 
 func testDataSourceCcBandwidthPackageSites_basic() string {
-	return `data "huaweicloud_cc_bandwidth_package_sites" "test" {}`
+	return `
+data "huaweicloud_cc_bandwidth_package_sites" "test" {}
+
+data "huaweicloud_cc_bandwidth_package_sites" "site_code_filter" {
+  site_code = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].site_code
+}
+locals {
+  site_code = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].site_code
+}
+output "site_code_filter_is_useful" {
+  value = length(data.huaweicloud_cc_bandwidth_package_sites.site_code_filter.bandwidth_package_sites) > 0 && alltrue(
+  [for v in data.huaweicloud_cc_bandwidth_package_sites.site_code_filter.bandwidth_package_sites[*].site_code :
+  v == local.site_code]
+  )
 }
 
-func testDataSourceCcBandwidthPackageSites_site_code() string {
-	return `
-data "huaweicloud_cc_bandwidth_package_sites" "test" {
-  site_code = "cn-south-guangzhou"	
-}`
+data "huaweicloud_cc_bandwidth_package_sites" "region_id_filter" {
+  region_id = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].region_id
+}
+locals {
+  region_id = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].region_id
+}
+output "region_id_filter_is_useful" {
+  value = length(data.huaweicloud_cc_bandwidth_package_sites.region_id_filter.bandwidth_package_sites) > 0 && alltrue(
+  [for v in data.huaweicloud_cc_bandwidth_package_sites.region_id_filter.bandwidth_package_sites[*].region_id :
+  v == local.region_id]
+  )
 }
 
-func testDataSourceCcBandwidthPackageSites_region_id() string {
-	return `
-data "huaweicloud_cc_bandwidth_package_sites" "test" {
-  region_id = "cn-south-1"
-}`
+data "huaweicloud_cc_bandwidth_package_sites" "name_filter" {
+  name = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].name_cn
 }
-
-func testDataSourceCcBandwidthPackageSites_name() string {
-	return `
-data "huaweicloud_cc_bandwidth_package_sites" "test" {
-  name = "CN-South-Guangzhou"
-}`
+locals {
+  name = data.huaweicloud_cc_bandwidth_package_sites.test.bandwidth_package_sites[0].name_cn
+}
+output "name_filter_is_useful" {
+  value = length(data.huaweicloud_cc_bandwidth_package_sites.name_filter.bandwidth_package_sites) > 0 && alltrue(
+  [for v in data.huaweicloud_cc_bandwidth_package_sites.name_filter.bandwidth_package_sites[*].name_cn : v == local.name]
+  )
+}
+`
 }

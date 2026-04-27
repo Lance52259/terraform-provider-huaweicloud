@@ -21,13 +21,13 @@ func handleMultiOperationsError(err error) (bool, error) {
 		// The operation was executed successfully and does not need to be executed again.
 		return false, nil
 	}
-	if errCode, ok := err.(golangsdk.ErrUnexpectedResponseCode); ok && errCode.Actual == 409 {
+	if errCode, ok := err.(golangsdk.ErrDefault409); ok {
 		var apiError interface{}
 		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
 			return false, fmt.Errorf("unmarshal the response body failed: %s", jsonErr)
 		}
 
-		errorCode, errorCodeErr := jmespath.Search("errCode", apiError)
+		errorCode, errorCodeErr := jmespath.Search("errCode||error_code", apiError)
 		if errorCodeErr != nil {
 			return false, fmt.Errorf("error parse errorCode from response body: %s", errorCodeErr)
 		}

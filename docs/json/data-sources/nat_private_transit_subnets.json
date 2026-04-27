@@ -1,0 +1,106 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_nat_private_transit_subnets": {
+          "block": {
+            "attributes": {
+              "descriptions": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "names": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "status": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "transit_subnets": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "cidr": "string",
+                      "created_at": "string",
+                      "description": "string",
+                      "id": "string",
+                      "ip_count": "number",
+                      "name": "string",
+                      "project_id": "string",
+                      "status": "string",
+                      "tags": [
+                        "map",
+                        "string"
+                      ],
+                      "type": "string",
+                      "updated_at": "string",
+                      "virsubnet_id": "string",
+                      "virsubnet_project_id": "string",
+                      "vpc_id": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              },
+              "virsubnet_ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "virsubnet_project_ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              },
+              "vpc_ids": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "optional": true
+              }
+            }
+          },
+          "product": {
+            "short": "NAT",
+            "name": "NAT Gateway",
+            "catalog": "Networking",
+            "name_cn": "NAT网关",
+            "catalog_cn": "网络"
+          }
+        }
+      }
+    }
+  }
+}

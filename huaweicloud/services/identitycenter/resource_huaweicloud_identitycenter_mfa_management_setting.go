@@ -3,12 +3,12 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -169,7 +169,8 @@ func resourceIdentityCenterMfaManagementSettingDelete(_ context.Context, d *sche
 		return diag.Errorf("error updating Identity Center sso configuration: %s", err)
 	}
 
-	errorMsg := "Deleting mfa management setting is unsupported. The resource is removed from the state, and the mfa management setting is reset to default setting."
+	errorMsg := "Deleting mfa management setting is unsupported. The resource is removed from the state," +
+		" and the mfa management setting is reset to default setting."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,

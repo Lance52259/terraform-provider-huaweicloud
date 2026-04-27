@@ -29,7 +29,7 @@ resource "huaweicloud_identityv5_service_linked_agency" "test" {
 
 The following arguments are supported:
 
-* `service_principal` - (Required, String, ForceNew) Specifies the service principal, which starts with `service.` and 
+* `service_principal` - (Required, String, ForceNew) Specifies the service principal, which starts with `service.` and
   is followed by a string of 1 to 56 characters containing only letters, digits, and hyphens `-`.
 
 * `description` - (Optional, String, ForceNew) Specifies the description of a service-linked agency.
@@ -43,14 +43,13 @@ In addition to all arguments above, the following attributes are exported:
 * `urn` - Indicates the uniform resource name.
 
 * `trust_policy` - Indicates the JSON format of the policy document of a trust agency's trust policy.
- 
+
 * `agency_id` - Indicates the service-linked agency ID.
- 
+
 * `agency_name` - Indicates the service-linked agency name .
- 
+
 * `path` - Indicates the resource path in the format of `service-linked-agency/<service_principal>/`.
- 
+
 * `created_at` - Indicates the time when the service-linked agency was created.
 
 * `max_session_duration` - Indicates the maximum session duration of the service-linked agency.
-

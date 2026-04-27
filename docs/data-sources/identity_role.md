@@ -93,6 +93,7 @@ data "huaweicloud_identity_role" "kms_adm" {
   display_name = "KMS Administrator"
 }
 ```
+
 ```hcl
 variable "role_id" {}
 
@@ -100,11 +101,13 @@ data "huaweicloud_identity_permission_detail" "test" {
   role_id = var.role_id
 }
 ```
+
 ```hcl
 data "huaweicloud_identity_role" "role_1" {
   name = "system_all_64"
 }
 ```
+
 ## Argument Reference
 
 * `display_name` - (Optional, String) Specifies the display name of the role displayed on the console.
@@ -120,7 +123,11 @@ data "huaweicloud_identity_role" "role_1" {
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - Indicates the data source ID in UUID format.
+
 * `description` - Indicates the description of the policy.
+
 * `catalog` - Indicates the service catalog of the policy.
+
 * `type` - Indicates the display mode of the policy.
+
 * `policy` - Indicates the content of the policy.

@@ -29,11 +29,14 @@ const (
 	InstanceTypeEssCold   = "ess-cold"
 	InstanceTypeEssMaster = "ess-master"
 	InstanceTypeEssClient = "ess-client"
+	InstanceTypeEmbedding = "embedding"
 
 	ClusterStatusInProcess   = "100" // The operation, such as instance creation, is in progress.
 	ClusterStatusAvailable   = "200"
 	ClusterStatusUnavailable = "303"
 )
+
+var embeddingTypes = []string{"chinese", "english", "arabic", "tools", "thai", "turkish", "portuguese", "chinese-english", "spanish"}
 
 var cssClusterSchema = map[string]*schema.Schema{
 	"region": {
@@ -119,7 +122,6 @@ var cssClusterSchema = map[string]*schema.Schema{
 	"subnet_id": {
 		Type:        schema.TypeString,
 		Optional:    true,
-		ForceNew:    true,
 		Computed:    true,
 		Description: "schema: Required",
 	},
@@ -128,6 +130,26 @@ var cssClusterSchema = map[string]*schema.Schema{
 		Optional:    true,
 		Computed:    true,
 		Description: "schema: Required",
+	},
+	"disk_encryption": {
+		Type:     schema.TypeList,
+		Optional: true,
+		Computed: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"system_encrypted": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+				"system_cmk_id": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+		},
 	},
 	"backup_strategy": {
 		Type:     schema.TypeList,
@@ -434,11 +456,12 @@ var cssClusterSchema = map[string]*schema.Schema{
 	},
 }
 
-var clusterNonUpdatableParams = []string{"engine_version", "availability_zone"}
+var clusterNonUpdatableParams = []string{"engine_version", "availability_zone", "disk_encryption",
+	"disk_encryption.*.system_encrypted", "disk_encryption.*.system_cmk_id"}
 
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/role_extend
 // @API CSS POST /v1.0/{project_id}/clusters
-// @API CSS POST /v1.0/{project_id}/{resource_type}/{cluster_id}/tags
+// @API CSS POST /v1.0/{project_id}/{resource_type}/{cluster_id}/tags/action
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/public/open
 // @API CSS PUT /v1.0/{project_id}/clusters/{cluster_id}/public/whitelist/close
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/publickibana/bandwidth
@@ -446,7 +469,6 @@ var clusterNonUpdatableParams = []string{"engine_version", "availability_zone"}
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/index_snapshot/setting
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/vpcepservice/open
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/vpcepservice/permissions
-// @API CSS DELETE /v1.0/{project_id}/{resource_type}/{cluster_id}/tags/{key}
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/index_snapshot/auto_setting
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/public/whitelist/update
 // @API CSS DELETE /v1.0/{project_id}/clusters/{cluster_id}
@@ -467,6 +489,7 @@ var clusterNonUpdatableParams = []string{"engine_version", "availability_zone"}
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/mode/change
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/password/reset
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/sg/change
+// @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/subnet/change
 // @API CSS POST /v1.0/{project_id}/cluster/{cluster_id}/period
 // @API CSS POST /v1.0/extend/{project_id}/clusters/{cluster_id}/role/shrink
 // @API CSS POST /v1.0/{project_id}/clusters/{cluster_id}/node/offline
@@ -510,6 +533,11 @@ func essOrColdNodeSchema() *schema.Resource {
 			"instance_number": {
 				Type:     schema.TypeInt,
 				Required: true,
+			},
+
+			"type": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 
 			"volume": {
@@ -668,7 +696,11 @@ func buildClusterCreateParameters(d *schema.ResourceData, conf *config.Config) (
 	roles := make([]interface{}, 0)
 	if ess, ok := d.GetOk("ess_node_config"); ok {
 		essNode := ess.([]interface{})[0].(map[string]interface{})
-		roles = append(roles, buildCreateClusterRole(essNode, InstanceTypeEss))
+		instanceType := InstanceTypeEss
+		if essNode["type"].(string) != "" {
+			instanceType = essNode["type"].(string)
+		}
+		roles = append(roles, buildCreateClusterRole(essNode, instanceType))
 
 		if v, ok := d.GetOk("master_node_config"); ok {
 			node := v.([]interface{})[0].(map[string]interface{})
@@ -758,6 +790,16 @@ func buildClusterCreateParameters(d *schema.ResourceData, conf *config.Config) (
 				"enableWhiteList": ok,
 				"whiteList":       whitelist,
 			},
+		}
+	}
+
+	if v, ok := d.GetOk("disk_encryption"); ok {
+		diskEncryptionRaw := v.([]interface{})
+		if diskEncryption, ok := diskEncryptionRaw[0].(map[string]interface{}); ok {
+			cluster["diskEncryption"] = map[string]interface{}{
+				"systemEncrypted": diskEncryption["system_encrypted"],
+				"systemCmkid":     diskEncryption["system_cmk_id"],
+			}
 		}
 	}
 
@@ -859,6 +901,7 @@ func resourceCssClusterRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("bandwidth_resource_id", utils.PathSearch("bandwidthResourceId", clusterDetail, nil)),
 		d.Set("is_period", utils.PathSearch("period", clusterDetail, nil)),
 		d.Set("backup_available", utils.PathSearch("backupAvailable", clusterDetail, nil)),
+		d.Set("disk_encryption", flattenDiskEncryption(clusterDetail)),
 		d.Set("disk_encrypted", utils.PathSearch("diskEncrypted", clusterDetail, nil)),
 	)
 
@@ -909,6 +952,21 @@ func getClusterDetails(client *golangsdk.ServiceClient, clusterID string) (inter
 	}
 
 	return utils.FlattenResponse(getClusterDetailsResp)
+}
+
+func flattenDiskEncryption(clusterDetail interface{}) []map[string]interface{} {
+	diskEncrypted := utils.PathSearch("diskEncrypted", clusterDetail, false).(bool)
+	cmkId := utils.PathSearch("cmkId", clusterDetail, "").(string)
+	systemEncrypted := "0"
+	if diskEncrypted {
+		systemEncrypted = "1"
+	}
+	return []map[string]interface{}{
+		{
+			"system_encrypted": systemEncrypted,
+			"system_cmk_id":    cmkId,
+		},
+	}
 }
 
 func flattenClusterNodes(nodes []interface{}) []interface{} {
@@ -1115,6 +1173,21 @@ func setNodeConfigsAndAzToState(clusterDetail interface{}, d *schema.ResourceDat
 			mErr = multierror.Append(mErr,
 				d.Set("cold_node_config", []interface{}{v}),
 			)
+		case InstanceTypeEmbedding:
+			volumeSize := utils.PathSearch("volume|[0]|size", v, 0).(int)
+			volumeType := utils.PathSearch("volume|[0]|volume_type", v, "").(string)
+			if volumeSize == 0 && volumeType == "" {
+				v["volume"] = []interface{}{map[string]interface{}{
+					"size":        d.Get("ess_node_config.0.volume.0.size").(int),
+					"volume_type": d.Get("ess_node_config.0.volume.0.volume_type").(string),
+				}}
+			}
+			if ids, ok := d.GetOk("ess_node_config.0.shrink_node_ids"); ok {
+				v["shrink_node_ids"] = ids.([]interface{})
+			}
+			mErr = multierror.Append(mErr,
+				d.Set("ess_node_config", []interface{}{v}),
+			)
 		default:
 			log.Printf("[ERROR] Does not support to set the %s node config to state", k)
 		}
@@ -1129,6 +1202,9 @@ func getNodeConfigMapAndAzArray(instances []interface{}) (map[string]map[string]
 		azArray = append(azArray, utils.PathSearch("azCode", v, "").(string))
 
 		nodeType := utils.PathSearch("type", v, "").(string)
+		if utils.IsStrContainsSliceElement(nodeType, embeddingTypes, true, false) {
+			nodeType = InstanceTypeEmbedding
+		}
 		if node, ok := nodeConfigMap[nodeType]; ok {
 			node["instance_number"] = node["instance_number"].(int) + 1
 		} else {
@@ -1213,6 +1289,14 @@ func resourceCssClusterUpdate(ctx context.Context, d *schema.ResourceData, meta 
 	// update security group ID
 	if d.HasChange("security_group_id") {
 		err = updateSecurityGroup(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// update subnet ID
+	if d.HasChange("subnet_id") {
+		err = updateClusterSubnet(ctx, d, client)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -2608,6 +2692,27 @@ func updateSecurityGroup(ctx context.Context, d *schema.ResourceData, client *go
 	err = checkClusterOperationResult(ctx, client, d.Id(), d.Timeout(schema.TimeoutUpdate))
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func updateClusterSubnet(_ context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	updateHttpUrl := "v1.0/{project_id}/clusters/{cluster_id}/subnet/change"
+	updatePath := client.Endpoint + updateHttpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{cluster_id}", d.Id())
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody: map[string]interface{}{
+			"subnet_id": d.Get("subnet_id"),
+		},
+	}
+
+	_, err := client.Request("POST", updatePath, &updateOpt)
+	if err != nil {
+		return fmt.Errorf("error updating CSS cluster subnet ID: %s", err)
 	}
 
 	return nil

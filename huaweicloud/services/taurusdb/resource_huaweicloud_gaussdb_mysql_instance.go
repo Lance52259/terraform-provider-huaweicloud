@@ -46,6 +46,7 @@ type ctxType string
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/monitor-policy
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/internal-ip
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/port
+// @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/security-group
 // @API GaussDBforMySQL POST /v3/{project_id}/instances/{instance_id}/dns
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/dns
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/ssl-option
@@ -142,6 +143,11 @@ func ResourceGaussDBInstance() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "Cluster",
+			},
 			"security_group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -176,6 +182,12 @@ func ResourceGaussDBInstance() *schema.Resource {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Default:  1,
+			},
+			"volume_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
 			},
 			"volume_size": {
 				Type:     schema.TypeInt,
@@ -454,10 +466,6 @@ func ResourceGaussDBInstance() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"mode": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"db_user_name": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -626,7 +634,7 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		DedicatedResourceId: d.Get("dedicated_resource_id").(string),
 		TimeZone:            d.Get("time_zone").(string),
 		SlaveCount:          d.Get("read_replicas").(int),
-		Mode:                "Cluster",
+		Mode:                d.Get("mode").(string),
 		DataStore:           resourceGaussDBDataStore(d),
 	}
 
@@ -645,9 +653,10 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		createOpts.MasterAZ = v.(string)
 	}
 
-	if common.HasFilledOpt(d, "volume_size") {
+	if common.HasFilledOpt(d, "volume_size") || common.HasFilledOpt(d, "volume_type") {
 		volume := &instances.VolumeOpt{
 			Size: d.Get("volume_size").(int),
+			Type: d.Get("volume_type").(string),
 		}
 		createOpts.Volume = volume
 	}
@@ -1051,6 +1060,7 @@ func setNodes(d *schema.ResourceData, nodes []instances.Nodes) []error {
 	flavor := ""
 	slaveCount := 0
 	volumeSize := 0
+	volumeType := ""
 	nodesList := make([]map[string]interface{}, 0, 1)
 	for _, raw := range nodes {
 		node := map[string]interface{}{
@@ -1066,6 +1076,13 @@ func setNodes(d *schema.ResourceData, nodes []instances.Nodes) []error {
 		if raw.Volume.Size > 0 {
 			volumeSize = raw.Volume.Size
 		}
+		if raw.Volume.Type != "" {
+			if raw.Volume.Type == "STANDARDPOOL" {
+				volumeType = "DL5"
+			} else if raw.Volume.Type == "POOL" {
+				volumeType = "DL6"
+			}
+		}
 		nodesList = append(nodesList, node)
 		if raw.Type == "slave" && (raw.Status == "ACTIVE" || raw.Status == "BACKING UP") {
 			slaveCount++
@@ -1078,6 +1095,7 @@ func setNodes(d *schema.ResourceData, nodes []instances.Nodes) []error {
 	errs = append(errs, d.Set("nodes", nodesList))
 	errs = append(errs, d.Set("read_replicas", slaveCount))
 	errs = append(errs, d.Set("volume_size", volumeSize))
+	errs = append(errs, d.Set("volume_type", volumeType))
 	if flavor != "" {
 		log.Printf("[DEBUG] node flavor: %s", flavor)
 		errs = append(errs, d.Set("flavor", flavor))
@@ -1480,7 +1498,7 @@ func resourceGaussDBInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	if d.HasChange("enterprise_project_id") {
 		migrateOpts := config.MigrateResourceOpts{
 			ResourceId:   instanceId,
-			ResourceType: "gaussdb",
+			ResourceType: "gaussdbformysql",
 			RegionId:     region,
 			ProjectId:    cfg.GetProjectID(region),
 		}

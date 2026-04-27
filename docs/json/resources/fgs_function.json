@@ -72,22 +72,26 @@
               "enable_auth_in_header": {
                 "type": "bool",
                 "description": "Whether the authentication in the request header is enabled.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "enable_class_isolation": {
                 "type": "bool",
                 "description": "Whether the class isolation is enabled for the JAVA runtime functions.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "enable_dynamic_memory": {
                 "type": "bool",
                 "description": "Whether the dynamic memory configuration is enabled.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "enable_lts_log": {
                 "type": "bool",
                 "description": "Whether to enable the LTS log.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "encrypted_user_data": {
                 "type": "string",
@@ -158,7 +162,8 @@
               "is_stateful_function": {
                 "type": "bool",
                 "description": "Whether the function is a stateful function.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "log_group_id": {
                 "type": "string",
@@ -190,7 +195,8 @@
                   "string"
                 ],
                 "description": "The custom tags configuration that used to filter the LTS logs.",
-                "optional": true
+                "optional": true,
+                "computed": true
               },
               "max_instance_num": {
                 "type": "string",
@@ -353,6 +359,19 @@
                     }
                   },
                   "description": "The list of function mount configuration."
+                },
+                "nesting_mode": "list"
+              },
+              "func_mounts_order": {
+                "block": {
+                  "attributes": {
+                    "local_mount_path": {
+                      "type": "string",
+                      "description": "The origin function access path.",
+                      "computed": true
+                    }
+                  },
+                  "description": "schema:{\"Internal\":true};The origin list of function mount configuration that used to reorder the 'func_mounts' parameter."
                 },
                 "nesting_mode": "list"
               },

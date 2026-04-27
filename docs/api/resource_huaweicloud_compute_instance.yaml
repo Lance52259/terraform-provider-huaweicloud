@@ -14,6 +14,9 @@ paths:
     /v1.1/{project_id}/cloudservers/{server_id}/resize:
         POST:
             tag: ECS
+    /v1.1/{project_id}/cloudservers/detail:
+        GET:
+            tag: ECS
     /v1/{project_id}/cloudservers/{server_id}:
         GET:
             tag: ECS
@@ -21,6 +24,9 @@ paths:
             tag: ECS
     /v1/{project_id}/cloudservers/{server_id}/block_device/{volume_id}:
         GET:
+            tag: ECS
+    /v1/{project_id}/cloudservers/{server_id}/changeos:
+        POST:
             tag: ECS
     /v1/{project_id}/cloudservers/{server_id}/changevpc:
         POST:
@@ -31,6 +37,9 @@ paths:
     /v1/{project_id}/cloudservers/{server_id}/metadata/{key}:
         DELETE:
             tag: ECS
+    /v1/{project_id}/cloudservers/{server_id}/migrate:
+        POST:
+            tag: ECS
     /v1/{project_id}/cloudservers/{server_id}/os-reset-password:
         PUT:
             tag: ECS
@@ -38,6 +47,9 @@ paths:
         POST:
             tag: ECS
     /v1/{project_id}/cloudservers/action:
+        POST:
+            tag: ECS
+    /v1/{project_id}/cloudservers/actions/change-charge-mode:
         POST:
             tag: ECS
     /v1/{project_id}/cloudservers/delete:
@@ -59,6 +71,9 @@ paths:
         POST:
             tag: EVS
     /v2.1/{project_id}/servers/{server_id}/action:
+        POST:
+            tag: ECS
+    /v2/{project_id}/cloudservers/{server_id}/changeos:
         POST:
             tag: ECS
     /v2/{project_id}/cloudvolumes/{volume_id}:

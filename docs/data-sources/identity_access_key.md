@@ -48,7 +48,7 @@ data "huaweicloud_identity_access_key" "test" {
 }
 ```
 
-### Query AccessKey 
+### Query AccessKey
 
 ```hcl
 data "huaweicloud_identity_access_key" "test3" {}
@@ -72,13 +72,13 @@ The `credentials` block contains:
 
 * `access` - Indicates the Access Key (AK) that was queried.
 
-* `status` - Indicates the status of the access_key. Valid values: 
-  * **active**: The access_key is enabled. 
-  * **inactive**: The access_key is disabled.
+* `status` - Indicates the status of the access_key. Valid values:
+  + **active**: The access_key is enabled.
+  + **inactive**: The access_key is disabled.
 
-* `create_time` - Indicates the creation time of the access_key. The value is a UTC time in the YYYY-MM-DDTHH:mm:ss.ssssssZ format.
+* `create_time` - Indicates the creation time of the access_key. The value is a UTC time in the
+  **YYYY-MM-DDTHH:mm:ss.ssssssZ** format.
 
 * `description` - Indicates the description of the access_key.
 
 * `last_use_time` - Indicates the field is only present when you are certified by access_key.
-

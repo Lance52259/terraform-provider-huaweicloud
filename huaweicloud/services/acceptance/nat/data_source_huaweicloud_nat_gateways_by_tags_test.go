@@ -129,8 +129,8 @@ data "huaweicloud_nat_gateways_by_tags" "filter_by_matches" {
   }
 
   matches {
-    key    = "resource_name"
-    value  = "%[2]s"
+    key   = "resource_name"
+    value = "%[2]s"
   }
 }
 

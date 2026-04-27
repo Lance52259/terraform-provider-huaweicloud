@@ -3,12 +3,12 @@ subcategory: "Cloud Container Engine Autopilot (CCE Autopilot)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_cce_autopilot_cluster_upgrade_info"
 description: |-
-  Use this data source to get  the list of CCE Autopilot clusters upgrade info within huaweicloud.
+  Use this data source to get the list of CCE Autopilot clusters upgrade info within huaweicloud.
 ---
 
 # huaweicloud_cce_autopilot_cluster_upgrade_info
 
-Use this data source to get  the list of CCE Autopilot clusters upgrade info within huaweicloud.
+Use this data source to get the list of CCE Autopilot clusters upgrade info within huaweicloud.
 
 ## Example Usage
 
@@ -24,7 +24,8 @@ data "huaweicloud_cce_autopilot_cluster_upgrade_info" "test" {
 
 The following arguments are supported:
 
-* `region` - (Optional, String) Specifies the region in which to query the resource. If omitted, the provider-level region will be used.
+* `region` - (Optional, String) Specifies the region in which to query the resource.
+  If omitted, the provider-level region will be used.
 
 * `cluster_id` - (Required, String) Specifies the Cluster ID.
 
@@ -33,6 +34,10 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
+
+* `kind` - The API type.
+
+* `api_version` - The API version.
 
 * `metadata` - Upgrade status information.
 
@@ -53,7 +58,8 @@ The `metadata` block supports:
 
 * `name` - Resource name.
 
-* `labels` - Resource labels, in key/value pair format. These are reserved fields in the interface and will not take effect.
+* `labels` - Resource labels, in key/value pair format. These are reserved fields in the interface
+  and will not take effect.
 
 * `annotations` - Resource annotations, which consist of key/value pairs.
 
@@ -88,7 +94,8 @@ The `last_upgrade_info` block supports:
 <a name="spec_upgrade_feature_gates_struct"></a>
 The `upgrade_feature_gates` block supports:
 
-* `support_upgrade_page_v4` - Whether the cluster upgrade Console interface supports version V4. This field is generally used by the CCE Console.
+* `support_upgrade_page_v4` - Whether the cluster upgrade Console interface supports version V4.
+  This field is generally used by the CCE Console.
 
 <a name="spec_version_info_struct"></a>
 The `version_info` block supports:

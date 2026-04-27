@@ -1,0 +1,18 @@
+info:
+    version: ""
+    title: resource_huaweicloud_workspace_application_rule_restriction
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: Workspace
+paths:
+    /v1/{project_id}/app-center/app-restricted-rules:
+        GET:
+            tag: Workspace
+        POST:
+            tag: Workspace
+    /v1/{project_id}/app-center/app-restricted-rules/actions/batch-delete:
+        POST:
+            tag: Workspace

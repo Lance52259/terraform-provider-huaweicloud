@@ -2,13 +2,14 @@ package identitycenter
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -319,13 +320,12 @@ func resourceIdentityCenterIdentityProviderDelete(_ context.Context, d *schema.R
 	}
 
 	return nil
-
 }
 
 func resourceIdentityCenterIdentityProviderImport(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid id format, must be <identity_store_id>/<idp_id>")
+		return nil, errors.New("invalid id format, must be <identity_store_id>/<idp_id>")
 	}
 	d.SetId(parts[1])
 	mErr := multierror.Append(nil,

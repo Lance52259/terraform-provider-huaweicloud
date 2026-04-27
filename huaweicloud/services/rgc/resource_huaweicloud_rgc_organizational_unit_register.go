@@ -23,7 +23,7 @@ var organizationalUnitRegisterNonUpdatableParams = []string{"organizational_unit
 
 // @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/register
 // @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/re-register
-// @API RGC POST /v1/managed-organization/managed-organizational-units/{managed_organizational_unit_id}/de-register
+// @API RGC POST /v1/managed-organization/organizational-units/{organizational_unit_id}/de-register
 // @API RGC GET /v1/managed-organization/managed-organizational-units/{managed_organizational_unit_id}
 // @API RGC GET /v1/managed-organization/{operation_id}
 func ResourceOrganizationalUnitRegister() *schema.Resource {
@@ -138,7 +138,7 @@ func resourceOrganizationalUnitRegisterRead(_ context.Context, d *schema.Resourc
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func resourceOrganizationalUnitRegisterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceOrganizationalUnitRegisterUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 
@@ -183,11 +183,10 @@ func registerOrganizationalUnit(ctx context.Context, d *schema.ResourceData, met
 
 	if err != nil {
 		var errDefault404 golangsdk.ErrDefault404
-		if errors.As(err, &errDefault404) {
-			registerOrganizationalUnitPath = registerOrganizationalUnitClient.Endpoint + registerOrganizationalUnitUrl
-		} else {
+		if !errors.As(err, &errDefault404) {
 			return err
 		}
+		registerOrganizationalUnitPath = registerOrganizationalUnitClient.Endpoint + registerOrganizationalUnitUrl
 	} else {
 		registerOrganizationalUnitPath = registerOrganizationalUnitClient.Endpoint + reRegisterOrganizationalUnitUrl
 	}

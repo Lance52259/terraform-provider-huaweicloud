@@ -22,33 +22,36 @@ The following arguments are supported:
 
 * `locale` - (Optional, String) Specifies the display language.
 
-* `service` - (Optional, String) Specifies the cloud service name.  
+* `service` - (Optional, String) Specifies the cloud service name.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
-* `services` - Indicates cloud services.
-  The [service](#service) structure is documented below.
+* `id` - The data source ID.
 
-<a name="service"></a>
-The `service` block supports:
+* `services` - Indicates the cloud services.
+  The [services](#service_struct) structure is documented below.
 
-* `service` - Specifies the cloud service name.
+<a name="service_struct"></a>
+The `services` block supports:
 
-* `service_i18n_display_name` - Specifies the display name of the cloud service. You can set the language by setting the locale parameter.
+* `service` - Indicates the cloud service name.
 
-* `resource_types` - Specifies the resource type list.
-  The [resource type](#resource_type) structure is documented below.
+* `service_i18n_display_name` - Indicates the display name of the cloud service. You can set the language by setting the
+  locale parameter.
 
-<a name="resource_type"></a>
-The `resource type` block supports:
+* `resource_types` - Indicates the resource type list.
+  The [resource_types](#resource_types_struct) structure is documented below.
 
-* `resource_type` - Specifies the name of the resource type.
+<a name="resource_types_struct"></a>
+The `resource_types` block supports:
 
-* `resource_type_i18n_display_name` - Specifies the display name of the resource type. You can set the language by setting the locale parameter.
+* `resource_type` - Indicates the name of the resource type.
 
-* `global` - Specifies whether the resource is a global resource.
+* `resource_type_i18n_display_name` - Indicates the display name of the resource type. You can set the language by
+  setting the locale parameter.
 
-* `regions` - Specifies regions supported.
+* `global` - Whether the resource is a global resource.
 
+* `regions` - Indicates regions supported.

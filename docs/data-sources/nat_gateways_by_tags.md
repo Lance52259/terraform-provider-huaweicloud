@@ -70,7 +70,6 @@ The `tags` block supports:
     If the value starts with (*), it indicates that fuzzy match is performed based on the value following (*).
     The value cannot contain only asterisks.
 
-
 <a name="matches_struct"></a>
 The `matches` block supports:
 
@@ -99,7 +98,8 @@ The `resources` block supports:
 
 * `resource_name` - The resource name.
 
-* `resource_detail` - The detail of the matched resources. The value is a resource object used for extension. This parameter is left blank by default.
+* `resource_detail` - The detail of the matched resources. The value is a resource object used for extension.
+  This parameter is left blank by default.
 
 * `tags` - The tag list.
   The [tags](#nat_gateways_tags) structure is documented below.
@@ -125,4 +125,3 @@ The `tags` block supports:
     <br/>4. Spaces before and after a value will be discarded.
     <br/>5. It cannot contain non-printable ASCII characters (`0`–`31`) and the following characters: =*<>,|/
     <br/>6. It can contain only letters, digits, hyphens (-), underscores (_), and periods (.).
-

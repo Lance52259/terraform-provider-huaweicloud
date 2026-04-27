@@ -3,14 +3,15 @@ package identitycenter
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -279,15 +280,17 @@ func resourceIdentityCenterApplicationInstanceCreate(ctx context.Context, d *sch
 	instanceId := d.Get("instance_id").(string)
 
 	var (
-		createApplicationInstanceHttpUrl   = "v1/instances/{instance_id}/application-instances"
-		updateDisplayDataHttpUrl           = "v1/instances/{instance_id}/application-instances/{application_instance_id}/display-data"
-		importMetadataHttpUrl              = "v1/instances/{instance_id}/application-instances/{application_instance_id}/metadata"
-		updateResponseConfigHttpUrl        = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-configuration"
-		updateResponseSchemaConfigHttpUrl  = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-schema-configuration"
-		updateServiceProviderConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/service-provider-configuration"
-		updateStatusHttpUrl                = "v1/instances/{instance_id}/application-instances/{application_instance_id}/status"
-		updateSecurityConfigHttpUrl        = "v1/instances/{instance_id}/application-instances/{application_instance_id}/security-configuration"
-		createApplicationInstanceProduct   = "identitycenter"
+		createApplicationInstanceHttpUrl  = "v1/instances/{instance_id}/application-instances"
+		updateDisplayDataHttpUrl          = "v1/instances/{instance_id}/application-instances/{application_instance_id}/display-data"
+		importMetadataHttpUrl             = "v1/instances/{instance_id}/application-instances/{application_instance_id}/metadata"
+		updateResponseConfigHttpUrl       = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-configuration"
+		updateResponseSchemaConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}" +
+			"/response-schema-configuration"
+		updateServiceProviderConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}" +
+			"/service-provider-configuration"
+		updateStatusHttpUrl              = "v1/instances/{instance_id}/application-instances/{application_instance_id}/status"
+		updateSecurityConfigHttpUrl      = "v1/instances/{instance_id}/application-instances/{application_instance_id}/security-configuration"
+		createApplicationInstanceProduct = "identitycenter"
 	)
 
 	client, err := cfg.NewServiceClient(createApplicationInstanceProduct, region)
@@ -481,17 +484,25 @@ func resourceIdentityCenterApplicationInstanceRead(_ context.Context, d *schema.
 		d.Set("name", utils.PathSearch("application_instance.name", getApplicationInstanceRespBody, nil)),
 		d.Set("display_name", utils.PathSearch("application_instance.display.display_name", getApplicationInstanceRespBody, nil)),
 		d.Set("description", utils.PathSearch("application_instance.display.description", getApplicationInstanceRespBody, nil)),
-		d.Set("active_certificate", flattenActiveCertificate(utils.PathSearch("application_instance.active_certificate", getApplicationInstanceRespBody, nil))),
-		d.Set("identity_provider_config", flattenIdentityProviderConfig(utils.PathSearch("application_instance.identity_provider_config", getApplicationInstanceRespBody, nil))),
+		d.Set("active_certificate",
+			flattenActiveCertificate(utils.PathSearch("application_instance.active_certificate", getApplicationInstanceRespBody, nil))),
+		d.Set("identity_provider_config",
+			flattenIdentityProviderConfig(utils.PathSearch("application_instance.identity_provider_config", getApplicationInstanceRespBody, nil))),
 		d.Set("visible", utils.PathSearch("application_instance.visible", getApplicationInstanceRespBody, nil)),
 		d.Set("status", utils.PathSearch("application_instance.status", getApplicationInstanceRespBody, nil)),
 		d.Set("client_id", utils.PathSearch("application_instance.client_id", getApplicationInstanceRespBody, nil)),
 		d.Set("end_user_visible", utils.PathSearch("application_instance.end_user_visible", getApplicationInstanceRespBody, nil)),
 		d.Set("managed_account", utils.PathSearch("application_instance.managed_account", getApplicationInstanceRespBody, nil)),
-		d.Set("security_config", flattenSecurityConfig(utils.PathSearch("application_instance.security_config", getApplicationInstanceRespBody, nil))),
-		d.Set("service_provider_config", flattenServiceProviderConfig(utils.PathSearch("application_instance.service_provider_config", getApplicationInstanceRespBody, nil))),
-		d.Set("response_config", marshalJsonFormatParams("response config", utils.PathSearch("application_instance.response_config", getApplicationInstanceRespBody, nil))),
-		d.Set("response_schema_config", marshalJsonFormatParams("response schema config", utils.PathSearch("application_instance.response_schema_config", getApplicationInstanceRespBody, nil))),
+		d.Set("security_config",
+			flattenSecurityConfig(utils.PathSearch("application_instance.security_config", getApplicationInstanceRespBody, nil))),
+		d.Set("service_provider_config",
+			flattenServiceProviderConfig(utils.PathSearch("application_instance.service_provider_config", getApplicationInstanceRespBody, nil))),
+		d.Set("response_config",
+			marshalJsonFormatParams("response config",
+				utils.PathSearch("application_instance.response_config", getApplicationInstanceRespBody, nil))),
+		d.Set("response_schema_config",
+			marshalJsonFormatParams("response schema config",
+				utils.PathSearch("application_instance.response_schema_config", getApplicationInstanceRespBody, nil))),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -578,14 +589,16 @@ func resourceIdentityCenterApplicationInstanceUpdate(ctx context.Context, d *sch
 	region := cfg.GetRegion(d)
 
 	var (
-		updateDisplayDataHttpUrl           = "v1/instances/{instance_id}/application-instances/{application_instance_id}/display-data"
-		importMetadataHttpUrl              = "v1/instances/{instance_id}/application-instances/{application_instance_id}/metadata"
-		updateResponseConfigHttpUrl        = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-configuration"
-		updateResponseSchemaConfigHttpUrl  = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-schema-configuration"
-		updateServiceProviderConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/service-provider-configuration"
-		updateStatusHttpUrl                = "v1/instances/{instance_id}/application-instances/{application_instance_id}/status"
-		updateSecurityConfigHttpUrl        = "v1/instances/{instance_id}/application-instances/{application_instance_id}/security-configuration"
-		updateProduct                      = "identitycenter"
+		updateDisplayDataHttpUrl          = "v1/instances/{instance_id}/application-instances/{application_instance_id}/display-data"
+		importMetadataHttpUrl             = "v1/instances/{instance_id}/application-instances/{application_instance_id}/metadata"
+		updateResponseConfigHttpUrl       = "v1/instances/{instance_id}/application-instances/{application_instance_id}/response-configuration"
+		updateResponseSchemaConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}" +
+			"/response-schema-configuration"
+		updateServiceProviderConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}" +
+			"/service-provider-configuration"
+		updateStatusHttpUrl         = "v1/instances/{instance_id}/application-instances/{application_instance_id}/status"
+		updateSecurityConfigHttpUrl = "v1/instances/{instance_id}/application-instances/{application_instance_id}/security-configuration"
+		updateProduct               = "identitycenter"
 	)
 	client, err := cfg.NewServiceClient(updateProduct, region)
 	if err != nil {
@@ -736,13 +749,13 @@ func buildUpdateSecurityConfigBodyParams(d *schema.ResourceData) map[string]inte
 	}
 	bodyParams := map[string]interface{}{
 		"security_config": map[string]interface{}{
-			"ttl": utils.ValueIgnoreEmpty(buildUpdateSecurityConfigTtlBodyParams(securityConfigs)),
+			"ttl": utils.ValueIgnoreEmpty(buildUpdateSecurityConfigTTLBodyParams(securityConfigs)),
 		},
 	}
 	return bodyParams
 }
 
-func buildUpdateSecurityConfigTtlBodyParams(data []interface{}) interface{} {
+func buildUpdateSecurityConfigTTLBodyParams(data []interface{}) interface{} {
 	securityConfig := data[0].(map[string]interface{})
 	if _, ok := securityConfig["ttl"]; ok {
 		return securityConfig["ttl"].(string)
@@ -884,7 +897,7 @@ func resourceIdentityCenterApplicationInstanceImportState(_ context.Context, d *
 	_ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid id format, must be <instance_id>/<application_instance_id>")
+		return nil, errors.New("invalid id format, must be <instance_id>/<application_instance_id>")
 	}
 	d.SetId(parts[1])
 	mErr := multierror.Append(nil,

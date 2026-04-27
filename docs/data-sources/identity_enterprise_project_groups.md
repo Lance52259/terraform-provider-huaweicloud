@@ -49,4 +49,3 @@ The `groups` block contains:
 The `enterprise_projects` block contains:
 
 * `project_id` - Indicates the ID of enterprise projects.
-

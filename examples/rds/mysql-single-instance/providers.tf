@@ -1,8 +1,10 @@
 terraform {
+  required_version = ">= 0.14.0"
+
   required_providers {
     huaweicloud = {
       source  = "huaweicloud/huaweicloud"
-      version = ">= 1.54.0"
+      version = ">= 1.47.0"
     }
     random = {
       source  = "hashicorp/random"

@@ -1,0 +1,38 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_identityv5_group": {
+          "block": {
+            "attributes": {
+              "created_at": {
+                "type": "string",
+                "description": "The creation time of the user group.",
+                "computed": true
+              },
+              "description": {
+                "type": "string",
+                "description": "The description of the user group.",
+                "optional": true
+              },
+              "group_name": {
+                "type": "string",
+                "description": "The name of the user group.",
+                "required": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "urn": {
+                "type": "string",
+                "description": "The uniform resource name of the user group.",
+                "computed": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

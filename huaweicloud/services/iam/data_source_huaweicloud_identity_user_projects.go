@@ -16,6 +16,7 @@ import (
 
 // DataSourceIdentityUserProjects
 // @API IAM GET /v3/users/{user_id}/projects
+// @API IAM GET /v5/caller-identity
 func DataSourceIdentityUserProjects() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: DataSourceIdentityUserProjectsRead,
@@ -91,13 +92,12 @@ func DataSourceIdentityUserProjectsRead(_ context.Context, d *schema.ResourceDat
 func getUserId(cfg *config.Config) (string, error) {
 	if cfg.UserID != "" {
 		return cfg.UserID, nil
-	} else {
-		callerIdentity, err := queryCallerIdentity(cfg)
-		if err != nil {
-			return "", err
-		}
-		return utils.PathSearch("principal_id", callerIdentity, "").(string), nil
 	}
+	callerIdentity, err := queryCallerIdentity(cfg)
+	if err != nil {
+		return "", err
+	}
+	return utils.PathSearch("principal_id", callerIdentity, "").(string), nil
 }
 
 func queryCallerIdentity(cfg *config.Config) (interface{}, error) {

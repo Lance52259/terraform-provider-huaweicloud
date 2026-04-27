@@ -29,6 +29,7 @@ resource "huaweicloud_identitycenter_identity_provider" "test"{
 ## Argument Reference
 
 The following arguments are supported:
+
 * `region` - (Optional, String, ForceNew) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
@@ -64,17 +65,19 @@ The `idp_certificate_ids` block supports:
 
 ## Import
 
-The IdentityCenter identity provider can be imported using the `identity_store_id` and `idp_id` separated by a slash, e.g.
+The IdentityCenter identity provider can be imported using the `identity_store_id` and `idp_id`
+separated by a slash, e.g.
 
 ```bash
 $ terraform import huaweicloud_identitycenter_identity_provider.test <identity_store_id>/<idp_id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes include: `idp_saml_metadata`, `idp_certificate`. It is generally
-recommended running `terraform plan` after importing an IdentityCenter identity provider. You can then decide if changes should be
-applied to the IdentityCenter identity provider, or the resource definition should be updated to align with the identity provider. Also, you
-can ignore changes as below.
+API response, security or some other reason. The missing attributes include: `idp_saml_metadata`, `idp_certificate`.
+It is generally recommended running `terraform plan` after importing an IdentityCenter identity provider.
+You can then decide if changes should be applied to the IdentityCenter identity provider,
+or the resource definition should be updated to align with the identity provider.
+Also, you can ignore changes as below.
 
 ```hcl
 resource "huaweicloud_identitycenter_identity_provider" "test" {

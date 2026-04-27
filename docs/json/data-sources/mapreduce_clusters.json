@@ -54,6 +54,7 @@
                       "master_node_product_id": "string",
                       "master_node_size": "string",
                       "master_node_spec_id": "string",
+                      "mrs_ecs_default_agency": "string",
                       "name": "string",
                       "node_groups": [
                         "list",
@@ -132,12 +133,12 @@
                     }
                   ]
                 ],
-                "description": "The list of clusters.",
+                "description": "The list of clusters that match the filter parameters.",
                 "computed": true
               },
               "enterprise_project_id": {
                 "type": "string",
-                "description": "The enterprise project ID used to query clusters in a specified enterprise project.",
+                "description": "The ID of the enterprise project to which the clusters belong.",
                 "optional": true
               },
               "id": {
@@ -151,6 +152,7 @@
               },
               "region": {
                 "type": "string",
+                "description": "The region where the clusters are located.",
                 "computed": true
               },
               "status": {
@@ -160,7 +162,7 @@
               },
               "tags": {
                 "type": "string",
-                "description": "You can search for a cluster by its tags.",
+                "description": "The tags of the cluster.",
                 "optional": true
               }
             }

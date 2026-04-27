@@ -22,7 +22,7 @@ data "huaweicloud_identity_endpoints" "test" {
 }
 ```
 
-### query all endpoints 
+### query all endpoints
 
 ```hcl
 data "huaweicloud_identity_endpoints" "test" {}
@@ -32,7 +32,7 @@ data "huaweicloud_identity_endpoints" "test" {}
 
 The following arguments are supported:
 
-* `endpoint_id` - (Optional, String) Specifies the terminal node ID to be queried. 
+* `endpoint_id` - (Optional, String) Specifies the terminal node ID to be queried.
 
 * `interface` - (Optional, String) Specifies terminal node plane. It's not allowed if `endpoint_id` is specified.
 
@@ -40,11 +40,11 @@ The following arguments are supported:
 
 ## Attribute Reference
 
-* `endpoint` - Indicates service endpoint information.
-  The [endpoint](#IdentityEndpoint_Endpoint) structure is documented below.
+* `endpoints` - Indicates service endpoint information.
+  The [endpoint](#IdentityEndpoint_endpoints) structure is documented below.
 
-<a name="IdentityEndpoint_Endpoint"></a>
-The `endpoint` block contains:
+<a name="IdentityEndpoint_endpoints"></a>
+The `endpoints` block contains:
 
 * `service_id` - Indicates the service ID.
 
@@ -61,5 +61,5 @@ The `endpoint` block contains:
 * `url` - Indicates the URL or network address of the endpoint.
 
 * `enabled` - Indicates whether the endpoint is accessible and operational. The value can be:
-  * **true**: accessible;
-  * **false**: operational;
+  + **true**: accessible;
+  + **false**: operational;

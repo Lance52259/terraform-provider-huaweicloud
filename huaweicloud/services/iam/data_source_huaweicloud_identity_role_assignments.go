@@ -133,6 +133,9 @@ func DataSourceIdentityRoleAssignmentsRead(_ context.Context, d *schema.Resource
 			return diag.Errorf("error listRoleAssignments: %s", err)
 		}
 		respBody, err := utils.FlattenResponse(response)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 		result := flattenRoleAssignments(respBody)
 		res = append(res, result...)
 		if len(result) == 0 {
@@ -178,7 +181,6 @@ func flattenAssignmentsScope(scopeBody interface{}) map[string]interface{} {
 		"enterprise_project_id": utils.PathSearch("enterprise_project.id", scopeBody, nil),
 	}
 	return scope
-
 }
 
 func buildQueryRoleAssignmentsPath(d *schema.ResourceData, getPath string, domainId string) string {

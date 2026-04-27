@@ -2,9 +2,9 @@ package identitycenter
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-uuid"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"

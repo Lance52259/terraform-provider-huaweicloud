@@ -22,32 +22,30 @@ func DataSourceCCEShowChartValues() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"region": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Description: "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"chart_id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Specifies the chart template id in which to query the resource.",
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"values": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeMap,
 				Computed: true,
-				Description: "The values of the chart template.",
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}
 }
 
-type CCEShowChartValuesDSWrapper struct {
+type ShowChartValuesDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newCCEShowChartValuesDSWrapper(d *schema.ResourceData, meta interface{}) *CCEShowChartValuesDSWrapper {
-	return &CCEShowChartValuesDSWrapper{
+func newCCEShowChartValuesDSWrapper(d *schema.ResourceData, meta interface{}) *ShowChartValuesDSWrapper {
+	return &ShowChartValuesDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
@@ -75,7 +73,7 @@ func dataSourceCCEShowChartValuesRead(_ context.Context, d *schema.ResourceData,
 }
 
 // @API CCE GET /v2/charts/{chart_id}/values
-func (w *CCEShowChartValuesDSWrapper) ShowChartValues() (*gjson.Result, error) {
+func (w *ShowChartValuesDSWrapper) ShowChartValues() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -90,19 +88,16 @@ func (w *CCEShowChartValuesDSWrapper) ShowChartValues() (*gjson.Result, error) {
 		Result()
 }
 
-func (w *CCEShowChartValuesDSWrapper) showChartValuesToSchema(body *gjson.Result) error {
+func (w *ShowChartValuesDSWrapper) showChartValuesToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("values", w.setChartValues(body)),
+		d.Set("values", schemas.MapConverter(*body,
+			func(r gjson.Result) any {
+				values, _ := json.Marshal(r)
+				return string(values)
+			},
+		)),
 	)
 	return mErr.ErrorOrNil()
-}
-
-
-func (*CCEShowChartValuesDSWrapper) setChartValues(data *gjson.Result) string {
-	chartValues := data.Get("values")
-	jsonBytes, _ := json.Marshal(chartValues)
-
-	return string(jsonBytes)
 }

@@ -27,7 +27,9 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-`controls` - Information about the controls list.
+* `id` - The data source ID.
+
+* `controls` - Information about the controls list.
 
 The [controls](#controls) structure is documented below.
 

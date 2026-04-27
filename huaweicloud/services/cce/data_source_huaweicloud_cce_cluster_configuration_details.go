@@ -18,7 +18,6 @@ import (
 
 // @API CCE GET /api/v3/clusters/configuration/detail
 func DataSourceClusterConfigurationDetails() *schema.Resource {
-
 	return &schema.Resource{
 		ReadContext: dataSourceClusterConfigurationDetailsRead,
 
@@ -45,9 +44,9 @@ func DataSourceClusterConfigurationDetails() *schema.Resource {
 				Optional: true,
 			},
 			"configurations": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeMap,
 				Computed: true,
-				Description: "The configurations of the cce cluster.",
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}
@@ -95,10 +94,10 @@ func (w *ClusterConfigurationDetailsDSWrapper) ShowClusterConfigurationDetails()
 
 	uri := "/api/v3/clusters/configuration/detail"
 	params := map[string]any{
-		"clusterType": w.Get("cluster_type"),
+		"clusterType":    w.Get("cluster_type"),
 		"clusterVersion": w.Get("cluster_version"),
-		"clusterID": w.Get("cluster_id"),
-		"networkMode": w.Get("network_mode"),
+		"clusterID":      w.Get("cluster_id"),
+		"networkMode":    w.Get("network_mode"),
 	}
 	params = utils.RemoveNil(params)
 	return httphelper.New(client).
@@ -113,14 +112,12 @@ func (w *ClusterConfigurationDetailsDSWrapper) showClusterConfigurationDetailsTo
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("configurations", w.setConfigurationsValues(body)),
+		d.Set("configurations", schemas.MapConverter(*body,
+			func(values gjson.Result) any {
+				configurations, _ := json.Marshal(values)
+				return string(configurations)
+			},
+		)),
 	)
 	return mErr.ErrorOrNil()
-}
-
-func (*ClusterConfigurationDetailsDSWrapper) setConfigurationsValues(data *gjson.Result) string {
-	configurationsValues := data.Get("configurations")
-	jsonBytes, _ := json.Marshal(configurationsValues)
-
-	return string(jsonBytes)
 }

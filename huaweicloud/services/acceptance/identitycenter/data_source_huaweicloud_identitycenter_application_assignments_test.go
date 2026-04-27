@@ -2,9 +2,9 @@ package identitycenter
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-uuid"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -30,7 +30,8 @@ func TestAccDataSourceApplicationAssignments_basic(t *testing.T) {
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "application_assignments.#"),
 					resource.TestCheckResourceAttrSet(dataSource, "application_assignments.0.application_urn"),
-					resource.TestCheckResourceAttrPair(dataSource, "application_assignments.0.principal_id", "huaweicloud_identitycenter_user.test", "id"),
+					resource.TestCheckResourceAttrPair(dataSource, "application_assignments.0.principal_id",
+						"huaweicloud_identitycenter_user.test", "id"),
 					resource.TestCheckResourceAttr(dataSource, "application_assignments.0.principal_type", "USER"),
 				),
 			},

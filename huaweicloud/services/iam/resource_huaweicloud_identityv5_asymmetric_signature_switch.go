@@ -8,6 +8,7 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -72,7 +73,7 @@ func resourceIdentityV5AsymmetricSignatureSwitchRead(_ context.Context, d *schem
 	}
 	resp, err := iamClient.Request("GET", path, &reqOpts)
 	if err != nil {
-		return diag.Errorf("error get IAM asymmetric signature switch: %s", err)
+		return common.CheckDeletedDiag(d, err, "error get IAM asymmetric signature switch")
 	}
 	respBody, err := utils.FlattenResponse(resp)
 	if err != nil {
@@ -89,7 +90,7 @@ func resourceIdentityV5AsymmetricSignatureSwitchRead(_ context.Context, d *schem
 	return nil
 }
 
-func resourceIdentityV5AsymmetricSignatureSwitchDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityV5AsymmetricSignatureSwitchDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	errorMsg := "Deleting asymmetric signature switch is not supported. " +
 		"The asymmetric signature switch is only removed from the state, but it remains in the cloud."
 	return diag.Diagnostics{

@@ -16,9 +16,9 @@ import (
 )
 
 // @API NAT GET /v2/{project_id}/nat_gateway_specs
-func DataSourceNatGatewaySpecs() *schema.Resource {
+func DataSourceGatewaySpecs() *schema.Resource {
 	return &schema.Resource{
-		ReadContext: dataSourceNatGatewaySpecsRead,
+		ReadContext: dataSourceGatewaySpecsRead,
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -36,15 +36,7 @@ func DataSourceNatGatewaySpecs() *schema.Resource {
 	}
 }
 
-func flattenNatSpecs(specs []interface{}) []interface{} {
-	rst := make([]interface{}, 0, len(specs))
-	for _, spec := range specs {
-		rst = append(rst, spec)
-	}
-	return rst
-}
-
-func dataSourceNatGatewaySpecsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func dataSourceGatewaySpecsRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg     = meta.(*config.Config)
 		region  = cfg.GetRegion(d)
@@ -85,7 +77,7 @@ func dataSourceNatGatewaySpecsRead(_ context.Context, d *schema.ResourceData, me
 	mErr = multierror.Append(
 		mErr,
 		d.Set("region", region),
-		d.Set("specs", flattenNatSpecs(utils.PathSearch("specs", respBody, make([]interface{}, 0)).([]interface{}))),
+		d.Set("specs", utils.PathSearch("specs", respBody, make([]interface{}, 0)).([]interface{})),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())

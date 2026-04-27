@@ -256,6 +256,9 @@ func resourceLandingZoneRead(_ context.Context, d *schema.ResourceData, meta int
 	)
 
 	getLandingZoneStatusClient, err := cfg.NewServiceClient(getOrganizationUnitProduct, region)
+	if err != nil {
+		return diag.Errorf("error creating RGC client: %s", err)
+	}
 
 	getLandingZoneStatusPath := getLandingZoneStatusClient.Endpoint + getLandingZoneStatusHttpUrl
 

@@ -3,29 +3,28 @@ subcategory: "Identity and Access Management (IAM)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_identityv5_users"
 description: |-
-  Use this data source to get the list of user in the Identity and Access Management V5 service.
+  Use this data source to get the list of IAM users within HuaweiCloud.
 ---
 
 # huaweicloud_identityv5_users
 
-Use this data source to get the list of user in the Identity and Access Management V5 service.
+Use this data source to get the list of IAM users within HuaweiCloud.
 
 ## Example Usage
 
-### ListUsers
+### Query All Users
+
 ```hcl
-data "huaweicloud_identityV5_users" "users" {}
+data "huaweicloud_identityv5_users" "test" {}
 ```
 
-### ShowUser
+### Query the specified user by user ID
+
 ```hcl
-resource "huaweicloud_identityv5_user" "user_1" {
-name        = "TestUser"
-description = "tested by terraform"
-}
+variable "user_id" {}
 
 data "huaweicloud_identityv5_users" "test" {
-user_id = huaweicloud_identityv5_user.user_1.id
+  user_id = var.user_id
 }
 ```
 
@@ -33,47 +32,49 @@ user_id = huaweicloud_identityv5_user.user_1.id
 
 The following arguments are supported:
 
-* `group_id` - (Optional, String) Specifies the group ID of the users.
+* `group_id` - (Optional, String) Specifies the ID of the user group to which the users belong.
 
-* `user_id` - (Optional, String) Specifies the id of the IAM user.
+* `user_id` - (Optional, String) Specifies the ID of the user.
 
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
-*`users` - Indicates the user information.
-The [users](#IdentityV5User_Users) structure is documented below.
 
-<a name="IdentityV5User_Users"></a>
-The `users` block contains:
+* `id` - The data source ID.
 
-* `id` - Indicates the group ID of this membership.
+* `users` - The list of users that matched filter parameters.  
+The [users](#v5_users) structure is documented below.
 
-* `user_name` - Indicates the IAM username.
+<a name="v5_users"></a>
+The `users` block supports:
 
-* `is_root_user` - Indicates whether the user is root user or user.
+* `user_id` - The ID of the user.
 
-* `created_at` - Indicates the time when the IAM user was created.
+* `user_name` - The name of the user.
 
-* `urn` - Indicates the uniform resource name.
+* `enabled` - Whether the user is enabled.
 
-* `user_id` - Indicates the user ID in this group.
+* `description` - The description of the user.
 
-* `description` - Indicates the description of the user.
+* `is_root_user` - Whether the user is root user.
 
-* `enabled` - Indicates whether the user is enabled or disabled. Valid values are **true** and **false**.
+* `created_at` - The creation time of the user.
 
-* `last_login_at` - Indicates the last login time of the IAM user. If null, it indicates that they have never logged in.
+* `urn` - The uniform resource name of the user.
 
-* `tags` - Indicates the Custom Tag List.
-  The [tags](#IdentityV5User_Tags) structure is documented below.
+* `tags` - The list of tags associated with the user.  
+  The [tags](#v5_users_tags) structure is documented below.
 
-<a name="IdentityV5User_Tags"></a>
-The `tags` block contains:
+* `last_login_at` - The last login time of the user.  
+  If omitted, it means that the user has never logged in.
 
-* `tag_key` - Indicates Tag keys which contain any combination of letters, numbers, spaces, and the symbols "_", ".",
-  ":","=", "-", "@", but cannot start or end with a space, and cannot begin with "sys". The length must be between 1
-  and 64 characters.
+* `password_reset_required` - Whether the password needs to be reset when the user logs in next time.
 
-* `tag_value` - Indicates Tag keys can contain any combination of letters, numbers, spaces, and the symbols "_", ".",
-  ":", "=", "-", "@", but cannot start or end with a space, and cannot begin with "sys". The length must be between 1
-  and 64 characters.
+* `password_expires_at` - The expiration time of the password.
+
+<a name="v5_users_tags"></a>
+The `tags` block supports:
+
+* `tag_key` - The key of the tag.
+
+* `tag_value` - The value of the tag.

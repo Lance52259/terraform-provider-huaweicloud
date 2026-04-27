@@ -3,12 +3,12 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -211,7 +211,8 @@ func resourceIdentityCenterPasswordPolicyDelete(_ context.Context, d *schema.Res
 		return diag.Errorf("error updating Identity Center password policy: %s", err)
 	}
 
-	errorMsg := "Deleting password policy is unsupported. The resource is removed from the state, and the password policy is reset to default setting."
+	errorMsg := "Deleting password policy is unsupported. The resource is removed from the state," +
+		" and the password policy is reset to default setting."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,

@@ -29,7 +29,7 @@ The following arguments are supported:
 
 * `policy_id` - (Required, String) Specifies the ID of the policy.
 
-* `version_id` - (Optional, String) Specifies the version ID of the policy. If this parameter is omitted, 
+* `version_id` - (Optional, String) Specifies the version ID of the policy. If this parameter is omitted,
   all versions of the policy will be retrieved.
 
 ## Attributes Reference

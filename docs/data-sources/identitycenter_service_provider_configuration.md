@@ -34,7 +34,7 @@ The following arguments are supported:
 
 In addition to all arguments above, the following attributes are exported:
 
-* `id` - The data source ID.
+* `id` - The resource ID.
 
 * `sp_oidc_config` - The oidc configuration of the service provider.
   The [sp_oidc_config](#sp_oidc_config_struct) structure is documented below.

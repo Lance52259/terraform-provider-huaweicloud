@@ -205,11 +205,11 @@ The following arguments are supported:
 
 * `flavor_id` - (Required, String) Specifies the flavor ID of the instance to be created.
 
-* `image_id` - (Optional, String, ForceNew) Required if `image_name` is empty. Specifies the image ID of the desired
-  image for the instance. Changing this creates a new instance.
+* `image_id` - (Optional, String) Required if `image_name` is empty. Specifies the image ID of the desired image for the
+  instance.
 
-* `image_name` - (Optional, String, ForceNew) Required if `image_id` is empty. Specifies the name of the desired image
-  for the instance. Changing this creates a new instance.
+* `image_name` - (Optional, String) Required if `image_id` is empty. Specifies the name of the desired image for the
+  instance.
 
 * `security_group_ids` - (Optional, List) Specifies an array of one or more security group IDs to associate with the
   instance.
@@ -228,7 +228,7 @@ The following arguments are supported:
 
 * `key_pair` - (Optional, String) Specifies the SSH keypair name used for logging in to the instance.
 
-* `private_key` - (Optional, String) Specifies the the private key of the keypair in use. This parameter is mandatory
+* `private_key` - (Optional, String) Specifies the private key of the keypair in use. This parameter is mandatory
   when replacing or unbinding a keypair and the instance is in **Running** state.
 
 * `system_disk_type` - (Optional, String, ForceNew) Specifies the system disk type of the instance. Defaults to `GPSSD`.
@@ -250,8 +250,8 @@ The following arguments are supported:
 * `system_disk_size` - (Optional, Int) Specifies the system disk size in GB, The value range is 1 to 1024.
   Shrinking the disk is not supported.
 
-* `system_disk_kms_key_id` - (Optional, String, ForceNew) Specifies the ID of a KMS key used to encrypt the system disk.
-  Changing this creates a new instance.
+* `system_disk_kms_key_id` - (Optional, String) Specifies the ID of a KMS key used to encrypt the system disk. It can
+  only be modified when `image_id` or `image_name` is modified.
 
   -> **NOTE:** This parameter is only supported in some regions, such as ap-southeast-3.
     If not supported, please contact technical support.
@@ -278,14 +278,19 @@ The following arguments are supported:
 * `system_disk_dss_pool_id` - (Optional, String, ForceNew) Specifies the system disk DSS pool ID. This field is used
   only for dedicated storage. Changing this parameter will create a new resource.
 
+* `system_pass_through` - (Optional, String, ForceNew) Specifies the device type of the EVS disks to be created.
+  Changing this parameter will create a new resource. Value options:
+  + **true**: SCSI disks are created.
+  + **false(default)**: VBD disks are created.
+
 * `data_disks` - (Optional, List, ForceNew) Specifies an array of one or more data disks to attach to the instance.
   The data_disks object structure is documented below. Changing this creates a new instance.
 
-* `eip_type` - (Optional, String, ForceNew) Specifies the type of an EIP that will be automatically assigned to the instance.
-  Available values are *5_bgp* (dynamic BGP) and *5_sbgp* (static BGP). Changing this creates a new instance.
+* `eip_type` - (Optional, String, ForceNew) Specifies the type of an EIP that will be automatically assigned to the
+  instance. Available values are *5_bgp* (dynamic BGP) and *5_sbgp* (static BGP). Changing this creates a new instance.
 
-* `bandwidth` - (Optional, List, ForceNew) Specifies the bandwidth of an EIP that will be automatically assigned to the instance.
-  The object structure is documented below. Changing this creates a new instance.
+* `bandwidth` - (Optional, List, ForceNew) Specifies the bandwidth of an EIP that will be automatically assigned to the
+  instance. The object structure is documented below. Changing this creates a new instance.
 
 * `eip_id` - (Optional, String, ForceNew) Specifies the ID of an *existing* EIP assigned to the instance.
   This parameter and `eip_type`, `bandwidth` are alternative. Changing this creates a new instance.
@@ -308,20 +313,27 @@ The following arguments are supported:
 * `scheduler_hints` - (Optional, List) Specifies the scheduler with hints on how the instance should be launched. The
   available hints are described below.
 
-* `stop_before_destroy` - (Optional, Bool) Specifies whether to try stop instance gracefully before destroying it, thus giving
-  chance for guest OS daemons to stop correctly. If instance doesn't stop within timeout, it will be destroyed anyway.
+* `stop_before_destroy` - (Optional, Bool) Specifies whether to try stop instance gracefully before destroying it, thus
+  giving chance for guest OS daemons to stop correctly. If instance doesn't stop within timeout, it will be destroyed
+  anyway.
 
-* `delete_disks_on_termination` - (Optional, Bool) Specifies whether to delete the data disks when the instance is terminated.
-  Defaults to *false*. This parameter is valid if `charging_mode` is set to *postPaid*, and all data disks will be deleted
-  in *prePaid* charging mode.
+* `delete_disks_on_termination` - (Optional, Bool) Specifies whether to delete the data disks when the instance is
+  terminated. Defaults to *false*. This parameter is valid if `charging_mode` is set to *postPaid*, and all data disks
+  will be deleted in *prePaid* charging mode.
 
 * `delete_eip_on_termination` - (Optional, Bool) Specifies whether the EIP is released when the instance is terminated.
   Defaults to *true*.
 
+* `include_data_disks_on_update` - (Optional, Bool) Specifies whether to change the billing modes of all pay-per-use
+  data disks to yearly/monthly. Defaults to **false**.
+
+* `include_publicips_on_update` - (Optional, Bool) Specifies whether to change the billing modes of EIPs that are
+  exclusive and billed by bandwidth to yearly/monthly. Defaults to **false**.
+
 * `enterprise_project_id` - (Optional, String) Specifies a unique id in UUID format of enterprise project.
 
-* `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the instance. Valid values are *prePaid*,
-  *postPaid* and *spot*, defaults to *postPaid*. Changing this creates a new instance.
+* `charging_mode` - (Optional, String) Specifies the charging mode of the instance. Valid values are **prePaid**,
+  **postPaid** and **spot**, defaults to **postPaid**.
 
   -> **NOTE:** Spot price ECSs are suitable for stateless, fault-tolerant instances that are not sensitive to
   interruptions because they can be reclaimed suddenly. When the market price is higher than the maximum price
@@ -329,17 +341,15 @@ The following arguments are supported:
   Do not use a spot ECS for inflexible or long-term workloads. For more details, see the differences between
   the [billing modes](https://support.huaweicloud.com/intl/en-us/productdesc-ecs/ecs_01_0065.html).
 
-* `period_unit` - (Optional, String, ForceNew) Specifies the charging period unit of the instance.
-  Valid values are *month* and *year*. This parameter is mandatory if `charging_mode` is set to *prePaid*.
-  Changing this creates a new instance.
+* `period_unit` - (Optional, String) Specifies the charging period unit of the instance.
+  Valid values are **month** and **year**. This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
-* `period` - (Optional, Int, ForceNew) Specifies the charging period of the instance.
-  If `period_unit` is set to *month* , the value ranges from 1 to 9. If `period_unit` is set to *year*, the value
-  ranges from 1 to 3. This parameter is mandatory if `charging_mode` is set to *prePaid*. Changing this creates a
-  new resource.
+* `period` - (Optional, Int) Specifies the charging period of the instance.
+  If `period_unit` is set to **month** , the value ranges from 1 to 9. If `period_unit` is set to **year**, the value
+  ranges from 1 to 3. This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
-* `auto_renew` - (Optional, String) Specifies whether auto renew is enabled.
-  Valid values are *true* and *false*. Defaults to *false*.
+* `auto_renew` - (Optional, String) Specifies whether auto-renew is enabled.
+  Valid values are **true** and **false**. Defaults to **false**.
 
 * `spot_maximum_price` - (Optional, String, ForceNew) Specifies the highest price per hour you accept for a spot ECS.
   This parameter takes effect only when `charging_mode` is set to *spot*. If the price is not specified,
@@ -380,6 +390,9 @@ The following arguments are supported:
 
   -> **NOTE:** The `auto_terminate_time` is only support in **postpaid** charging mode.
 
+* `enclave_options` - (Optional, List, ForceNew) Specifies the custom enclave options.
+  The [object](#enclave_options) structure is documented below. Changing this creates a new instance.
+
 The `network` block supports:
 
 * `uuid` - (Required, String) Specifies the network UUID to attach to the instance.
@@ -418,8 +431,16 @@ The `data_disks` block supports:
 * `size` - (Required, Int, ForceNew) Specifies the data disk size, in GB. The value ranges form 10 to 32768.
   Changing this creates a new instance.
 
-* `snapshot_id` - (Optional, String, ForceNew) Specifies the EVS snapshot ID or ID of the original data disk contained in
-  the full-ECS image. Changing this creates a new instance.
+* `data_image_id` - (Optional, String, ForceNew) Specifies the ID of the data image. If data disks are created using a
+  data disk image, this parameter is mandatory, and it does not support `kms_key_id`. Changing this creates a new instance.
+
+* `snapshot_id` - (Optional, String, ForceNew) Specifies the EVS snapshot ID or ID of the original data disk contained
+  in the full-ECS image. Changing this creates a new instance.
+
+* `delete_on_termination` - (Optional, String, ForceNew) Specifies the policy of releasing data disks when the ECS is
+  deleted. Changing this creates a new instance. Value options:
+  + **true**: The data disk is released when the ECS is deleted.
+  + **false**: The data disk is not released when the ECS is deleted.
 
 * `kms_key_id` - (Optional, String, ForceNew) Specifies the ID of a KMS key. This is used to encrypt the disk.
   Changing this creates a new instance.
@@ -446,9 +467,15 @@ The `data_disks` block supports:
 * `dss_pool_id` - (Optional, String, ForceNew) Specifies the data disk DSS pool ID. This field is used
   only for dedicated storage. Changing this parameter will create a new resource.
 
+* `pass_through` - (Optional, String, ForceNew) Specifies the device type of the EVS disks to be created. Changing this
+  parameter will create a new resource. Value options:
+  + **true**: SCSI disks are created.
+  + **false(default)**: VBD disks are created.
+
 The `bandwidth` block supports:
 
-* `share_type` - (Required, String, ForceNew) Specifies the bandwidth sharing type. Changing this creates a new instance.
+* `share_type` - (Required, String, ForceNew) Specifies the bandwidth sharing type. Changing this creates a new
+  instance.
   Possible values are as follows:
   + **PER**: Dedicated bandwidth
   + **WHOLE**: Shared bandwidth
@@ -459,14 +486,16 @@ The `bandwidth` block supports:
 * `id` - (Optional, String, ForceNew) Specifies the **shared** bandwidth id. This parameter is mandatory when
   `share_type` is set to **WHOLE**. Changing this creates a new instance.
 
-* `charge_mode` - (Optional, String, ForceNew) Specifies the bandwidth billing mode. The value can be *traffic* or *bandwidth*.
+* `charge_mode` - (Optional, String, ForceNew) Specifies the bandwidth billing mode. The value can be *traffic* or
+  *bandwidth*.
   Changing this creates a new instance.
 
 * `extend_param` - (Optional, Map, ForceNew) Specifies the additional EIP information.
   Changing this creates a new instance.
 
   -> Currently, only the `charging_mode` key is supported and the value can be **prePaid** or **postPaid**.  
-    The value combinations of the `charging_mode` of instance, this `charging_mode` and `charge_mode` are shown in this table.
+    The value combinations of the `charging_mode` of instance, this `charging_mode` and `charge_mode` are shown in this
+    table.
 
   <!-- markdownlint-disable MD033 -->
   <table class="tg"><thead>
@@ -497,12 +526,17 @@ The `scheduler_hints` block supports:
 * `group` - (Optional, String, ForceNew) Specifies a UUID of a Server Group.
   The instance will be placed into that group. Changing this creates a new instance.
 
-* `tenancy` - (Optional, String, ForceNew) Specifies the tenancy specifies whether the ECS is to be created on a
-  Dedicated Host
-  (DeH) or in a shared pool. Changing this creates a new instance.
+* `tenancy` - (Optional, String) Specifies the tenancy specifies whether the ECS is to be created on a Dedicated
+  Host(DeH) or in a shared pool. Value options: **share**, **dedicate**.
 
-* `deh_id` - (Optional, String, ForceNew) Specifies the ID of DeH.
-  This parameter takes effect only when the value of tenancy is dedicated. Changing this creates a new instance.
+* `deh_id` - (Optional, String) Specifies the ID of DeH. This parameter takes effect only when the value of tenancy is
+  **dedicated**.
+
+<a name="enclave_options"></a>
+The `enclave_options` block supports:
+
+* `enabled` - (Required, Bool, ForceNew) Specifies whether to enable Enclave.
+  Changing this creates a new instance.
 
 ## Attribute Reference
 
@@ -544,6 +578,9 @@ The `volume_attached` block supports:
 * `size` - The volume size on that attachment.
 * `type` - The volume type on that attachment.
 * `pci_address` - The volume pci address on that attachment.
+* `data_image_id` - The ID of the data image.
+* `delete_on_termination` - The policy of releasing data disks when the ECS is deleted.
+* `pass_through` - The device type of the EVS disks to be created.
 
 ## Timeouts
 
@@ -563,9 +600,9 @@ terraform import huaweicloud_compute_instance.my_instance b11b407c-e604-4e8d-8bc
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason.
-The missing attributes include: `admin_pass`, `user_data`, `metadata`, `data_disks`, `scheduler_hints`, `stop_before_destroy`,
-`delete_disks_on_termination`, `delete_eip_on_termination`, `network/access_network`, `bandwidth`, `eip_type`,
-`power_action` and arguments for pre-paid and spot price.
+The missing attributes include: `admin_pass`, `user_data`, `metadata`, `data_disks`, `scheduler_hints`,
+`stop_before_destroy`, `delete_disks_on_termination`, `delete_eip_on_termination`, `network/access_network`,
+`bandwidth`, `eip_type`, `power_action` and arguments for pre-paid and spot price.
 It is generally recommended running `terraform plan` after importing an instance.
 You can then decide if changes should be applied to the instance, or the resource definition should be updated to
 align with the instance. Also you can ignore changes as below.

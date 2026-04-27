@@ -15,17 +15,17 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cdn"
 )
 
-func getCdnDomainFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getDomainFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	var (
 		domainName = state.Primary.Attributes["name"]
-		epsID      = state.Primary.Attributes["enterprise_project_id"]
+		epsId      = state.Primary.Attributes["enterprise_project_id"]
 	)
 
-	client, err := cfg.CdnV1Client(acceptance.HW_REGION_NAME)
+	client, err := cfg.NewServiceClient("cdn", "")
 	if err != nil {
-		return nil, fmt.Errorf("error creating CDN v1 client: %s", err)
+		return nil, fmt.Errorf("error creating CDN client: %s", err)
 	}
-	return cdn.ReadCdnDomainDetail(client, domainName, epsID)
+	return cdn.GetDomainByName(client, epsId, domainName)
 }
 
 // Try to get the domain name from the environment variable. If the environment variable does not exist, use the
@@ -37,7 +37,7 @@ func generateDomainName() string {
 	return acceptance.HW_CDN_DOMAIN_NAME
 }
 
-func TestAccCdnDomain_basic(t *testing.T) {
+func TestAccDomain_basic(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -47,7 +47,7 @@ func TestAccCdnDomain_basic(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -56,7 +56,7 @@ func TestAccCdnDomain_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_basic(domainName),
+				Config: testAccDomain_basic_step1(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -72,10 +72,19 @@ func TestAccCdnDomain_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "sources.0.weight", "50"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "val"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(resourceName, "status", "offline"),
 				),
 			},
 			{
-				Config: testAccCdnDomain_update1(domainName),
+				// Enable the domain before changing any resource parameters.
+				Config: testAccDomain_basic_step2(domainName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "status", "online"),
+				),
+			},
+			{
+				Config: testAccDomain_basic_step3(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -83,10 +92,11 @@ func TestAccCdnDomain_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "service_area", "outside_mainland_china"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "sources.0.weight", "100"),
+					resource.TestCheckResourceAttr(resourceName, "status", "online"),
 				),
 			},
 			{
-				Config: testAccCdnDomain_update2(domainName),
+				Config: testAccDomain_basic_step4(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -97,10 +107,11 @@ func TestAccCdnDomain_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "sources.0.http_port", "8001"),
 					resource.TestCheckResourceAttr(resourceName, "sources.0.https_port", "8002"),
 					resource.TestCheckResourceAttr(resourceName, "sources.0.weight", "1"),
+					resource.TestCheckResourceAttr(resourceName, "status", "online"),
 				),
 			},
 			{
-				Config: testAccCdnDomain_update3(domainName),
+				Config: testAccDomain_basic_step5(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -111,7 +122,7 @@ func TestAccCdnDomain_basic(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 				ImportStateVerifyIgnore: []string{
 					"enterprise_project_id", "configs.0.url_signing.0.key", "configs.0.https_settings.0.certificate_body",
 					"configs.0.https_settings.0.private_key", "cache_settings",
@@ -121,12 +132,13 @@ func TestAccCdnDomain_basic(t *testing.T) {
 	})
 }
 
-func testAccCdnDomain_basic(domainName string) string {
+func testAccDomain_basic_step1(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%s"
   type         = "web"
   service_area = "outside_mainland_china"
+  status       = "offline"
 
   configs {
     origin_protocol = "http"
@@ -159,7 +171,47 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_update1(domainName string) string {
+// Just enable the domain without any other changes.
+func testAccDomain_basic_step2(domainName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_cdn_domain" "test" {
+  name         = "%s"
+  type         = "web"
+  service_area = "outside_mainland_china"
+  status       = "online"
+
+  configs {
+    origin_protocol = "http"
+  }
+
+  sources {
+    active      = 1
+    origin      = "100.254.53.75"
+    origin_type = "ipaddr"
+    http_port   = 80
+    https_port  = 443
+  }
+
+  cache_settings {
+    rules {
+      rule_type           = "all"
+      ttl                 = 365
+      ttl_type            = "d"
+      priority            = 2
+      url_parameter_type  = "del_params"
+      url_parameter_value = "test_value"
+    }
+  }
+
+  tags = {
+    key = "val"
+    foo = "bar"
+  }
+}
+`, domainName)
+}
+
+func testAccDomain_basic_step3(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%s"
@@ -194,7 +246,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_update2(domainName string) string {
+func testAccDomain_basic_step4(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%s"
@@ -220,7 +272,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_update3(domainName string) string {
+func testAccDomain_basic_step5(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%s"
@@ -244,7 +296,7 @@ resource "huaweicloud_cdn_domain" "test" {
 // Prepare the HTTPS certificate before running this test case
 // All configuration item modifications may trigger `CDN.0163`. This is a problem that we have no way to solve.
 // When a `CDN.0163` error occurs, you can avoid this error by adjusting the test case configuration items.
-func TestAccCdnDomain_configHttpSettings(t *testing.T) {
+func TestAccDomain_configHttpSettings(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -253,7 +305,7 @@ func TestAccCdnDomain_configHttpSettings(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -268,7 +320,7 @@ func TestAccCdnDomain_configHttpSettings(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_configHttpSettings,
+				Config: testAccDomain_configHttpSettings_step1,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", acceptance.HW_CDN_CERT_DOMAIN_NAME),
@@ -294,7 +346,7 @@ func TestAccCdnDomain_configHttpSettings(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_configHttpSettings_update1,
+				Config: testAccDomain_configHttpSettings_step2,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", acceptance.HW_CDN_CERT_DOMAIN_NAME),
@@ -317,7 +369,7 @@ func TestAccCdnDomain_configHttpSettings(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_configHttpSettings_update2,
+				Config: testAccDomain_configHttpSettings_step3,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", acceptance.HW_CDN_CERT_DOMAIN_NAME),
@@ -332,7 +384,7 @@ func TestAccCdnDomain_configHttpSettings(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 				ImportStateVerifyIgnore: []string{
 					"enterprise_project_id", "configs.0.url_signing.0.key", "configs.0.https_settings.0.certificate_body",
 					"configs.0.https_settings.0.private_key", "cache_settings",
@@ -368,7 +420,7 @@ func testAccCheckTLSVersion(n string, tlsVersion string) resource.TestCheckFunc 
 	}
 }
 
-var testAccCdnDomain_configHttpSettings = fmt.Sprintf(`
+var testAccDomain_configHttpSettings_step1 = fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
   type                  = "web"
@@ -411,7 +463,7 @@ resource "huaweicloud_cdn_domain" "test" {
 }
 `, acceptance.HW_CDN_CERT_DOMAIN_NAME, acceptance.HW_CDN_CERT_PATH, acceptance.HW_CDN_PRIVATE_KEY_PATH)
 
-var testAccCdnDomain_configHttpSettings_update1 = fmt.Sprintf(`
+var testAccDomain_configHttpSettings_step2 = fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%[1]s"
   type                  = "web"
@@ -453,7 +505,7 @@ resource "huaweicloud_cdn_domain" "test" {
 }
 `, acceptance.HW_CDN_CERT_DOMAIN_NAME, acceptance.HW_CCM_SSL_CERTIFICATE_ID)
 
-var testAccCdnDomain_configHttpSettings_update2 = fmt.Sprintf(`
+var testAccDomain_configHttpSettings_step3 = fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
   type                  = "web"
@@ -484,7 +536,7 @@ resource "huaweicloud_cdn_domain" "test" {
 
 // All configuration item modifications may trigger `CDN.0163`. This is a problem that we have no way to solve.
 // When a `CDN.0163` error occurs, you can avoid this error by adjusting the test case configuration items.
-func TestAccCdnDomain_configs(t *testing.T) {
+func TestAccDomain_configs(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -494,7 +546,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -505,7 +557,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_configs(domainName),
+				Config: testAccDomain_configs_step1(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -534,11 +586,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.status", "on"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.type", "gzip"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.file_type", ".js,.html,.css,.xml,.json,.shtml,.htm"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.enabled", "true"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.type", "http"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.redirect_code", "301"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.status", "on"),
+					resource.TestCheckResourceAttrSet(resourceName, "configs.0.compress.0.file_type"),
 
 					resource.TestCheckResourceAttr(resourceName, "configs.0.referer.0.type", "white"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.referer.0.include_empty", "false"),
@@ -560,6 +608,17 @@ func TestAccCdnDomain_configs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "configs.0.origin_request_url_rewrite.#", "2"),
 
 					resource.TestCheckResourceAttr(resourceName, "configs.0.error_code_redirect_rules.#", "2"),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "configs.0.error_code_redirect_rules.*", map[string]string{
+						"error_code":     "416",
+						"target_code":    "301",
+						"target_link":    "http://example.com",
+						"execution_mode": "redirect",
+					}),
+					resource.TestCheckTypeSetElemNestedAttrs(resourceName, "configs.0.error_code_redirect_rules.*", map[string]string{
+						"error_code":     "502",
+						"target_link":    "/errorcode.html",
+						"execution_mode": "break",
+					}),
 
 					resource.TestCheckResourceAttr(resourceName, "configs.0.access_area_filter.#", "2"),
 
@@ -609,7 +668,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_configsUpdate1(domainName),
+				Config: testAccDomain_configs_step2(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -641,10 +700,6 @@ func TestAccCdnDomain_configs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.enabled", "true"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.type", "br"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.compress.0.file_type", ".js,.html"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.enabled", "true"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.type", "http"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.redirect_code", "302"),
-					resource.TestCheckResourceAttr(resourceName, "configs.0.force_redirect.0.status", "on"),
 
 					resource.TestCheckResourceAttr(resourceName, "configs.0.referer.0.type", "black"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.referer.0.include_empty", "true"),
@@ -692,6 +747,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "configs.0.error_code_redirect_rules.0.error_code", "416"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.error_code_redirect_rules.0.target_code", "301"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.error_code_redirect_rules.0.target_link", "http://example.com"),
+					resource.TestCheckResourceAttr(resourceName, "configs.0.error_code_redirect_rules.0.execution_mode", "redirect"),
 
 					resource.TestCheckResourceAttr(resourceName, "configs.0.access_area_filter.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "configs.0.access_area_filter.0.area", "HK,TW,AE,LB"),
@@ -755,7 +811,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_configsUpdate2(domainName),
+				Config: testAccDomain_configs_step3(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -796,7 +852,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_configsUpdate3(domainName),
+				Config: testAccDomain_configs_step4(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -817,7 +873,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 				ImportStateVerifyIgnore: []string{
 					"enterprise_project_id", "configs.0.url_signing.0.key", "configs.0.url_signing.0.backup_key",
 					"configs.0.https_settings.0.certificate_body", "configs.0.https_settings.0.private_key", "cache_settings",
@@ -827,7 +883,7 @@ func TestAccCdnDomain_configs(t *testing.T) {
 	})
 }
 
-func testAccCdnDomain_configs(domainName string) string {
+func testAccDomain_configs_step1(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -881,12 +937,6 @@ resource "huaweicloud_cdn_domain" "test" {
     compress {
       enabled = true
       type    = "gzip"
-    }
-
-    force_redirect {
-      enabled       = true
-      type          = "http"
-      redirect_code = 301
     }
 
     referer {
@@ -982,15 +1032,16 @@ resource "huaweicloud_cdn_domain" "test" {
     }
 
     error_code_redirect_rules {
-      error_code  = 416
-      target_code = 301
-      target_link = "http://example.com"
+      error_code     = 416
+      target_code    = 301
+      target_link    = "http://example.com"
+      execution_mode = "redirect"
     }
 
     error_code_redirect_rules {
-      error_code  = 502
-      target_code = 302
-      target_link = "https://xxx.cn/"
+      error_code     = 502
+      target_link    = "/errorcode.html"
+      execution_mode = "break"
     }
 
     access_area_filter {
@@ -1120,7 +1171,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_configsUpdate1(domainName string) string {
+func testAccDomain_configs_step2(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1177,12 +1228,6 @@ resource "huaweicloud_cdn_domain" "test" {
       enabled   = true
       type      = "br"
       file_type = ".js,.html"
-    }
-
-    force_redirect {
-      enabled       = true
-      type          = "http"
-      redirect_code = 302
     }
 
     referer {
@@ -1245,9 +1290,10 @@ resource "huaweicloud_cdn_domain" "test" {
     }
 
     error_code_redirect_rules {
-      error_code  = 416
-      target_code = 301
-      target_link = "http://example.com"
+      error_code     = 416
+      target_code    = 301
+      target_link    = "http://example.com"
+      execution_mode = "redirect"
     }
 
     access_area_filter {
@@ -1313,7 +1359,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_configsUpdate2(domainName string) string {
+func testAccDomain_configs_step3(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1379,7 +1425,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_configsUpdate3(domainName string) string {
+func testAccDomain_configs_step4(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1420,7 +1466,7 @@ resource "huaweicloud_cdn_domain" "test" {
 
 // All configuration item modifications may trigger `CDN.0163`. This is a problem that we have no way to solve.
 // When a `CDN.0163` error occurs, you can avoid this error by adjusting the test case configuration items.
-func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
+func TestAccDomain_configTypeWholeSite(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -1430,7 +1476,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -1441,7 +1487,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_wholeSite(domainName),
+				Config: testAccDomain_wholeSite_step1(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1451,7 +1497,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_wholeSiteUpdate1(domainName),
+				Config: testAccDomain_wholeSite_step2(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1461,7 +1507,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_wholeSiteUpdate2(domainName),
+				Config: testAccDomain_wholeSite_step3(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1473,7 +1519,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 				ImportStateVerifyIgnore: []string{
 					"enterprise_project_id", "configs.0.url_signing.0.key", "configs.0.https_settings.0.certificate_body",
 					"configs.0.https_settings.0.private_key", "cache_settings",
@@ -1483,7 +1529,7 @@ func TestAccCdnDomain_configTypeWholeSite(t *testing.T) {
 	})
 }
 
-func testAccCdnDomain_wholeSite(domainName string) string {
+func testAccDomain_wholeSite_step1(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1510,7 +1556,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_wholeSiteUpdate1(domainName string) string {
+func testAccDomain_wholeSite_step2(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1537,7 +1583,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_wholeSiteUpdate2(domainName string) string {
+func testAccDomain_wholeSite_step3(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1563,7 +1609,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func TestAccCdnDomain_epsID_migrate(t *testing.T) {
+func TestAccDomain_epsID_migrate(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -1573,7 +1619,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -1585,7 +1631,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_epsID_basic(domainName),
+				Config: testAccDomain_epsID_step1(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1593,7 +1639,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_epsID_update1(domainName),
+				Config: testAccDomain_epsID_step2(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1601,7 +1647,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_epsID_update2(domainName),
+				Config: testAccDomain_epsID_step3(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1612,7 +1658,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 				ImportStateVerifyIgnore: []string{
 					"enterprise_project_id", "configs.0.url_signing.0.key", "configs.0.https_settings.0.certificate_body",
 					"configs.0.https_settings.0.private_key", "cache_settings",
@@ -1622,7 +1668,7 @@ func TestAccCdnDomain_epsID_migrate(t *testing.T) {
 	})
 }
 
-func testAccCdnDomain_epsID_basic(domainName string) string {
+func testAccDomain_epsID_step1(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1639,7 +1685,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func testAccCdnDomain_epsID_update1(domainName string) string {
+func testAccDomain_epsID_step2(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1656,7 +1702,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }
 
-func testAccCdnDomain_epsID_update2(domainName string) string {
+func testAccDomain_epsID_step3(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name                  = "%s"
@@ -1673,7 +1719,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName)
 }
 
-func TestAccCdnDomain_client_cert(t *testing.T) {
+func TestAccDomain_client_cert(t *testing.T) {
 	var (
 		obj          interface{}
 		resourceName = "huaweicloud_cdn_domain.test"
@@ -1683,7 +1729,7 @@ func TestAccCdnDomain_client_cert(t *testing.T) {
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&obj,
-		getCdnDomainFunc,
+		getDomainFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -1695,7 +1741,7 @@ func TestAccCdnDomain_client_cert(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCdnDomain_client_cert_basic(domainName),
+				Config: testAccDomain_client_cert_step1(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1706,7 +1752,7 @@ func TestAccCdnDomain_client_cert(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_client_cert_update1(domainName),
+				Config: testAccDomain_client_cert_step2(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1717,7 +1763,7 @@ func TestAccCdnDomain_client_cert(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccCdnDomain_client_cert_update2(domainName),
+				Config: testAccDomain_client_cert_step3(domainName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", domainName),
@@ -1731,13 +1777,13 @@ func TestAccCdnDomain_client_cert(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateIdFunc: testCDNDomainImportState(resourceName),
+				ImportStateIdFunc: testDomainImportState(resourceName),
 			},
 		},
 	})
 }
 
-func testAccCdnDomain_client_cert_basic(domainName string) string {
+func testAccDomain_client_cert_step1(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%[1]s"
@@ -1761,7 +1807,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName, acceptance.HW_CCM_CA_CERTIFICATE_PATH)
 }
 
-func testAccCdnDomain_client_cert_update1(domainName string) string {
+func testAccDomain_client_cert_step2(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%[1]s"
@@ -1785,7 +1831,7 @@ resource "huaweicloud_cdn_domain" "test" {
 `, domainName, acceptance.HW_CCM_CA_CERTIFICATE_PATH)
 }
 
-func testAccCdnDomain_client_cert_update2(domainName string) string {
+func testAccDomain_client_cert_step3(domainName string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_cdn_domain" "test" {
   name         = "%[1]s"
@@ -1808,7 +1854,7 @@ resource "huaweicloud_cdn_domain" "test" {
 }
 
 // testCDNDomainImportState use to return an ID using `name`
-func testCDNDomainImportState(name string) resource.ImportStateIdFunc {
+func testDomainImportState(name string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
 		rs, ok := s.RootModule().Resources[name]
 		if !ok {

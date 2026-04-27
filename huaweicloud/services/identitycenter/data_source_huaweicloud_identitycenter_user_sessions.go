@@ -2,7 +2,6 @@ package identitycenter
 
 import (
 	"context"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -14,6 +13,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/httphelper"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/schemas"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API IDENTITYCENTER GET /v1/identity-stores/{identity_store_id}/users/{user_id}/sessions

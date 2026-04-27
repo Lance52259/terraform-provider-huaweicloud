@@ -83,7 +83,7 @@ func TestAccPrivateTransitSubnet_basic(t *testing.T) {
 }
 
 func testAccPrivateTransitSubnet_base() string {
-	return fmt.Sprintf(`
+	return `
 data "huaweicloud_vpc" "myvpc" {
   name = "vpc-default"
 }
@@ -91,7 +91,7 @@ data "huaweicloud_vpc" "myvpc" {
 data "huaweicloud_vpc_subnet" "test" {
   name = "subnet-default"
 }
-`)
+`
 }
 
 func testAccPrivateTransitSubnet_basic(name string) string {

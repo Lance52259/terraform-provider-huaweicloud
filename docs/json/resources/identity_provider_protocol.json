@@ -1,0 +1,54 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_identity_provider_protocol": {
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "links": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "identity_provider": "string",
+                      "self": "string"
+                    }
+                  ]
+                ],
+                "description": "The links of protocol.",
+                "computed": true
+              },
+              "mapping_id": {
+                "type": "string",
+                "description": "The mapping_id for the protocol.",
+                "optional": true
+              },
+              "protocol_id": {
+                "type": "string",
+                "description": "The identity protocol of the identity provider.",
+                "required": true
+              },
+              "provider_id": {
+                "type": "string",
+                "description": "The ID of the identity provider used to manage the protocol.",
+                "required": true
+              }
+            }
+          },
+          "product": {
+            "short": "IAM",
+            "name": "Identity and Access Management",
+            "catalog": "Management & Governance",
+            "name_cn": "统一身份认证服务",
+            "catalog_cn": "管理与监管"
+          }
+        }
+      }
+    }
+  }
+}

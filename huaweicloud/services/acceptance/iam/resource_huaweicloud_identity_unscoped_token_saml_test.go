@@ -9,7 +9,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccIdentityUnscopedTokenSaml(t *testing.T) {
+func TestAccIdentityUnscopedTokenSaml_basic(t *testing.T) {
 	idpId := "YourIdpId"
 	samlResponse := "YourSamlResponse"
 	resourceName := "huaweicloud_identity_unscoped_token_saml.test"
@@ -20,6 +20,7 @@ func TestAccIdentityUnscopedTokenSaml(t *testing.T) {
 			acceptance.TestAccPreCheck(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccIdentityUnscopedTokenSaml(idpId, samlResponse),

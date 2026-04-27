@@ -5,6 +5,12 @@
         "huaweicloud_cse_microservice_engine_flavors": {
           "block": {
             "attributes": {
+              "enterprise_project_id": {
+                "type": "string",
+                "description": "The enterprise project ID to which the microservice engine flavors belong.",
+                "optional": true,
+                "computed": true
+              },
               "flavors": {
                 "type": [
                   "list",
@@ -26,7 +32,7 @@
                     }
                   ]
                 ],
-                "description": "All microservice engine flavors that match the filter parameters.",
+                "description": "The list of microservice engine flavors that matched filter parameters.",
                 "computed": true
               },
               "id": {
@@ -40,7 +46,7 @@
               },
               "version": {
                 "type": "string",
-                "description": "The version that used to filter the microservice engine flavors.",
+                "description": "The version used to filter the microservice engine flavors.",
                 "optional": true
               }
             }

@@ -3,17 +3,20 @@ package metastudio
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
+	"strings"
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"strings"
-	"time"
 )
 
 var nonUpdatableParams = []string{
@@ -22,6 +25,13 @@ var nonUpdatableParams = []string{
 	"is_auto_renew",
 	"resource_spec_code",
 }
+
+// @API MetaStudio POST /v1/{project_id}/tenants/special-agreements/signed
+// @API MetaStudio POST /v1/{project_id}/mss/public/orders
+// @API MetaStudio GET /v1/{project_id}/tenants/resources
+// @API BSS GET /V2/orders/customer-orders/details/{order_id}
+// @API BSS POST /v2/orders/suscriptions/resources/query
+// @API BSS POST /v2/orders/subscriptions/resources/unsubscribe
 
 func ResourceMetaStudio() *schema.Resource {
 	return &schema.Resource{
@@ -175,13 +185,12 @@ func signAutoPayAgreeMents(client *golangsdk.ServiceClient) error {
 	}
 	if resp.StatusCode == 200 {
 		return nil
-	} else {
-		respBody, err := utils.FlattenResponse(resp)
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("failed to sign auto-pay-agreements: %s", respBody)
 	}
+	respBody, err := utils.FlattenResponse(resp)
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("failed to sign auto-pay-agreements: %s", respBody)
 }
 
 func buildSpecialAgreementSighReq() map[string]interface{} {

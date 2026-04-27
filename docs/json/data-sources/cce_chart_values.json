@@ -1,0 +1,40 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_cce_chart_values": {
+          "block": {
+            "attributes": {
+              "chart_id": {
+                "type": "string",
+                "required": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "values": {
+                "type": [
+                  "map",
+                  "string"
+                ],
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "CCE",
+            "name": "Cloud Container Engine",
+            "catalog": "Containers",
+            "name_cn": "云容器引擎",
+            "catalog_cn": "容器"
+          }
+        }
+      }
+    }
+  }
+}

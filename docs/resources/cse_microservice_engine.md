@@ -7,7 +7,7 @@ description: ""
 
 # huaweicloud_cse_microservice_engine
 
-Manages a dedicated microservice engine (2.0+) resource within HuaweiCloud.
+Manages a microservice engine (2.0+) resource within HuaweiCloud.
 
 ## Example Usage
 
@@ -30,6 +30,10 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   availability_zones = var.availability_zones
   auth_type          = "RBAC"
   admin_pass         = var.manager_password
+
+  tags = {
+    owner = "terraform"
+  }
 }
 ```
 
@@ -45,6 +49,10 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   network_id = var.network_id
   auth_type  = "NONE"
   version    = "Nacos2"
+
+  tags = {
+    owner = "terraform"
+  }
 }
 ```
 
@@ -52,45 +60,45 @@ resource "huaweicloud_cse_microservice_engine" "test" {
 
 The following arguments are supported:
 
-* `region` - (Optional, String, ForceNew) Specifies the region in which to create the dedicated microservice engine.
+* `region` - (Optional, String, ForceNew) Specifies the region where the microservice engine is located.
   If omitted, the provider-level region will be used. Changing this will create a new engine.
 
-* `name` - (Required, String, ForceNew) Specifies the name of the dedicated microservice engine.
+* `name` - (Required, String, NonUpdatable) Specifies the name of the microservice engine.
  The name can contain `3` to `24` characters, only letters, digits and hyphens (-) are allowed.
   The name must start with a letter and cannot end with a hyphen (-).
-  Changing this will create a new engine.
 
-* `flavor` - (Required, String, ForceNew) Specifies the flavor of the dedicated microservice engine.
-  Changing this will create a new engine.
+* `flavor` - (Required, String, NonUpdatable) Specifies the flavor of the microservice engine.
 
-* `availability_zones` - (Optional, List, ForceNew) Specifies the list of availability zones.  
-  Required if the `version` is **CSE2**.  
-  Changing this will create a new engine.
+* `network_id` - (Required, String, NonUpdatable) Specifies the network ID of the subnet to which the microservice
+  engine belongs.
 
-* `network_id` - (Required, String, ForceNew) Specifies the network ID of the subnet to which the dedicated microservice
-  engine belongs. Changing this will create a new engine.
-
-* `auth_type` - (Required, String, ForceNew) Specifies the authentication method for the dedicated microservice engine.
-  Changing this will create a new engine.
-  + **RBAC**: Enable security authentication.
+* `auth_type` - (Required, String, NonUpdatable) Specifies the authentication type for the microservice engine.  
+  The valid values are as follows:
+  + **RBAC**: Enable security authentication.  
     Security authentication applies to the scenario where multiple users use the same engine.
     After security authentication is enabled, all users who use the engine can log in using the account and password.
     You can assign the account and role in the System Management.
-  + **NONE**: Disable security authentication.
+  + **NONE**: Disable security authentication.  
     After security authentication is disabled, all users who use the engine can use the engine without using the account
     and password, and have the same operation permissions on all services.
 
   -> **NONE** is required for the nacos engine.
 
-* `version` - (Optional, String, ForceNew) Specifies the version of the dedicated microservice engine.  
+* `availability_zones` - (Optional, List, NonUpdatable) Specifies the availability zones where the microservice engine
+  is deployed.  
+  Required if the `version` is **CSE2**.
+
+* `version` - (Optional, String, NonUpdatable) Specifies the version of the microservice engine.  
   The valid values are as follows:
   + **CSE2**
   + **Nacos2**
 
-  Defaults to **CSE2**. Changing this will create a new engine.
+  Defaults to **CSE2**.
 
-* `admin_pass` - (Optional, String, ForceNew) Specifies the account password. The corresponding account name is **root**.
-  Required if `auth_type` is **RBAC**. Changing this will create a new engine.
+* `admin_pass` - (Optional, String, NonUpdatable) Specifies the administrator account password of the microservice
+  engine.  
+  The corresponding account name is **root**.
+  Required if `auth_type` is **RBAC**.  
   The password format must meet the following conditions:
   + Must be `8` to `32` characters long.
   + A password must contain at least one digit, one uppercase letter, one lowercase letter, and one special character
@@ -98,28 +106,26 @@ The following arguments are supported:
   + Cannot be the account name or account name spelled backwards.
   + The password can only start with a letter.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID.  
-  If omitted and the version is **Nacos2**, the default enterprise project will be used.  
-  Changing this will create a new engine.
+* `enterprise_project_id` - (Optional, String, NonUpdatable) Specifies the enterprise project ID to which the
+  microservice engine belongs.  
+  If omitted, the provider-level enterprise project will be used.
 
-* `description` - (Optional, String, ForceNew) Specifies the description of the dedicated microservice engine.
+* `description` - (Optional, String) Specifies the description of the microservice engine.  
   The description can contain a maximum of `255` characters.
-  Changing this will create a new engine.
 
-* `eip_id` - (Optional, String, ForceNew) Specifies the EIP ID to which the dedicated microservice engine assocated.
-  Changing this will create a new engine.
+* `eip_id` - (Optional, String, NonUpdatable) Specifies the EIP ID bound to the microservice engine.
 
-* `extend_params` - (Optional, Map, ForceNew) Specifies the additional parameters for the dedicated microservice engine.
-  Changing this will create a new engine.
+* `extend_params` - (Optional, Map, NonUpdatable) Specifies the extended parameters of the microservice engine.
 
--> After the engine is created, the system will automatically add a series of additional parameters to it.
-  The specific parameters are subject to the state of the dedicated microservice engine.
-  This parameter will be affected by these parameters and will appear when `terraform plan` or `terraform apply`.
+-> After the engine is created, the system will automatically add a series of additional parameters to it.  
+  The specific parameters are subject to the state of the microservice engine.  
+  This parameter will be affected by these parameters and will appear when `terraform plan` or `terraform apply`.  
   If it is inconsistent with the script configuration, it can be ignored by `ignore_changes` in non-change scenarios.
 
-* `enterprise_project_id` - (Optional, String, ForceNew) Specifies the enterprise project ID to which the dedicated
-  microservice engine belongs.  
-  Changing this will create a new engine.
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the microservice engine.
+
+* `max_retries` - (Optional, Int) Specifies the maximum number of retries for the microservice engine creation.
+  Defaults to `0`.
 
 ## Attribute Reference
 
@@ -131,18 +137,27 @@ In addition to all arguments above, the following attributes are exported:
 
 * `instance_limit` - The maximum number of the microservice instance resources.
 
-* `service_registry_addresses` - The connection address of service center.
-  The [object](#engine_center_addresses) structure is documented below.
+* `service_registry_addresses` - The service registry addresses of the microservice engine.  
+  The [service_registry_addresses](#cse_microservice_engine_service_registry_addresses) structure is documented below.
 
-* `config_center_addresses` - The address of config center.
-  The [object](#engine_center_addresses) structure is documented below.
+* `config_center_addresses` - The config center addresses of the microservice engine.  
+  The [config_center_addresses](#cse_microservice_engine_config_center_addresses) structure is documented below.
 
-<a name="engine_center_addresses"></a>
-The `service_registry_addresses` and `config_center_addresses` block supports:
+<a name="cse_microservice_engine_service_registry_addresses"></a>
+The `service_registry_addresses` block supports:
 
-* `private` - The internal access address.
+* `private` - The private address of the service registry.
 
-* `public` - The public access address. This address is only set when EIP is bound.
+* `public` - The public address of the service registry.  
+  This address is only set when EIP is bound.
+
+<a name="cse_microservice_engine_config_center_addresses"></a>
+The `config_center_addresses` block supports:
+
+* `private` - The private address of the config center.
+
+* `public` - The public address of the config center.  
+  This address is only set when EIP is bound.
 
 ## Timeouts
 
@@ -156,11 +171,11 @@ This resource provides the following timeouts configuration options:
 Engines can be imported using their `id`, e.g.
 
 ```bash
-$ terraform import huaweicloud_cse_microservice_engine.test eddc5d42-f9d5-4f8e-984b-d6f3e088561c
+$ terraform import huaweicloud_cse_microservice_engine.test <id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
-API response, security or some other reason. The missing attributes are `admin_pass` and `extend_params`.
+API response, security or some other reason. The missing attributes are `admin_pass`, `extend_params` and `max_retries`.
 It is generally recommended running `terraform plan` after importing an instance.
 You can then decide if changes should be applied to the instance, or the resource definition should be updated to
 align with the instance. Also you can ignore changes as below.
@@ -168,10 +183,12 @@ align with the instance. Also you can ignore changes as below.
 ```hcl
 resource "huaweicloud_cse_microservice_engine" "test" {
   ...
+
   lifecycle {
     ignore_changes = [
       admin_pass,
       extend_params,
+      max_retries,
     ]
   }
 }
@@ -181,5 +198,5 @@ For the engine created with the `enterprise_project_id`, its enterprise project 
 when importing, the format is `<id>/<enterprise_project_id>`, e.g.
 
 ```bash
-$ terraform import huaweicloud_cse_microservice_engine.test eddc5d42-f9d5-4f8e-984b-d6f3e088561c/ef101e1a-990c-42cd-bb99-a4474e41e461
+$ terraform import huaweicloud_cse_microservice_engine.test <id>/<enterprise_project_id>
 ```

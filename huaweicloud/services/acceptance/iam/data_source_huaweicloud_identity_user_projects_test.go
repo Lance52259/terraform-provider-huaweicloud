@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestDataSourceIdentityUserProjects(t *testing.T) {
+func TestAccDataSourceIdentityUserProjects_basic(t *testing.T) {
 	dataSourceName := "data.huaweicloud_identity_user_projects.test"
 	userName := acceptance.RandomAccResourceName()
 	password := acceptance.RandomPassword()

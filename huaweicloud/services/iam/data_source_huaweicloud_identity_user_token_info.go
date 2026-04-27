@@ -3,12 +3,13 @@ package iam
 import (
 	"context"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -193,13 +194,13 @@ func dataSourceIdentityUserTokenInfoRead(_ context.Context, d *schema.ResourceDa
 	if err != nil {
 		return diag.Errorf("error get identity token: %s", err)
 	}
-	RespBody, err := utils.FlattenResponse(response)
+	respBody, err := utils.FlattenResponse(response)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	tokenModel := utils.PathSearch("token", RespBody, nil)
+	tokenModel := utils.PathSearch("token", respBody, nil)
 	return flattenResponse(tokenModel, noCatalog, d)
 }
 
@@ -225,7 +226,6 @@ func flattenResponse(tokenModel interface{}, noCatalog string, d *schema.Resourc
 		}
 	}
 	return nil
-
 }
 
 func flattenCatalog(catalogs interface{}) []map[string]interface{} {

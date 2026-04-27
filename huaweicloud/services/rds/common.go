@@ -64,7 +64,7 @@ func handleMultiOperationsError(err error) (bool, error) {
 			return true, err
 		}
 	}
-	if errCode, ok := err.(golangsdk.ErrUnexpectedResponseCode); ok && errCode.Actual == 409 {
+	if errCode, ok := err.(golangsdk.ErrDefault409); ok {
 		var apiError interface{}
 		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
 			return false, fmt.Errorf("unmarshal the response body failed: %s", jsonErr)
@@ -109,8 +109,8 @@ func handleMultiOperationsError(err error) (bool, error) {
 			return false, fmt.Errorf("error parse errorCode from response body: %s", errorCodeErr)
 		}
 
-		// if the error code is RDS.0005, it indicates that the SSL is changed, and the db is rebooted
-		if errorCode.(string) == "RDS.0005" {
+		// if the error code is DBS.280036, the instance is not ready, should wait a moment
+		if errorCode.(string) == "DBS.280036" {
 			return true, err
 		}
 	}
@@ -142,7 +142,7 @@ func handleDeletionError(err error) (bool, error) {
 		}
 	}
 	// delete fail
-	if errCode, ok := err.(golangsdk.ErrUnexpectedResponseCode); ok && errCode.Actual == 409 {
+	if errCode, ok := err.(golangsdk.ErrDefault409); ok {
 		var apiError interface{}
 		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
 			return false, fmt.Errorf("unmarshal the response body failed: %s", jsonErr)

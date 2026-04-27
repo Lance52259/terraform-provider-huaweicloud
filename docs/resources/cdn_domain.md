@@ -10,6 +10,8 @@ description: |-
 
 Manages a CDN domain resource within HuaweiCloud.
 
+-> Before updating the domain configuration, please make sure that the status value is **online**.
+
 ## Example Usage
 
 ### Create a CDN domain
@@ -281,8 +283,8 @@ resource "huaweicloud_cdn_domain" "test" {
 
 The following arguments are supported:
 
-* `name` - (Required, String, NonUpdatable) Specifies acceleration domain name. The domain name consists of one or more parts,
-  representing domains at different levels. Domain names at all levels can only be composed of letters, digits,
+* `name` - (Required, String, NonUpdatable) Specifies acceleration domain name. The domain name consists of one or more
+  parts, representing domains at different levels. Domain names at all levels can only be composed of letters, digits,
   and hyphens (-), and the letters are equivalent in upper and lower case. Domain names at all levels are connected
   with (.). The domain name can contain up to `75` characters.
 
@@ -316,6 +318,11 @@ The following arguments are supported:
 * `enterprise_project_id` - (Optional, String) Specifies the enterprise project ID.
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the domain.
+
+* `status` - (Optional, String) Specifies the status of the domain.
+  The valid values are as follows:
+  + **online**
+  + **offline**
 
 <a name="sources_cdn_domain"></a>
 The `sources` block supports:
@@ -445,7 +452,8 @@ The `configs` block support:
 
   -> This field can only be used when the HTTPS certificate is enabled. Disabling the HTTPS certificate will disable QUIC.
 
-* `referer` - (Optional, List) Specifies the referer validation. The [referer](#referer_object) structure is documented below.
+* `referer` - (Optional, List) Specifies the referer validation.
+  The [referer](#referer_object) structure is documented below.
 
   -> You can define referer whitelists and blacklists to control who can access specific domain names.
 
@@ -459,7 +467,7 @@ The `configs` block support:
 * `request_limit_rules` - (Optional, List) Specifies the request rate limiting rules.
   The [request_limit_rules](#request_limit_rules_object) structure is documented below.
 
-  -> Up to 60 request limit rules can be configured.
+  -> Up to `60` request limit rules can be configured.
 
 * `error_code_cache` - (Optional, List) Specifies the status code cache TTL.
   The [error_code_cache](#error_code_cache_object) structure is documented below.
@@ -475,7 +483,7 @@ The `configs` block support:
 * `origin_request_url_rewrite` - (Optional, List) Specifies the rules of rewriting origin request URLs.
   The [origin_request_url_rewrite](#origin_request_url_rewrite_object) structure is documented below.
 
-  -> Up to 20 rules can be configured.
+  -> Up to `20` rules can be configured.
 
 * `user_agent_filter` - (Optional, List) Specifies the User-Agent blacklist or whitelist settings.
   The [user_agent_filter](#user_agent_filter_object) structure is documented below.
@@ -569,7 +577,7 @@ The `retrieval_request_header` block support:
 * `action` - (Required, String) Specifies the operation type of the retrieval request header. Valid values are **delete**
   and **set**. If the header does not exist in the original retrieval request, add the header before setting its value.
 
-* `value` - (Optional, String) Specifies the value of the retrieval request header. The value contains `1` to `1000`
+* `value` - (Optional, String) Specifies the value of the retrieval request header. The value contains `1` to `1,000`
   characters, including letters, digits, and special characters `.-_*#!&+|^~'"/:;,=@?<>`. Variables, for example,
   `$client_ip` and `$remote_port`, are not supported.
 
@@ -592,10 +600,10 @@ The `url_signing` block support:
 * `enabled` - (Required, Bool) Specifies whether to enable of A/B/C URL signing method.
 
 * `type` - (Optional, String) Specifies the signing Method, possible values are:
-  **type_a**: Method A.
-  **type_b**: Method B.
-  **type_c1**: Method C1.
-  **type_c2**: Method C2.
+  + **type_a**: Method A.
+  + **type_b**: Method B.
+  + **type_c1**: Method C1.
+  + **type_c2**: Method C2.
 
 * `sign_method` - (Optional, String) Specifies the encryption algorithm type for URL authentication.
   The default value is **md5**. The valid values are as following:
@@ -623,10 +631,10 @@ The `url_signing` block support:
   including letters and digits.
 
 * `time_format` - (Optional, String) Specifies the time format. Possible values are:
-  **dec**: Decimal, can be used in Method A, Method B and Method C2.
-  **hex**: Hexadecimal, can be used in Method C1 and Method C2.
+  + **dec**: Decimal, can be used in Method A, Method B and Method C2.
+  + **hex**: Hexadecimal, can be used in Method C1 and Method C2.
 
-* `expire_time` - (Optional, Int) Specifies the expiration time. The value ranges from `0` to `31536000`, in seconds.
+* `expire_time` - (Optional, Int) Specifies the expiration time. The value ranges from `0` to `31,536,000`, in seconds.
 
 <a name="inherit_config_object"></a>
 The `inherit_config` blocks support:
@@ -666,8 +674,8 @@ The `compress` blocks support:
 * `type` - (Optional, String) Specifies the smart compression type.
   Possible values are: **gzip** (gzip) and **br** (Brotli).
 
-* `file_type` - (Optional, String) Specifies the formats of files to be compressed. Enter up to 200 characters.
-  Multiple formats are separated by commas (,). Each format contains up to 50 characters.
+* `file_type` - (Optional, String) Specifies the formats of files to be compressed. Enter up to `200` characters.
+  Multiple formats are separated by commas (,). Each format contains up to `50` characters.
   Defaults to **.js,.html,.css,.xml,.json,.shtml,.htm**.
 
 <a name="ip_frequency_limit_object"></a>
@@ -697,15 +705,15 @@ The `flexible_origin` block support:
 * `priority` - (Required, Int) Specifies the priority. The value of this field must be unique. Value ranges from `1`
   to `100`. A greater number indicates a higher priority.
 
-* `back_sources` - (Required, List) Specifies the back source information. The length of this array field cannot exceed `1`.
-  The [back_sources](#flexible_origin_back_sources_object) structure is documented below.
+* `back_sources` - (Required, List) Specifies the back source information. The length of this array field cannot
+  exceed `1`. The [back_sources](#flexible_origin_back_sources_object) structure is documented below.
 
 * `match_pattern` - (Optional, String) Specifies the URI match rule. The usage rules are as follows:
   + When `match_type` is set to **all**, set this field to empty.
   + When `match_type` is set to **file_extension**, the value of this field should start with a period (.).
-    Enter up to 20 file name extensions and use semicolons (;) to separate them. Example: **.jpg;.zip;.exe**.
+    Enter up to `20` file name extensions and use semicolons (;) to separate them. Example: **.jpg;.zip;.exe**.
   + When `match_type` is set to **file_path**, the value of this field should start with a slash (/).
-    Enter up to 20 paths and use semicolons (;) to separate them. Example: **/test/folder01;/test/folder02**.
+    Enter up to `20` paths and use semicolons (;) to separate them. Example: **/test/folder01;/test/folder02**.
 
 <a name="flexible_origin_back_sources_object"></a>
 The `back_sources` block support:
@@ -789,12 +797,12 @@ The `remote_auth_rules` block support:
   **specific_file**. In other cases, this parameter is left blank.
 
 * `reserve_args` - (Optional, String) Specifies the reserve args. Multiple args are separated by vertical bars (|).
-  For example: **key1|key2**. This parameter is mandatory when `reserve_args_setting` is set to **reserve_specific_args**.
-  In other cases, this parameter is left blank.
+  For example: **key1|key2**. This parameter is mandatory when `reserve_args_setting` is set to
+  **reserve_specific_args**. In other cases, this parameter is left blank.
 
-* `reserve_headers` - (Optional, String) Specifies the reserve headers. Multiple headers are separated by vertical bars (|).
-  For example: **key1|key2**. This parameter is mandatory when `reserve_headers_setting` is set to **reserve_specific_headers**.
-  In other cases, this parameter is left blank.
+* `reserve_headers` - (Optional, String) Specifies the reserve headers. Multiple headers are separated by vertical
+  bars (|). For example: **key1|key2**. This parameter is mandatory when `reserve_headers_setting` is set to
+  **reserve_specific_headers**. In other cases, this parameter is left blank.
 
 * `add_custom_args_rules` - (Optional, List) Specifies the URL validation parameters.
   The [add_custom_args_rules](#add_custom_rules_object) structure is documented below.
@@ -834,7 +842,7 @@ The `referer` block support:
 
 * `value` - (Optional, String) Specifies the domain names or IP addresses, which are separated by commas (,).
   Wildcard domain names and domain names with port numbers are supported. Enter up to `400` domain names and IP addresses.
-  The port number ranges from `1` to `65535`. This field is required when `type` is set to **black** or **white**.
+  The port number ranges from `1` to `65,535`. This field is required when `type` is set to **black** or **white**.
 
 * `include_empty` - (Optional, Bool) Specifies whether blank `referers` are included.
   A referer blacklist including blank `referers` indicates that requests without any `referers` are not allowed to access.
@@ -945,10 +953,18 @@ The `error_code_redirect_rules` block support:
 * `error_code` - (Required, Int) Specifies the redirect unique error code. Valid values are: **400**, **403**, **404**,
   **405**, **414**, **416**, **451**, **500**, **501**, **502**, **503**, and **504**.
 
-* `target_code` - (Required, Int) Specifies the redirect status code. The value can be **301** or **302**.
-
 * `target_link` - (Required, String) Specifies the destination URL. The value must start with **http://** or **https://**.
   For example: `http://www.example.com`.
+
+* `execution_mode` - (Required, String) Specifies the execution mode of the error code redirect rule.  
+  The valid values are as follows:
+  + **redirect**
+  + **break**
+
+* `target_code` - (Optional, Int) Specifies the redirect status code.  
+  The valid values are as follows:
+  + **301**
+  + **302**
 
 <a name="hsts_object"></a>
 The `hsts` block support:
@@ -1124,7 +1140,7 @@ The `rules` block support:
   + **full_path**: Files are matched based on their full paths.
   + **home_page**: Files are matched based on their homepage.
 
-* `ttl` - (Required, Int) Specifies the cache age. The maximum cache age is 365 days.
+* `ttl` - (Required, Int) Specifies the cache age. The maximum cache age is `365` days.
 
 * `ttl_type` - (Required, String) Specifies the unit of the cache age. Possible values:
   + **s**: Second
@@ -1132,17 +1148,17 @@ The `rules` block support:
   + **h**: Hour
   + **d**: Day
 
-* `priority` - (Required, Int) Specifies the priority weight of this rule. The default value is 1.
-  A larger value indicates a higher priority. The value ranges from 1 to 100. The weight values must be unique.
+* `priority` - (Required, Int) Specifies the priority weight of this rule. The default value is `1`.
+  A larger value indicates a higher priority. The value ranges from `1` to `100`. The weight values must be unique.
 
 * `content` - (Optional, String) Specifies the content that matches `rule_type`.
   + If `rule_type` is set to **all** or **home_page**, keep this parameter empty.
   + If `rule_type` is set to **file_extension**, the value of this parameter is a list of file name
     extensions. A file name extension starts with a period (.). File name extensions are separated by semicolons (;),
-    for example, `.jpg;.zip;.exe`. Up to 20 file types are supported.
+    for example, `.jpg;.zip;.exe`. Up to `20` file types are supported.
   + If `rule_type` is set to **catalog**, the value of this parameter is a list of directories. A directory starts with
     a slash (/). Directories are separated by semicolons (;), for example, `/test/folder01;/test/folder02`.
-    Up to 20 directories are supported.
+    Up to `20` directories are supported.
   + If `rule_type` is set to **full_path**, the value must start with a slash (/) and cannot end with an asterisk.
     Example: `/test/index.html` or `/test/*.jpg`
 
@@ -1155,7 +1171,7 @@ The `rules` block support:
   Defaults to **full_url**.
 
 * `url_parameter_value` - (Optional, String) Specifies the URL parameter values, which are separated by commas (,).
-  Up to 10 parameters can be set.
+  Up to `10` parameters can be set.
   This parameter is mandatory when `url_parameter_type` is set to **del_params** or **reserve_params**.
 
 ## Attribute Reference
@@ -1165,9 +1181,6 @@ In addition to all arguments above, the following attributes are exported:
 * `id` - The acceleration domain name ID.
 
 * `cname` - The CNAME of the acceleration domain name.
-
-* `domain_status` - The status of the acceleration domain name. The available values are
-  **online**, **offline**, **configuring**, **configure_failed**, **checking**, **check_failed** and **deleting**.
 
 * `configs/https_settings/https_status` - The status of the https. The available values are **on** and **off**.
 

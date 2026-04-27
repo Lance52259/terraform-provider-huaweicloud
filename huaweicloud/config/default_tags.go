@@ -3,39 +3,45 @@ package config
 import (
 	"context"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
-
-func GetRawConfigTags(rawConfig cty.Value) map[string]interface{} {
-	tagsRaw := rawConfig.GetAttr("tags")
-
-	if tagsRaw.IsNull() || !tagsRaw.IsKnown() || !tagsRaw.Type().IsMapType() {
-		return nil
-	}
-
-	result := make(map[string]interface{})
-	for k, v := range tagsRaw.AsValueMap() {
-		result[k] = v.AsString()
-	}
-	return result
-}
 
 func MergeDefaultTags() schema.CustomizeDiffFunc {
 	return func(_ context.Context, d *schema.ResourceDiff, meta interface{}) error {
-		cfg := meta.(*Config)
-		defaultTags := cfg.DefaultTags
+		var (
+			cfg          = meta.(*Config)
+			resourceTags = utils.TryMapValueAnalysis(utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "tags"))
+			mergedTags   = make(map[string]interface{})
+		)
 
-		rawConfig := d.GetRawConfig()
-		resourceTags := GetRawConfigTags(rawConfig)
-
-		mergedTags := make(map[string]interface{})
-		for k, v := range defaultTags {
+		// Merge default tags and resource tags
+		for k, v := range cfg.DefaultTags {
 			mergedTags[k] = v
 		}
 
 		for k, v := range resourceTags {
 			mergedTags[k] = v
+		}
+
+		// ignore_tags only works when updating tags
+		if d.Id() == "" {
+			err := d.SetNew("tags", mergedTags)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		// Use old value in ignored tags
+		oldValue, _ := d.GetChange("tags")
+		oldTags := oldValue.(map[string]interface{})
+
+		for _, k := range cfg.IgnoreTags {
+			tagKey := k.(string)
+			if _, exists := oldTags[tagKey]; exists {
+				mergedTags[tagKey] = oldTags[tagKey]
+			}
 		}
 
 		err := d.SetNew("tags", mergedTags)

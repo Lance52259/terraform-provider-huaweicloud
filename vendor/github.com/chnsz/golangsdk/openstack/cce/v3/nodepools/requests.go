@@ -234,11 +234,11 @@ type UpdateNodeTemplate struct {
 	// ID of the dedicated host to which nodes will be scheduled
 	DedicatedHostID string `json:"dedicatedHostId,omitempty"`
 	// Node login parameters
-	Login *nodes.LoginSpec `json:"login,omitempty"`
+	Login nodes.LoginSpec `json:"login,omitempty"`
 	// System disk parameter of the node
-	RootVolume *nodes.VolumeSpec `json:"rootVolume,omitempty"`
+	RootVolume *nodes.VolumeSpec `json:"rootVolumeUpdate,omitempty"`
 	// The data disk parameter of the node must currently be a disk
-	DataVolumes []nodes.VolumeSpec `json:"dataVolumes,omitempty"`
+	DataVolumes []nodes.VolumeSpec `json:"dataVolumesUpdate,omitempty"`
 	// Disk initialization configuration management parameters
 	// If omit, disk management is performed according to the DockerLVMConfigOverride parameter in extendParam
 	Storage *nodes.StorageSpec `json:"storage,omitempty"`
@@ -277,9 +277,15 @@ type UpdateSpec struct {
 	// Node template
 	NodeTemplate UpdateNodeTemplate `json:"nodeTemplate"`
 	// Initial number of expected nodes
-	InitialNodeCount *int `json:"initialNodeCount" required:"true"`
+	InitialNodeCount int `json:"initialNodeCount,omitempty"`
+	// Whether to ignore the changes of IgnoreInitialNodeCount
+	IgnoreInitialNodeCount bool `json:"ignoreInitialNodeCount"`
 	// Auto scaling parameters
 	Autoscaling AutoscalingSpec `json:"autoscaling"`
+	// Pod security group configurations
+	PodSecurityGroups []PodSecurityGroupSpec `json:"podSecurityGroups,omitempty"`
+	// Node security group configurations
+	CustomSecurityGroups []string `json:"customSecurityGroups,omitempty"`
 	// label (k8s tag) policy on existing nodes
 	LabelPolicyOnExistingNodes string `json:"labelPolicyOnExistingNodes,omitempty"`
 	// tag policy on existing nodes

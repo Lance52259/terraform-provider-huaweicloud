@@ -3,16 +3,16 @@ package identitycenter
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 var identityCenterRegisteredRegionParams = []string{"region_id"}
@@ -22,8 +22,8 @@ var identityCenterRegisteredRegionParams = []string{"region_id"}
 func ResourceIdentityCenterRegisteredRegion() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceIdentityCenterRegisteredRegionCreate,
-		UpdateContext: resourceIdentityCenterRegisteredRegionUpdate,
 		ReadContext:   resourceIdentityCenterRegisteredRegionRead,
+		UpdateContext: resourceIdentityCenterRegisteredRegionUpdate,
 		DeleteContext: resourceIdentityCenterRegisteredRegionDelete,
 
 		Importer: &schema.ResourceImporter{
@@ -36,12 +36,6 @@ func ResourceIdentityCenterRegisteredRegion() *schema.Resource {
 			"region_id": {
 				Type:     schema.TypeString,
 				Required: true,
-			},
-			"enable_force_new": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
-				Description:  utils.SchemaDesc("", utils.SchemaDescInput{Internal: true}),
 			},
 		},
 	}
@@ -130,11 +124,11 @@ func resourceIdentityCenterRegisteredRegionRead(_ context.Context, d *schema.Res
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func resourceIdentityCenterRegisteredRegionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterRegisteredRegionUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	return nil
 }
 
-func resourceIdentityCenterRegisteredRegionDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceIdentityCenterRegisteredRegionDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
 	errorMsg := "Deleting IdentityCenter region resource is not supported. The resource is only removed from the state."
 	return diag.Diagnostics{
 		diag.Diagnostic{

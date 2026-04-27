@@ -7,6 +7,7 @@ description: |-
 ---
 
 # huaweicloud_rgc_drift_details
+
 Use this data source to list the drift information in Resource Governance Center.
 
 ## Example Usage
@@ -44,5 +45,5 @@ The `drift_details` block supports:
 * `managed_account_id` - The ID of the managed account.
   
 * `parent_organizational_unit_id` - The ID of the parent organizational unit.
-  
+
 * `solve_solution` - The solution to resolve the drift.

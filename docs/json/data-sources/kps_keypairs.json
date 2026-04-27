@@ -20,10 +20,12 @@
                     "object",
                     {
                       "fingerprint": "string",
+                      "frozen_state": "string",
                       "is_managed": "bool",
                       "name": "string",
                       "public_key": "string",
-                      "scope": "string"
+                      "scope": "string",
+                      "type": "string"
                     }
                   ]
                 ],
@@ -46,7 +48,7 @@
             "short": "KPS",
             "name": "Data Encryption Workshop KPS",
             "catalog": "Security & Compliance",
-            "name_cn": "数据加密服务-密钥对管理",
+            "name_cn": "密码安全中心-密钥对管理",
             "catalog_cn": "安全与合规"
           }
         }

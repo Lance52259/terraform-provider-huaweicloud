@@ -14,7 +14,7 @@ Use this data source to query an IAM user group role assignment within HuaweiClo
 
 ## Example Usage
 
-### Check whether the user group has global service permissions.
+### Check whether the user group has global service permissions
 
 ```hcl
 variable "group_id" {}
@@ -28,7 +28,7 @@ data "huaweicloud_identity_check_group_role_assignment" "test" {
 }
 ```
 
-### Check whether the user group has project service permissions.
+### Check whether the user group has project service permissions
 
 ```hcl
 variable "group_id" {}
@@ -42,7 +42,7 @@ data "huaweicloud_identity_check_group_role_assignment" "test" {
 }
 ```
 
-### Check whether the user group has the specified permissions for all projects.
+### Check whether the user group has the specified permissions for all projects
 
 ```hcl
 variable "group_id" {}

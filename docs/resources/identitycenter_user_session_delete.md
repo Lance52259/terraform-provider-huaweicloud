@@ -11,7 +11,8 @@ description: |-
 Manages an Identity Center user session delete resource within HuaweiCloud.
 
 -> This resource is only a one-time action resource for operating the API.
-Deleting this resource will not clear the corresponding request record, but will only remove the resource information from the tfstate file.
+  Deleting this resource will not clear the corresponding request record,
+  but will only remove the resource information from the tfstate file.
 
 ## Example Usage
 
@@ -30,6 +31,7 @@ resource "huaweicloud_identitycenter_user_session_delete" "test" {
 ## Argument Reference
 
 The following arguments are supported:
+
 * `region` - (Optional, String, ForceNew) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 

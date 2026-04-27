@@ -61,20 +61,22 @@ func TestAccIdentityCenterMfaManagementSetting_basic(t *testing.T) {
 		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
-				Config: testMfaManagementSetting_basic(),
+				Config: testMfaManagementSetting_basic,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "instance_id", "data.huaweicloud_identitycenter_instance.test", "id"),
-					resource.TestCheckResourceAttrPair(rName, "identity_store_id", "data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
+					resource.TestCheckResourceAttrPair(rName, "identity_store_id",
+						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
 					resource.TestCheckResourceAttr(rName, "user_permission", "READ_ACTIONS"),
 				),
 			},
 			{
-				Config: testMfaManagementSetting_basic_update(),
+				Config: testMfaManagementSetting_basic_update,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(rName, "instance_id", "data.huaweicloud_identitycenter_instance.test", "id"),
-					resource.TestCheckResourceAttrPair(rName, "identity_store_id", "data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
+					resource.TestCheckResourceAttrPair(rName, "identity_store_id",
+						"data.huaweicloud_identitycenter_instance.test", "identity_store_id"),
 					resource.TestCheckResourceAttr(rName, "user_permission", "ALL_ACTIONS"),
 				),
 			},
@@ -82,8 +84,7 @@ func TestAccIdentityCenterMfaManagementSetting_basic(t *testing.T) {
 	})
 }
 
-func testMfaManagementSetting_basic() string {
-	return fmt.Sprintf(`
+const testMfaManagementSetting_basic = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_mfa_management_setting" "test" {
@@ -91,11 +92,9 @@ resource "huaweicloud_identitycenter_mfa_management_setting" "test" {
   user_permission   = "READ_ACTIONS"
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }
-`)
-}
+`
 
-func testMfaManagementSetting_basic_update() string {
-	return fmt.Sprintf(`
+const testMfaManagementSetting_basic_update = `
 data "huaweicloud_identitycenter_instance" "test" {}
 
 resource "huaweicloud_identitycenter_mfa_management_setting" "test" {
@@ -103,5 +102,4 @@ resource "huaweicloud_identitycenter_mfa_management_setting" "test" {
   user_permission   = "ALL_ACTIONS"
   identity_store_id = data.huaweicloud_identitycenter_instance.test.identity_store_id
 }
-`)
-}
+`

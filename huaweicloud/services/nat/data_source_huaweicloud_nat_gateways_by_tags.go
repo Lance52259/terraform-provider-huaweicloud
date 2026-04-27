@@ -2,17 +2,18 @@ package nat
 
 import (
 	"context"
-	"github.com/chnsz/golangsdk"
-	"github.com/hashicorp/go-uuid"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"strconv"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API NAT POST /v3/{project_id}/nat_gateways/resource_instances/action

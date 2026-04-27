@@ -23,7 +23,9 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
-* `control_id` - (Optional, String) The ID of the enabled control policy. It can be used to filter out the organizational units that have this control enabled. It must be a string of 1 to 128 characters, which can include letters, numbers, underscores, and hyphens.
+* `control_id` - (Optional, String) The ID of the enabled control policy. It can be used to filter out the
+  organizational units that have this control enabled. It must be a string of 1 to 128 characters,
+  which can include letters, numbers, underscores, and hyphens.
 
 ## Attributes Reference
 

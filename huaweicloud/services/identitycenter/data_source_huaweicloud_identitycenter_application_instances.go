@@ -3,15 +3,17 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API IDENTITYCENTER GET /v1/instances/{instance_id}/application-instances
@@ -55,13 +57,11 @@ func DataSourceIdentityCenterApplicationInstances() *schema.Resource {
 						},
 						"security_config": {
 							Type:     schema.TypeList,
-							Optional: true,
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"ttl": {
 										Type:     schema.TypeString,
-										Optional: true,
 										Computed: true,
 									},
 								},
@@ -69,39 +69,32 @@ func DataSourceIdentityCenterApplicationInstances() *schema.Resource {
 						},
 						"service_provider_config": {
 							Type:     schema.TypeList,
-							Optional: true,
 							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"audience": {
 										Type:     schema.TypeString,
-										Optional: true,
 										Computed: true,
 									},
 									"require_request_signature": {
 										Type:     schema.TypeBool,
-										Optional: true,
 										Computed: true,
 									},
 									"consumers": {
 										Type:     schema.TypeList,
-										Optional: true,
 										Computed: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
 												"location": {
 													Type:     schema.TypeString,
-													Optional: true,
 													Computed: true,
 												},
 												"binding": {
 													Type:     schema.TypeString,
-													Optional: true,
 													Computed: true,
 												},
 												"default_value": {
 													Type:     schema.TypeBool,
-													Optional: true,
 													Computed: true,
 												},
 											},
@@ -109,7 +102,6 @@ func DataSourceIdentityCenterApplicationInstances() *schema.Resource {
 									},
 									"start_url": {
 										Type:     schema.TypeString,
-										Optional: true,
 										Computed: true,
 									},
 								},
@@ -293,7 +285,8 @@ func flattenApplicationInstances(applications []interface{}) []interface{} {
 			"security_config":          flattenSecurityConfig(utils.PathSearch("security_config", application, nil)),
 			"service_provider_config":  flattenServiceProviderConfig(utils.PathSearch("service_provider_config", application, nil)),
 			"response_config":          marshalJsonFormatParams("response config", utils.PathSearch("response_config", application, nil)),
-			"response_schema_config":   marshalJsonFormatParams("response schema config", utils.PathSearch("response_schema_config", application, nil)),
+			"response_schema_config": marshalJsonFormatParams("response schema config",
+				utils.PathSearch("response_schema_config", application, nil)),
 		})
 	}
 	return result

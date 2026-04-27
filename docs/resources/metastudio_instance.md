@@ -11,6 +11,7 @@ description: |-
 Manages a Meta Studio instance resource within HuaweiCloud.
 
 ## Example Usage
+
 ```hcl
 resource "huaweicloud_metastudio_instance" "resource1_periodic" {
   period_type        = 2
@@ -26,7 +27,9 @@ resource "huaweicloud_metastudio_instance" "resource2_one_time" {
   resource_spec_code = "hws.resource.type.metastudio.avatarmodeling.number"
 }
 ```
-~> Terraform will automatically sign the auto-pay agreement during resource creation. No user intervention is required for this process
+
+~> Terraform will automatically sign the auto-pay agreement during resource creation.
+  No user intervention is required for this process
 
 ## Argument Reference
 
@@ -42,15 +45,17 @@ The following arguments are supported:
   + `3` - Year
   + `6` - One Time. When period_type is 6, the period_num should be 1
 
-* `period_num` - (Required, Int, NonUpdatable) Specifies the number of periods to purchase. 
+* `period_num` - (Required, Int, NonUpdatable) Specifies the number of periods to purchase.
   Value range: `1` to `2147483647`.
 
-* `is_auto_renew` - (Optional, Int, NonUpdatable) Specifies whether to auto-renew the resource when it expires. 
+* `is_auto_renew` - (Optional, Int, NonUpdatable) Specifies whether to auto-renew the resource when it expires.
   Valid values are:
   + `0` - Do not renew automatically (default)
   + `1` - Renew automatically
 
-* `resource_spec_code` - (Required, String, NonUpdatable) Specifies the resource specification code for user-purchased cloud service products. For details, see [Resource Types](https://support.huaweicloud.com/api-metastudio/metastudio_02_0042.html).
+* `resource_spec_code` - (Required, String, NonUpdatable) Specifies the resource specification code for
+  user-purchased cloud service products.
+  For details, see [Resource Types](https://support.huaweicloud.com/api-metastudio/metastudio_02_0042.html).
 
 ## Attribute Reference
 

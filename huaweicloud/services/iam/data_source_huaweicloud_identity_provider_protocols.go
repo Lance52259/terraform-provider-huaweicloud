@@ -84,9 +84,8 @@ func dataSourceIdentityProviderProtocolsRead(_ context.Context, d *schema.Resour
 	protocolId := d.Get("protocol_id").(string)
 	if protocolId == "" {
 		return listProviderProtocols(iamV3Client, d)
-	} else {
-		return showProviderProtocol(iamV3Client, d)
 	}
+	return showProviderProtocol(iamV3Client, d)
 }
 
 func listProviderProtocols(iamV3Client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
@@ -115,7 +114,7 @@ func listProviderProtocols(iamV3Client *golangsdk.ServiceClient, d *schema.Resou
 }
 
 func showProviderProtocol(iamV3Client *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {
-	protocolPath := getProtocolPath(iamV3Client.Endpoint, d.Get("provider_id").(string), d.Get("protocol_id").(string))
+	protocolPath := getV3ProviderProtocolPath(iamV3Client.Endpoint, d.Get("provider_id").(string), d.Get("protocol_id").(string))
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
 	response, err := iamV3Client.Request("GET", protocolPath, &options)
 	if err != nil {

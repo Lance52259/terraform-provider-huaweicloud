@@ -2,9 +2,9 @@ package identitycenter
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-uuid"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -32,8 +32,10 @@ func TestAccDataSourceApplicationInstances_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(dataSource, "application_instances.0.description", "create"),
 					resource.TestCheckResourceAttrSet(dataSource, "application_instances.0.response_config"),
 					resource.TestCheckResourceAttrSet(dataSource, "application_instances.0.response_schema_config"),
-					resource.TestCheckResourceAttr(dataSource, "application_instances.0.service_provider_config.0.audience", "https://create.com"),
-					resource.TestCheckResourceAttr(dataSource, "application_instances.0.service_provider_config.0.consumers.0.location", "https://create.com"),
+					resource.TestCheckResourceAttr(dataSource,
+						"application_instances.0.service_provider_config.0.audience", "https://create.com"),
+					resource.TestCheckResourceAttr(dataSource,
+						"application_instances.0.service_provider_config.0.consumers.0.location", "https://create.com"),
 					resource.TestCheckResourceAttr(dataSource, "application_instances.0.security_config.0.ttl", "P9M"),
 					resource.TestCheckResourceAttr(dataSource, "application_instances.0.status", "CREATED"),
 				),

@@ -25,6 +25,7 @@ resource "huaweicloud_identitycenter_bearer_token" "test"{
 ## Argument Reference
 
 The following arguments are supported:
+
 * `region` - (Optional, String, ForceNew) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
@@ -44,7 +45,8 @@ In addition to all arguments above, the following attributes are exported:
 
 ## Import
 
-The IdentityCenter bearer token can be imported using the `identity_store_id` `tenant_id` and `token_id` separated by a slash, e.g.
+The IdentityCenter bearer token can be imported using the `identity_store_id` `tenant_id` and `token_id`
+separated by a slash, e.g.
 
 ```bash
 $ terraform import huaweicloud_identitycenter_bearer_token.test <identity_store_id>/<tenant_id>/<token_id>

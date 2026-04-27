@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -319,9 +320,6 @@ func ResourceFgsFunction() *schema.Resource {
 						},
 					},
 				},
-				ConflictsWith: []string{
-					"code_type",
-				},
 				Description: `The custom image configuration of the function.`,
 			},
 			"max_instance_num": {
@@ -496,15 +494,15 @@ func ResourceFgsFunction() *schema.Resource {
 				),
 			},
 			"enable_dynamic_memory": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				// The dynamic memory function can be closed, so computed behavior cannot be supported.
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
 				Description: `Whether the dynamic memory configuration is enabled.`,
 			},
 			"is_stateful_function": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				// The stateful function can be closed, so computed behavior cannot be supported.
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
 				Description: `Whether the function is a stateful function.`,
 			},
 			"network_controller": {
@@ -553,17 +551,15 @@ func ResourceFgsFunction() *schema.Resource {
 CIDR blocks used by the service.`,
 			},
 			"enable_auth_in_header": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				// The auth function can be closed, so computed behavior cannot be supported.
-				// And the default value (in the service API) is false.
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
 				Description: `Whether the authentication in the request header is enabled.`,
 			},
 			"enable_class_isolation": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				// The isolation function can be closed, so computed behavior cannot be supported.
-				// And the default value (in the service API) is false.
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
 				Description: `Whether the class isolation is enabled for the JAVA runtime functions.`,
 			},
 			"ephemeral_storage": {
@@ -596,6 +592,7 @@ CIDR blocks used by the service.`,
 			"lts_custom_tag": {
 				Type:             schema.TypeMap,
 				Optional:         true,
+				Computed:         true,
 				Elem:             &schema.Schema{Type: schema.TypeString},
 				DiffSuppressFunc: utils.SuppressMapDiffs(),
 				// The custom tags can be set to empty, so computed behavior cannot be supported.
@@ -604,6 +601,7 @@ CIDR blocks used by the service.`,
 			"enable_lts_log": {
 				Type:        schema.TypeBool,
 				Optional:    true,
+				Computed:    true,
 				Description: `Whether to enable the LTS log.`,
 			},
 			"user_data_encrypt_kms_key_id": {
@@ -643,13 +641,38 @@ CIDR blocks used by the service.`,
 				Computed:    true,
 				Description: `The version of the function.`,
 			},
+
+			// Internal attributes.
 			"lts_custom_tag_origin": {
-				Type:     schema.TypeMap,
-				Computed: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Type:             schema.TypeMap,
+				Optional:         true,
+				Computed:         true,
+				Elem:             &schema.Schema{Type: schema.TypeString},
+				DiffSuppressFunc: utils.SuppressDiffAll,
 				Description: utils.SchemaDesc(
 					`The script configuration value of this change is also the original value used for comparison with
  the new value next time the change is made. The corresponding parameter name is 'lts_custom_tag'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
+			},
+			"func_mounts_order": {
+				Type:             schema.TypeList,
+				Optional:         true,
+				Computed:         true,
+				DiffSuppressFunc: utils.SuppressDiffAll,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"local_mount_path": {
+							Type:        schema.TypeString,
+							Computed:    true,
+							Description: `The origin function access path.`,
+						},
+					},
+				},
+				Description: utils.SchemaDesc(
+					`The origin list of function mount configuration that used to reorder the 'func_mounts' parameter.`,
 					utils.SchemaDescInput{
 						Internal: true,
 					},
@@ -756,17 +779,12 @@ func buildFunctionCodeConfig(funcCode string) map[string]interface{} {
 	}
 }
 
-func buildFunctionLogConfig(d *schema.ResourceData) map[string]interface{} {
-	// If the value of `enable_lts_log` parameter is `false`, the corresponding LTS log parameters cannot be configured.
-	if !d.Get("enable_lts_log").(bool) {
-		return nil
-	}
-
+func buildFunctionLogConfig(rawConfig cty.Value) interface{} {
 	params := utils.RemoveNil(map[string]interface{}{
-		"group_id":    utils.ValueIgnoreEmpty(d.Get("log_group_id")),
-		"group_name":  utils.ValueIgnoreEmpty(d.Get("log_group_name")),
-		"stream_id":   utils.ValueIgnoreEmpty(d.Get("log_stream_id")),
-		"stream_name": utils.ValueIgnoreEmpty(d.Get("log_stream_name")),
+		"group_id":    utils.ValueIgnoreEmpty(utils.GetNestedObjectFromRawConfig(rawConfig, "log_group_id")),
+		"group_name":  utils.ValueIgnoreEmpty(utils.GetNestedObjectFromRawConfig(rawConfig, "log_group_name")),
+		"stream_id":   utils.ValueIgnoreEmpty(utils.GetNestedObjectFromRawConfig(rawConfig, "log_stream_id")),
+		"stream_name": utils.ValueIgnoreEmpty(utils.GetNestedObjectFromRawConfig(rawConfig, "log_stream_name")),
 	})
 
 	// If the value of `enable_lts_log` parameter is `true`, the corresponding LTS log parameters be configured.
@@ -818,6 +836,7 @@ func buildCreateFunctionBodyParams(cfg *config.Config, d *schema.ResourceData) m
 		agency = d.Get("xrole")
 	}
 
+	rawConfig := d.GetRawConfig()
 	return map[string]interface{}{
 		// Required parameters.
 		"func_name":   d.Get("name"),
@@ -843,12 +862,12 @@ func buildCreateFunctionBodyParams(cfg *config.Config, d *schema.ResourceData) m
 		"pre_stop_handler":             utils.ValueIgnoreEmpty(d.Get("pre_stop_handler")),
 		"pre_stop_timeout":             utils.ValueIgnoreEmpty(d.Get("pre_stop_timeout")),
 		"func_code":                    buildFunctionCodeConfig(d.Get("func_code").(string)),
-		"log_config":                   buildFunctionLogConfig(d),
-		"enable_dynamic_memory":        d.Get("enable_dynamic_memory"),
-		"is_stateful_function":         d.Get("is_stateful_function"),
+		"log_config":                   buildFunctionLogConfig(rawConfig),
+		"enable_dynamic_memory":        utils.GetNestedObjectFromRawConfig(rawConfig, "enable_dynamic_memory"),
+		"is_stateful_function":         utils.GetNestedObjectFromRawConfig(rawConfig, "is_stateful_function"),
 		"network_controller":           buildFunctionNetworkController(d.Get("network_controller").([]interface{})),
 		"lts_custom_tag":               utils.ValueIgnoreEmpty(d.Get("lts_custom_tag")),
-		"enable_lts_log":               d.Get("enable_lts_log"),
+		"enable_lts_log":               utils.GetNestedObjectFromRawConfig(rawConfig, "enable_lts_log"),
 		"user_data_encrypt_kms_key_id": utils.ValueIgnoreEmpty(d.Get("user_data_encrypt_kms_key_id")),
 		"code_encrypt_kms_key_id":      utils.ValueIgnoreEmpty(d.Get("code_encrypt_kms_key_id")),
 	}
@@ -915,7 +934,7 @@ func buildFunctionMountConfig(mounts []interface{}, mountUserId, mountGroupId in
 	}
 
 	return map[string]interface{}{
-		"mount_config": parsedMounts,
+		"func_mounts": parsedMounts,
 		"mount_user": map[string]interface{}{
 			"mount_user_id":       parseFunctionMountId(mountUserId),
 			"mount_user_group_id": parseFunctionMountId(mountGroupId),
@@ -934,6 +953,8 @@ func buildFunctionStrategyConfig(concurrencyNum int) map[string]interface{} {
 }
 
 func buildUpdateFunctionMetadataBodyParams(cfg *config.Config, d *schema.ResourceData) map[string]interface{} {
+	rawConfig := d.GetRawConfig()
+
 	// Parameter app is recommended to replace parameter package.
 	pkg, ok := d.GetOk("app")
 	if !ok {
@@ -969,16 +990,16 @@ func buildUpdateFunctionMetadataBodyParams(cfg *config.Config, d *schema.Resourc
 		"pre_stop_timeout":    utils.ValueIgnoreEmpty(d.Get("pre_stop_timeout")),
 		"domain_names":        utils.ValueIgnoreEmpty(d.Get("dns_list")),
 		"func_vpc":            buildFunctionVpcConfig(d),
-		"func_mounts": buildFunctionMountConfig(d.Get("func_mounts").([]interface{}),
+		"mount_config": buildFunctionMountConfig(d.Get("func_mounts").([]interface{}),
 			d.Get("mount_user_id").(int), d.Get("mount_user_group_id").(int)),
 		"strategy_config":              buildFunctionStrategyConfig(d.Get("concurrency_num").(int)),
-		"enable_dynamic_memory":        d.Get("enable_dynamic_memory"),
-		"is_stateful_function":         d.Get("is_stateful_function"),
+		"enable_dynamic_memory":        utils.GetNestedObjectFromRawConfig(rawConfig, "enable_dynamic_memory"),
+		"is_stateful_function":         utils.GetNestedObjectFromRawConfig(rawConfig, "is_stateful_function"),
 		"network_controller":           buildFunctionNetworkController(d.Get("network_controller").([]interface{})),
 		"enterprise_project_id":        cfg.GetEnterpriseProjectID(d),
 		"peering_cidr":                 d.Get("peering_cidr"),
-		"enable_auth_in_header":        d.Get("enable_auth_in_header"),
-		"enable_class_isolation":       d.Get("enable_class_isolation"),
+		"enable_auth_in_header":        utils.GetNestedObjectFromRawConfig(rawConfig, "enable_auth_in_header"),
+		"enable_class_isolation":       utils.GetNestedObjectFromRawConfig(rawConfig, "enable_class_isolation"),
 		"ephemeral_storage":            utils.ValueIgnoreEmpty(d.Get("ephemeral_storage")),
 		"heartbeat_handler":            d.Get("heartbeat_handler"),
 		"restore_hook_handler":         d.Get("restore_hook_handler"),
@@ -1007,6 +1028,22 @@ func updateFunctionMetadata(client *golangsdk.ServiceClient, functionUrn string,
 		return fmt.Errorf("failed to update the function metadata: %s", err)
 	}
 	return nil
+}
+
+func buildFunctionMountsOrder(d *schema.ResourceData) []interface{} {
+	mounts, ok := utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "func_mounts").([]interface{})
+	if !ok || mounts == nil {
+		return nil
+	}
+
+	result := make([]interface{}, 0, len(mounts))
+	for _, mount := range mounts {
+		result = append(result, map[string]interface{}{
+			"local_mount_path": utils.PathSearch("local_mount_path", mount, nil),
+		})
+	}
+
+	return result
 }
 
 func buildUpdateFunctionCodeBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -1314,6 +1351,10 @@ func resourceFunctionCreate(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.FromErr(err)
 		}
+
+		if err = d.Set("func_mounts_order", buildFunctionMountsOrder(d)); err != nil {
+			log.Printf("[ERROR] error setting the func_mounts_order field after updating function: %s", err)
+		}
 	}
 	// If the request is successful, obtain the values of all JSON|object parameters first and save them to the
 	// corresponding '_origin' attributes for subsequent determination and construction of the request body during
@@ -1400,13 +1441,39 @@ func flattenFgsCustomImage(imageConfig map[string]interface{}) []map[string]inte
 	}
 }
 
-func flattenFuncionMounts(mounts []interface{}) []map[string]interface{} {
+func orderMountsByMountsOrderOrigin(mounts, mountsOrderOrigin []interface{}) []interface{} {
+	if len(mountsOrderOrigin) == 0 {
+		return mounts
+	}
+
+	sortedMounts := make([]interface{}, 0)
+	mountsCopy := mounts
+	for _, mountOrigin := range mountsOrderOrigin {
+		localMountPathOrigin := utils.PathSearch("local_mount_path", mountOrigin, "").(string)
+		for index, mount := range mountsCopy {
+			if utils.PathSearch("local_mount_path", mount, "").(string) != localMountPathOrigin {
+				continue
+			}
+			// Add the found mount configuration to the sorted mounts list.
+			sortedMounts = append(sortedMounts, mountsCopy[index])
+			// Remove the processed mount configuration from the remote mounts array.
+			mountsCopy = append(mountsCopy[:index], mountsCopy[index+1:]...)
+		}
+	}
+
+	// Add unsorted mount configurations to the end of the sorted list.
+	sortedMounts = append(sortedMounts, mountsCopy...)
+	return sortedMounts
+}
+
+func flattenFuncionMounts(mounts, mountsOrderOrigin []interface{}) []map[string]interface{} {
 	if len(mounts) < 1 {
 		return nil
 	}
 
-	result := make([]map[string]interface{}, 0, len(mounts))
-	for _, mount := range mounts {
+	sortedMounts := orderMountsByMountsOrderOrigin(mounts, mountsOrderOrigin)
+	result := make([]map[string]interface{}, 0, len(sortedMounts))
+	for _, mount := range sortedMounts {
 		result = append(result, map[string]interface{}{
 			"mount_type":       utils.PathSearch("mount_type", mount, nil),
 			"mount_resource":   utils.PathSearch("mount_resource", mount, nil),
@@ -1738,7 +1805,8 @@ func resourceFunctionRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("mount_user_id", utils.PathSearch("mount_config.mount_user.user_id", function, nil)),
 		d.Set("mount_user_group_id", utils.PathSearch("mount_config.mount_user.user_group_id", function, nil)),
 		d.Set("func_mounts", flattenFuncionMounts(utils.PathSearch("mount_config.func_mounts",
-			function, make([]interface{}, 0)).([]interface{}))),
+			function, make([]interface{}, 0)).([]interface{}),
+			d.Get("func_mounts_order").([]interface{}))),
 		d.Set("enable_dynamic_memory", utils.PathSearch("enable_dynamic_memory", function, nil)),
 		d.Set("is_stateful_function", utils.PathSearch("is_stateful_function", function, nil)),
 		d.Set("network_controller", flattenFunctionNetworkController(utils.PathSearch("network_controller", function, nil))),
@@ -1819,6 +1887,7 @@ func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		functionMetadataObjectParamKeys = []string{
 			"lts_custom_tag",
 		}
+		rawConfig = d.GetRawConfig()
 	)
 
 	client, err := cfg.NewServiceClient("fgs", region)
@@ -1843,12 +1912,16 @@ func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		"restore_hook_timeout", "lts_custom_tag", "enable_lts_log", "user_data_encrypt_kms_key_id") {
 		params := buildUpdateFunctionMetadataBodyParams(cfg, d)
 		if d.HasChanges("log_group_id", "log_stream_id", "log_group_name", "log_stream_name", "enable_lts_log") {
-			params["enable_lts_log"] = d.Get("enable_lts_log")
-			params["log_config"] = buildFunctionLogConfig(d)
+			params["enable_lts_log"] = utils.GetNestedObjectFromRawConfig(rawConfig, "enable_lts_log")
+			params["log_config"] = buildFunctionLogConfig(rawConfig)
 		}
 		err := updateFunctionMetadata(client, funcUrnWithoutVersion, params)
 		if err != nil {
 			return diag.FromErr(err)
+		}
+
+		if err = d.Set("func_mounts_order", buildFunctionMountsOrder(d)); err != nil {
+			log.Printf("[ERROR] error setting the func_mounts_order field after updating function: %s", err)
 		}
 	}
 	// If the request is successful, obtain the values ​​of all JSON|object parameters first and save them to the

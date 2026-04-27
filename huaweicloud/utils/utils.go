@@ -186,6 +186,50 @@ func FindSliceExtraElems(source, target []interface{}) []interface{} {
 	return result
 }
 
+// FildSliceIntersection returns a list containing the intersection of source and target.
+// In math, means source ∩ target.
+func FildSliceIntersection(source, target []interface{}) []interface{} {
+	result := make([]interface{}, 0)
+
+	for _, sv := range source {
+		if SliceContains(target, sv) {
+			result = append(result, sv)
+		}
+	}
+
+	return result
+}
+
+// FindSliceElementsNotInAnother returns elements from source that are not in target
+// This is equivalent to source - target (set difference)
+func FindSliceElementsNotInAnother(source, target []interface{}) []interface{} {
+	if len(target) < 1 {
+		return source
+	}
+
+	var result []interface{}
+	for _, sv := range source {
+		if !SliceContains(target, sv) {
+			result = append(result, sv)
+		}
+	}
+	return result
+}
+
+func FindStrSliceElementsNotInAnother(source, target []string) []string {
+	if len(target) < 1 {
+		return source
+	}
+
+	var result []string
+	for _, sv := range source {
+		if !StrSliceContains(target, sv) {
+			result = append(result, sv)
+		}
+	}
+	return result
+}
+
 // SliceContains checks if a target object is present in a slice (the type of the elemetes which same as the target
 // object).
 func SliceContains(slice []interface{}, target interface{}) bool {
@@ -195,6 +239,15 @@ func SliceContains(slice []interface{}, target interface{}) bool {
 		}
 	}
 	return false
+}
+
+func SliceContainsAnother(slice []interface{}, target []interface{}) bool {
+	for _, v := range target {
+		if !SliceContains(slice, v) {
+			return false
+		}
+	}
+	return true
 }
 
 // StrSliceContains checks if a given string is contained in a slice

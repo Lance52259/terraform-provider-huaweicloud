@@ -10,12 +10,14 @@ import (
 
 	"github.com/chnsz/golangsdk"
 
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // ResourceIdentityv5ServiceLinkedAgency
 // @API IAM PUT /v5/service-linked-agencies
+// @API IAM GET /v5/agencies/{agency_id}
 func ResourceIdentityv5ServiceLinkedAgency() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceServiceLinkedAgencyCreate,
@@ -92,7 +94,7 @@ func resourceServiceLinkedAgencyCreate(ctx context.Context, d *schema.ResourceDa
 	return resourceServiceLinkedAgencyRead(ctx, d, meta)
 }
 
-func resourceServiceLinkedAgencyRead(c context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceServiceLinkedAgencyRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	client, err := cfg.NewServiceClient("iam", cfg.GetRegion(d))
 	if err != nil {
@@ -104,7 +106,7 @@ func resourceServiceLinkedAgencyRead(c context.Context, d *schema.ResourceData, 
 	reqOpt := &golangsdk.RequestOpts{KeepResponseBody: true}
 	r, err := client.Request("GET", path, reqOpt)
 	if err != nil {
-		return diag.Errorf("error retrieving agency: %s", err)
+		return common.CheckDeletedDiag(d, err, "error retrieving agency")
 	}
 	resp, err := utils.FlattenResponse(r)
 	if err != nil {
@@ -123,7 +125,8 @@ func resourceServiceLinkedAgencyRead(c context.Context, d *schema.ResourceData, 
 }
 
 func resourceServiceLinkedAgencyDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	errorMsg := "Deleting service-linked-agency is not supported. The service-linked-agency is only removed from the state, but it remains in the cloud."
+	errorMsg := "Deleting service linked agency resource is not supported. The service-linked-agency is only removed " +
+		"from the state, but it remains in the cloud."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,

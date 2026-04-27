@@ -3,17 +3,18 @@ package iam
 import (
 	"context"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @IAM GET /v3.0/OS-CREDENTIAL/credentials
-// @IAM GET /v3.0/OS-CREDENTIAL/credentials/{access_key}
+// @API IAM GET /v3.0/OS-CREDENTIAL/credentials
+// @API IAM GET /v3.0/OS-CREDENTIAL/credentials/{access_key}
 func DataSourceIdentityAccessKey() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceIdentityAccessKeyRead,
@@ -54,10 +55,8 @@ func DataSourceIdentityAccessKey() *schema.Resource {
 							Computed: true,
 						},
 						"last_use_time": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Computed:    true,
-							Description: "field is only present when you are certified by access_key",
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 					},
 				},

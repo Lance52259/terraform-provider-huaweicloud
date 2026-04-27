@@ -908,6 +908,7 @@ func resourceRdsInstanceRead(ctx context.Context, d *schema.ResourceData, meta i
 		mErr = multierror.Append(mErr, setSecondLevelMonitoring(d, client)...)
 	}
 
+	mErr = multierror.Append(mErr, setAvailabilityZone(d, instance))
 	mErr = multierror.Append(mErr, setAutoUpgradeSwitchOption(d, client))
 	mErr = multierror.Append(mErr, setStorageUsedSpace(d, client))
 	mErr = multierror.Append(mErr, setReplicationStatus(d, client))
@@ -1156,6 +1157,18 @@ func setSecondLevelMonitoring(d *schema.ResourceData, client *golangsdk.ServiceC
 	errs = append(errs, d.Set("seconds_level_monitoring_enabled", utils.PathSearch("switch_option", getRespBody, nil)))
 	errs = append(errs, d.Set("seconds_level_monitoring_interval", utils.PathSearch("interval", getRespBody, nil)))
 	return errs
+}
+
+// lintignore:R014
+func setAvailabilityZone(d *schema.ResourceData, resp interface{}) error {
+	azSearchPath := "nodes[?role=='%s']|[0].availability_zone"
+	masterNodeAz := utils.PathSearch(fmt.Sprintf(azSearchPath, "master"), resp, "").(string)
+	slaveNodeAz := utils.PathSearch(fmt.Sprintf(azSearchPath, "slave"), resp, "").(string)
+	azs := []string{masterNodeAz}
+	if slaveNodeAz != "" {
+		azs = append(azs, slaveNodeAz)
+	}
+	return d.Set("availability_zone", azs)
 }
 
 func setAutoUpgradeSwitchOption(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
@@ -2512,25 +2525,30 @@ func checkRDSInstanceJobFinish(client *golangsdk.ServiceClient, jobID string, ti
 
 func rdsInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobID string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		httpUrl := "v3/{project_id}/jobs?id={id}"
-		getPath := client.Endpoint + httpUrl
-		getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-		getPath = strings.ReplaceAll(getPath, "{id}", jobID)
-
-		getOpt := golangsdk.RequestOpts{
-			KeepResponseBody: true,
-		}
-		getResp, err := client.Request("GET", getPath, &getOpt)
-		if err != nil {
-			return nil, "FOUND ERROR", err
-		}
-		getRespBody, err := utils.FlattenResponse(getResp)
+		getRespBody, err := getInstanceJob(client, jobID)
 		if err != nil {
 			return nil, "FOUND ERROR", err
 		}
 
 		return getRespBody, utils.PathSearch("job.status", getRespBody, "").(string), nil
 	}
+}
+
+func getInstanceJob(client *golangsdk.ServiceClient, jobID string) (interface{}, error) {
+	httpUrl := "v3/{project_id}/jobs?id={id}"
+	getPath := client.Endpoint + httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{id}", jobID)
+
+	getOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	getResp, err := client.Request("GET", getPath, &getOpt)
+	if err != nil {
+		return nil, err
+	}
+	return utils.FlattenResponse(getResp)
 }
 
 func rdsInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {

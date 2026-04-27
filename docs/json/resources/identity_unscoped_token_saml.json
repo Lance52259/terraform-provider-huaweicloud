@@ -1,0 +1,64 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_identity_unscoped_token_saml": {
+          "block": {
+            "attributes": {
+              "expires_at": {
+                "type": "string",
+                "description": "The time when the token will expire.",
+                "computed": true
+              },
+              "groups": {
+                "type": [
+                  "list",
+                  "string"
+                ],
+                "description": "The group list of the user.",
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "idp_id": {
+                "type": "string",
+                "description": "The identity provider id.",
+                "required": true
+              },
+              "saml_response": {
+                "type": "string",
+                "description": "The response body returned after successful IDP authentication.",
+                "required": true
+              },
+              "token": {
+                "type": "string",
+                "description": "The unscoped token.",
+                "computed": true
+              },
+              "username": {
+                "type": "string",
+                "description": "The user of token.",
+                "computed": true
+              },
+              "with_global_domain": {
+                "type": "bool",
+                "description": "Whether to use a global domain name to obtain the token.",
+                "optional": true,
+                "default": false
+              }
+            }
+          },
+          "product": {
+            "short": "IAM",
+            "name": "Identity and Access Management",
+            "catalog": "Management & Governance",
+            "name_cn": "统一身份认证服务",
+            "catalog_cn": "管理与监管"
+          }
+        }
+      }
+    }
+  }
+}

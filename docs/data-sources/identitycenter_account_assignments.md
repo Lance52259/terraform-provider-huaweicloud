@@ -46,7 +46,8 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `account_assignments` - The list of the account assignments for principal.The [account_assignments](#account_assignments_struct) structure is documented below.
+* `account_assignments` - The list of the account assignments for principal.
+  The [account_assignments](#account_assignments_struct) structure is documented below.
 
 <a name="account_assignments_struct"></a>
 The `account_assignments` block supports:

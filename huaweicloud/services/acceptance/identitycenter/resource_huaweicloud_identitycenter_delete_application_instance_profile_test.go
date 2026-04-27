@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
@@ -21,6 +22,7 @@ func TestAccApplicationInstanceProfileDelete_basic(t *testing.T) {
 		},
 
 		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
 				Config: testApplicationInstanceProfileDelete_basic(applicationInstanceId, profileId),

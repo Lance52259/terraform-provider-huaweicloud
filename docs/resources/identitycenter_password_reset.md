@@ -11,7 +11,8 @@ description: |-
 Manages an Identity Center password reset resource within HuaweiCloud.
 
 -> This resource is only a one-time action resource for operating the API.
-Deleting this resource will not clear the corresponding request record, but will only remove the resource information from the tfstate file.
+  Deleting this resource will not clear the corresponding request record,
+  but will only remove the resource information from the tfstate file.
 
 ## Example Usage
 

@@ -27,8 +27,8 @@ func DataSourceCCEFlavorSpecifications() *schema.Resource {
 				Computed: true,
 			},
 			"cluster_type": {
-				Type:        schema.TypeString,
-				Required:    true,
+				Type:     schema.TypeString,
+				Required: true,
 			},
 			"cluster_flavor_specs": {
 				Type:     schema.TypeList,
@@ -52,22 +52,22 @@ func DataSourceCCEFlavorSpecifications() *schema.Resource {
 							Computed: true,
 						},
 						"available_master_flavors": {
-							Type:        schema.TypeList,
-							Computed:    true,
+							Type:     schema.TypeList,
+							Computed: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"name": {
-										Type:        schema.TypeString,
-										Computed:    true,
+										Type:     schema.TypeString,
+										Computed: true,
 									},
 									"azs": {
-										Type:        schema.TypeList,
-										Computed:    true,
-										Elem:        &schema.Schema{Type: schema.TypeString},
+										Type:     schema.TypeList,
+										Computed: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
 									},
 									"az_fault_domains": {
-										Type:        schema.TypeMap,
-										Computed:    true,
+										Type:     schema.TypeMap,
+										Computed: true,
 										Elem: &schema.Schema{
 											Type: schema.TypeList,
 											Elem: &schema.Schema{Type: schema.TypeString},
@@ -83,14 +83,13 @@ func DataSourceCCEFlavorSpecifications() *schema.Resource {
 	}
 }
 
-
-type CCEFlavorSpecificationsDSWrapper struct {
+type FlavorSpecificationsDSWrapper struct {
 	*schemas.ResourceDataWrapper
 	Config *config.Config
 }
 
-func newCCEFlavorSpecificationsDSWrapper(d *schema.ResourceData, meta interface{}) *CCEFlavorSpecificationsDSWrapper {
-	return &CCEFlavorSpecificationsDSWrapper{
+func newCCEFlavorSpecificationsDSWrapper(d *schema.ResourceData, meta interface{}) *FlavorSpecificationsDSWrapper {
+	return &FlavorSpecificationsDSWrapper{
 		ResourceDataWrapper: schemas.NewSchemaWrapper(d),
 		Config:              meta.(*config.Config),
 	}
@@ -118,7 +117,7 @@ func dataSourceCCEFlavorSpecificationsRead(_ context.Context, d *schema.Resource
 }
 
 // @API CCE GET /api/v2/flavor/specifications
-func (w *CCEFlavorSpecificationsDSWrapper) ShowFlavorSpecifications() (*gjson.Result, error) {
+func (w *FlavorSpecificationsDSWrapper) ShowFlavorSpecifications() (*gjson.Result, error) {
 	client, err := w.NewClient(w.Config, "cce")
 	if err != nil {
 		return nil, err
@@ -137,22 +136,22 @@ func (w *CCEFlavorSpecificationsDSWrapper) ShowFlavorSpecifications() (*gjson.Re
 		Result()
 }
 
-func (w *CCEFlavorSpecificationsDSWrapper) showFlavorSpecificationsToSchema(body *gjson.Result) error {
+func (w *FlavorSpecificationsDSWrapper) showFlavorSpecificationsToSchema(body *gjson.Result) error {
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("region", w.Config.GetRegion(w.ResourceData)),
-		d.Set("cluster_flavor_specs", schemas.ObjectToList(body.Get("clusterFlavorSpecs"),
+		d.Set("cluster_flavor_specs", schemas.SliceToList(body.Get("clusterFlavorSpecs"),
 			func(values gjson.Result) any {
 				return map[string]any{
-					"name": values.Get("name").Value(),
-					"node_capacity": values.Get("nodeCapacity").Value(),
-					"is_sold_out": values.Get("isSoldOut").Value(),
+					"name":                values.Get("name").Value(),
+					"node_capacity":       values.Get("nodeCapacity").Value(),
+					"is_sold_out":         values.Get("isSoldOut").Value(),
 					"is_support_multi_az": values.Get("isSupportMultiAZ").Value(),
-					"available_master_flavors": schemas.ObjectToList(body.Get("availableMasterFlavors"),
+					"available_master_flavors": schemas.SliceToList(values.Get("availableMasterFlavors"),
 						func(values gjson.Result) any {
 							return map[string]any{
-								"name": values.Get("name").Value(),
-								"azs": schemas.SliceToStrList(values.Get("azs")),
+								"name":             values.Get("name").Value(),
+								"azs":              schemas.SliceToStrList(values.Get("azs")),
 								"az_fault_domains": schemas.MapConverter(values.Get("azFaultDomains"), schemas.SliceToStrList),
 							}
 						},

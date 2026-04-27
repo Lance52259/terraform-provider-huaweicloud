@@ -60,9 +60,9 @@ func DataSourceIdentityLoginProtectsRead(_ context.Context, d *schema.ResourceDa
 	userId := d.Get("user_id").(string)
 	if userId == "" {
 		return listLoginProtects(iamClient, d)
-	} else {
-		return showLoginProtect(iamClient, userId, d)
 	}
+
+	return showLoginProtect(iamClient, userId, d)
 }
 
 func listLoginProtects(iamClient *golangsdk.ServiceClient, d *schema.ResourceData) diag.Diagnostics {

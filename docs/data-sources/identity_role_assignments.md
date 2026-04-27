@@ -25,7 +25,7 @@ variable "scope" {}
 
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
-  scope 	   = var.scope
+  scope        = var.scope
 }
 ```
 
@@ -37,14 +37,16 @@ variable "scope" {}
 
 data "huaweicloud_identity_role_assignments" "test" {
   is_inherited = true
-  scope 	   = var.scope
+  scope        = var.scope
   role_id      = var.role_id
 }
 ```
 
 ## Argument Reference
 
-* `subject` - (Optional, String) Specifies authorization entity, value range: **user**, **group**, **agency**. 
+* `role_id` - (Optional, String) Specifies the role ID.
+
+* `subject` - (Optional, String) Specifies authorization entity, value range: **user**, **group**, **agency**.
 
 * `subject_user_id` - (Optional, String) Specifies authorized IAM user ID. Conflict with `subject_agency_id` and `subject_group_id`.
 
@@ -52,29 +54,34 @@ data "huaweicloud_identity_role_assignments" "test" {
 
 * `subject_agency_id` - (Optional, String) Specifies authorized delegation ID. Conflict with `subject_user_id` and `subject_group_id`.
 
-* `scope` - (Optional, String) Specifies Scope of authorization, value range: **project**, **domain**, **enterprise_project**. Default: **domain**.
+* `scope` - (Optional, String) Specifies scope of authorization, value range: **project**, **domain**, **enterprise_project**.
+  Default: **domain**.
 
-* `scope_project_id` - (Optional, String) Specifies authorized project ID. Conflict with `scope_domain_id` and `scope_enterprise_projects_id`.
+* `scope_project_id` - (Optional, String) Specifies authorized project ID. Conflict with `scope_domain_id` and
+  `scope_enterprise_projects_id`.
 
-* `scope_domain_id` - (Optional, String) Specifies pending query account ID. Conflict with `scope_enterprise_projects_id` and `scope_project_id`.
+* `scope_domain_id` - (Optional, String) Specifies pending query account ID. Conflict with `scope_enterprise_projects_id`
+  and `scope_project_id`.
 
-* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID. Conflict with `scope_domain_id` and `scope_project_id`.
+* `scope_enterprise_projects_id` - (Optional, String) Specifies authorized enterprise project ID. Conflict with
+  `scope_domain_id` and `scope_project_id`.
 
-* `is_inherited` - (Optional, String) Specifies takes effect when the parameter scope=domain or scope.domain_id exists. 
-  * **true**: query records based on authorization for all projects. 
-  * **false**: query records based on global service authorization.
+* `is_inherited` - (Optional, String) Specifies takes effect when the parameter scope=domain or scope.domain_id exists.
+  + **true**: query records based on authorization for all projects.
+  + **false**: query records based on global service authorization.
 
-    Default: **false**.
+  Default: **false**.
 
-* `include_group` - (Optional, String) Specifies Whether to include records based on the permissions granted to the user groups of the IAM user.
-  * **true**: Query records based on IAM user permissions and permissions granted to user groups of IAM users. 
-  * **false**: Only query records based on IAM user permissions.
+* `include_group` - (Optional, String) Specifies Whether to include records based on the permissions granted to the user
+  groups of the IAM user.
+  + **true**: Query records based on IAM user permissions and permissions granted to user groups of IAM users.
+  + **false**: Only query records based on IAM user permissions.
 
-    Default: **true**
+  Default: **true**
 
 ## Attribute Reference
 
-* `role_assignments` - Indicates authorization information.   
+* `role_assignments` - Indicates authorization information.
   The [role_assignments](#IdentityRoleAssignments_Assignments) structure is documented below.
 
 <a name="IdentityRoleAssignments_Assignments"></a>

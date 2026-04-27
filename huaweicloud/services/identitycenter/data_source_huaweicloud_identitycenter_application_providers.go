@@ -3,11 +3,14 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -73,7 +76,7 @@ func buildListApplicationProvidersParams(marker string) string {
 	return res
 }
 
-func listApplicationProviders(client *golangsdk.ServiceClient, d *schema.ResourceData) ([]interface{}, error) {
+func listApplicationProviders(client *golangsdk.ServiceClient) ([]interface{}, error) {
 	var (
 		httpUrl = "v1/application-providers"
 		result  = make([]interface{}, 0)
@@ -120,7 +123,7 @@ func dataSourceIdentityCenterApplicationProvidersRead(_ context.Context, d *sche
 		return diag.Errorf("error creating Identity Center client: %s", err)
 	}
 
-	providers, err := listApplicationProviders(client, d)
+	providers, err := listApplicationProviders(client)
 	if err != nil {
 		return diag.FromErr(err)
 	}

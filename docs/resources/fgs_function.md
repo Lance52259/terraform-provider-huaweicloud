@@ -32,7 +32,7 @@ resource "huaweicloud_fgs_function" "test" {
   name        = var.function_name
   app         = "default"
   agency      = var.agency_name
-  description = "fuction test"
+  description = "function test"
   handler     = "test.handler"
   memory_size = 128
   timeout     = 3
@@ -228,7 +228,7 @@ resource "huaweicloud_fgs_function" "test" {
   name        = var.function_name
   app         = "default"
   agency      = "test"
-  description = "fuction test"
+  description = "function test"
   handler     = "test.handler"
   memory_size = 128
   timeout     = 3
@@ -258,7 +258,7 @@ resource "huaweicloud_fgs_function" "test" {
   name                  = var.function_name
   app                   = "default"
   agency                = var.agency_name
-  description           = "fuction test"
+  description           = "function test"
   handler               = "test.handler"
   memory_size           = 128
   timeout               = 3
@@ -305,6 +305,52 @@ resource "huaweicloud_fgs_function" "test" {
   heartbeat_handler      = "com.huawei.demo.TriggerTests.heartBeat"
   restore_hook_handler   = "com.huawei.demo.TriggerTests.restoreHook"
   restore_hook_timeout   = 10
+}
+```
+
+### Create function with SFS turbo mounting
+
+```hcl
+variable "function_name" {}
+variable "agency_name" {}  # Allow FunctionGraph service to access VPC service
+variable "vpc_id" {}
+variable "subnet_id" {}
+
+resource "huaweicloud_sfs_turbo" "test" {
+  # With the meta-parameter count setting.
+}
+
+locals {
+  turbo_configurations = [
+    for i, turbo in huaweicloud_sfs_turbo.test : {index = i, detail = turbo}
+  ]
+}
+
+resource "huaweicloud_fgs_function" "test" {
+  name                = "%[2]s"
+  memory_size         = 128
+  runtime             = var.function_name
+  timeout             = 3
+  app                 = "default"
+  handler             = "index.handler"
+  code_type           = "inline"
+  func_code           = base64encode(var.script_content)
+  agency              = var.agency_name
+  vpc_id              = var.vpc_id
+  network_id          = var.subnet_id
+  mount_user_id       = -1
+  mount_user_group_id = -1
+
+  dynamic "func_mounts" {
+    for_each = local.turbo_configurations
+
+    content {
+      mount_type       = "sfsTurbo"
+      mount_resource   = func_mounts.value.detail.id
+      mount_share_path = format("%%s/", func_mounts.value.detail.export_location)
+      local_mount_path = format("/home/data%%d", func_mounts.value.index)
+    }
+  }
 }
 ```
 
@@ -359,6 +405,8 @@ The following arguments are supported:
   + **jar**: JAR file or java functions.
   + **obs**: function code stored in an OBS bucket.
   + **Custom-Image-Swr**: function code comes from the SWR custom image.
+
+  -> The parameter `custom_image` is **Required** if `code_type` is **Custom-Image-Swr**.
 
 * `handler` - (Required, String) Specifies the entry point of the function.
 
@@ -456,7 +504,12 @@ The following arguments are supported:
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the function.
 
-* `enable_lts_log` - (Optional, Bool) Specifies whether to enable the LTS log, defaults to **false**.
+* `enable_lts_log` - (Optional, Bool) Specifies whether to enable the LTS logging feature.  
+  The valid values are as follows:
+  + **null** or omit this parameter definition: Using the default value configured on the FunctionGraph service to
+    configure the LTS logging feature.
+  + **true**: Explicitly enable the LTS logging feature.
+  + **false**: Explicitly disable the LTS logging feature.
 
 * `log_group_id` - (Optional, String) Specifies the LTS group ID for collecting logs.
 
@@ -467,7 +520,7 @@ The following arguments are supported:
 * `log_stream_name` - (Optional, String) Specifies the LTS stream name for collecting logs.
 
 -> 1. The `log_group_id`, `log_group_name`, `log_stream_id`, and `log_stream_name` are available and used together
-   only when `enable_lts_log` is set to **true**.
+   only when `enable_lts_log` is set to **true** or the service default value is **true** (omit `enable_lts_log`).
    <br>2. When creating a function, if the `enable_lts_log` parameter is set to **true**, and the corresponding
    LTS log parameters are not specified, the FunctionGraph will automatically create a log group and log stream.
 

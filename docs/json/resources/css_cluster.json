@@ -122,8 +122,7 @@
               },
               "subnet_id": {
                 "type": "string",
-                "required": true,
-                "forcenew": true
+                "required": true
               },
               "tags": {
                 "type": [
@@ -248,6 +247,10 @@
                         "string"
                       ],
                       "optional": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "optional": true
                     }
                   },
                   "block_types": {
@@ -274,6 +277,24 @@
                 "nesting_mode": "list",
                 "max_items": 1
               },
+              "disk_encryption": {
+                "block": {
+                  "attributes": {
+                    "system_cmk_id": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "system_encrypted": {
+                      "type": "string",
+                      "optional": true,
+                      "computed": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
               "ess_node_config": {
                 "block": {
                   "attributes": {
@@ -290,6 +311,10 @@
                         "list",
                         "string"
                       ],
+                      "optional": true
+                    },
+                    "type": {
+                      "type": "string",
                       "optional": true
                     }
                   },

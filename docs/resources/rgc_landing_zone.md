@@ -111,19 +111,21 @@ The following arguments are supported:
 
 * `home_region` - (Required, String, NonUpdatable) Specifies the ID of home region.
 
-* `organization_structure_type` - (Required, String, NonUpdatable) Specifies the type of the organization structure.
+* `organization_structure_type` - (Optional, String, NonUpdatable) Specifies the type of the organization structure.
   If creating a core organizational unit, this field should be set to STANDARD;
   however, if not creating it, the field should be set to NON_STANDARD, with the default value being STANDARD.
 
-* `identity_store_email` - (Optional, String) Specifies the email of idc account, if identity_center_status set true, this field will also be set.
+* `identity_store_email` - (Optional, String) Specifies the email of idc account, if identity_center_status set true,
+  this field will also be set.
 
 * `identity_center_status` - (Optional, String) Specifies status of identity center.
 
-* `deny_ungoverned_regions` - (Optional, Bool, NonUpdatable) Specifies the access of multi-region, default value is false
+* `deny_ungoverned_regions` - (Optional, Bool, NonUpdatable) Specifies the access of multi-region,
+  default value is false
 
 * `cloud_trail_type` - (Optional, Bool) Specifies the access of organizational aggregation.
 
-* `kms_key_id` - (Required, String, NonUpdatable) Specifies the ID of kms key.
+* `kms_key_id` - (Optional, String, NonUpdatable) Specifies the ID of kms key.
 
 * `baseline_version` - (Optional, String) Specifies the excepted landing zone version for updating landing zone.
 
@@ -145,9 +147,11 @@ The `region_configuration_list` block supports:
 <a name="organization_structure"></a>
 The `organization_structure` block supports:
 
-* `organizational_unit_type` - (Required, String) Specifies the type of registered organizational unit, only support CORE or CUSTOM.
+* `organizational_unit_type` - (Required, String) Specifies the type of registered organizational unit,
+  only support CORE or CUSTOM.
 
-* `organizational_unit_name` - (Optional, String) Specifies the name of created organizational unit, leaving this field means that the organizational unit will not be created.
+* `organizational_unit_name` - (Optional, String) Specifies the name of created organizational unit,
+  leaving this field means that the organizational unit will not be created.
 
 * `accounts` - (Optional, List) Specifies the account structure.
 
@@ -156,15 +160,17 @@ The `organization_structure` block supports:
 <a name="accounts"></a>
 The `accounts` block supports:
 
-* `account_name` - (Optional, String) Specifies the name of created account or enrolled account.
+* `account_name` - (Required, String) Specifies the name of created account or enrolled account.
 
-* `account_type` - (Required, String) Specifies the name of created account or enrolled account, only support LOGGING or SECURITY.
+* `account_type` - (Required, String) Specifies the name of created account or enrolled account,
+  only support LOGGING or SECURITY.
 
 * `account_id` - (Optional, String) Specifies the id of enrolled account.
 
 * `phone` - (Optional, String) Specifies the name of created account, domestic account is required.
 
-* `account_email` - (Optional, String) Specifies the name of account, international account or security account is required.
+* `account_email` - (Optional, String) Specifies the name of account, international account or security
+  account is required.
 
 * `logging_configuration` - (Required, List) Specifies the logging bucket configuration.
 
@@ -173,30 +179,31 @@ The `accounts` block supports:
 <a name="logging_configuration"></a>
 The `logging_configuration` block supports:
 
-* `logging_bucket_name` -  (Optional, String) Specifies the name of logging bucket, set this field means using existed bucket, RGC will not create bucket in setup landing zone progress.
+* `logging_bucket_name` - (Optional, String) Specifies the name of logging bucket, set this field means
+  using existed bucket, RGC will not create bucket in setup landing zone progress.
 
-* `logging_bucket` - (Optional, List) Specifies the logging bucket structure.
+* `logging_bucket` - (Required, List) Specifies the logging bucket structure.
 
   The [logging_bucket](#logging_bucket) structure is documented below.
 
-* `access_logging_bucket` - (Optional, List) Specifies the access logging bucket structure.
+* `access_logging_bucket` - (Required, List) Specifies the access logging bucket structure.
 
   The [access_logging_bucket](#access_logging_bucket) structure is documented below.
 
 <a name="logging_bucket"></a>
 The `logging_bucket` and  access_logging_bucket block supports:
 
-* `logging_bucket_retention_days` - (Required, Int) Specifies retention days of logging bucket.
+* `retention_days` - (Required, Int) Specifies retention days of logging bucket.
 
-* `logging_bucket_enable_multi_az` - (Optional, Bool) Specifies multi-az storage access of logging bucket,
+* `enable_multi_az` - (Optional, Bool) Specifies multi-az storage access of logging bucket,
   default value is false.
 
 <a name="access_logging_bucket"></a>
 The `access_logging_bucket` block supports:
 
-* `logging_bucket_retention_days` - (Required, Int) Specifies retention days of access logging bucket.
+* `retention_days` - (Required, Int) Specifies retention days of access logging bucket.
 
-* `logging_bucket_enable_multi_az` - (Optional, Bool) Specifies multi-az storage access of access logging bucket,
+* `enable_multi_az` - (Optional, Bool) Specifies multi-az storage access of access logging bucket,
   default value is false.
 
 ## Attribute Reference
@@ -207,7 +214,7 @@ In addition to all arguments above, the following attributes are exported:
 
 * `landing_zone_status` - Indicates the configuration status of landing zone.
 
-* `deployed_version` Indicates the configuration deployed version of landing zone.
+* `deployed_version` - Indicates the configuration deployed version of landing zone.
 
 ## Timeouts
 

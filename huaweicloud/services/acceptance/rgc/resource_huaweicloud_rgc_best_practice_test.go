@@ -1,10 +1,10 @@
 package rgc
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
@@ -16,6 +16,7 @@ func TestAccBestPractice_basic(t *testing.T) {
 			acceptance.TestAccPreCheckAKAndSK(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
 				Config: testBestPractice_basic(),
@@ -29,5 +30,5 @@ func TestAccBestPractice_basic(t *testing.T) {
 }
 
 func testBestPractice_basic() string {
-	return fmt.Sprintf(`resource "huaweicloud_rgc_best_practice" "best_practice" {}`)
+	return `resource "huaweicloud_rgc_best_practice" "best_practice" {}`
 }

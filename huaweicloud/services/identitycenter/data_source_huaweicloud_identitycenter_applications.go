@@ -3,15 +3,17 @@ package identitycenter
 import (
 	"context"
 	"fmt"
-	"github.com/chnsz/golangsdk"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
 // @API IDENTITYCENTER GET /v1/instances/{instance_id}/applications
@@ -210,14 +212,14 @@ func flattenApplications(applications []interface{}) []interface{} {
 	return result
 }
 
-func flattenAssignmentConfig(config interface{}) []map[string]interface{} {
-	if config == nil || len(config.(map[string]interface{})) == 0 {
+func flattenAssignmentConfig(cfg interface{}) []map[string]interface{} {
+	if cfg == nil || len(cfg.(map[string]interface{})) == 0 {
 		return nil
 	}
 
 	return []map[string]interface{}{
 		{
-			"assignment_required": utils.PathSearch("assignment_required", config, nil),
+			"assignment_required": utils.PathSearch("assignment_required", cfg, nil),
 		},
 	}
 }

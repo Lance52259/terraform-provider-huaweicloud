@@ -68,6 +68,7 @@ resource "huaweicloud_vpcep_service" "test" {
     service_port  = 8080
     terminal_port = 80
   }
+
   tags = {
     owner = "tf-acc"
   }
@@ -82,6 +83,7 @@ resource "huaweicloud_vpcep_endpoint" "test" {
   tags = {
     owner = "tf-acc"
   }
+
   lifecycle {
     ignore_changes = [enable_dns]
   }
@@ -95,7 +97,7 @@ func testAccDataTags_basic(rName string) string {
 %s
 
 data "huaweicloud_vpcep_tags" "test" {
-  depends_on = [huaweicloud_vpcep_endpoint.test]
+  depends_on    = [huaweicloud_vpcep_endpoint.test]
   resource_type = "endpoint"
 }
 

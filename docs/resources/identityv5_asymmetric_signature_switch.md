@@ -22,7 +22,7 @@ resource "huaweicloud_identityv5_asymmetric_signature_switch" "test" {
 
 ## Argument Reference
 
-* `asymmetric_signature_switch` - (Required, String) Specifies the asymmetric signature switch.
+* `asymmetric_signature_switch` - (Required, Bool) Specifies the asymmetric signature switch.
 
 ## Attribute Reference
 

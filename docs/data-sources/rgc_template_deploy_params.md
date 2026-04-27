@@ -29,9 +29,9 @@ The following arguments are supported:
 * `region` - (Optional, String) Specifies the region in which to create the resource.
   If omitted, the provider-level region will be used. Changing this parameter will create a new resource.
 
-* `template_name` - (Required) The name of the template.
+* `template_name` - (Required, String) The name of the template.
 
-* `template_version` - (Required) The version of the template. It must follow the format `^V[1-9][0-9]{0,9}$`.
+* `template_version` - (Required, String) The version of the template. It must follow the format `^V[1-9][0-9]{0,9}$`.
 
 ## Attributes Reference
 

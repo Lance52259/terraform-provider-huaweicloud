@@ -52,9 +52,8 @@ func dataSourceIdentitySecurityComplianceRead(_ context.Context, d *schema.Resou
 	optionStr := d.Get("option").(string)
 	if optionStr == "" {
 		return showSecurityCompliance(iamClient, d, cfg)
-	} else {
-		return showSecurityComplianceByOption(iamClient, optionStr, d, cfg)
 	}
+	return showSecurityComplianceByOption(iamClient, optionStr, d, cfg)
 }
 
 func showSecurityCompliance(iamClient *golangsdk.ServiceClient, d *schema.ResourceData, cfg *config.Config) diag.Diagnostics {
@@ -81,7 +80,8 @@ func showSecurityCompliance(iamClient *golangsdk.ServiceClient, d *schema.Resour
 	return nil
 }
 
-func showSecurityComplianceByOption(iamClient *golangsdk.ServiceClient, optionStr string, d *schema.ResourceData, cfg *config.Config) diag.Diagnostics {
+func showSecurityComplianceByOption(iamClient *golangsdk.ServiceClient, optionStr string, d *schema.ResourceData,
+	cfg *config.Config) diag.Diagnostics {
 	showSecurityComplianceByOptionPath := iamClient.Endpoint + "v3/domains/{domain_id}/config/security_compliance/" + optionStr
 	showSecurityComplianceByOptionPath = strings.ReplaceAll(showSecurityComplianceByOptionPath, "{domain_id}", cfg.DomainID)
 	options := golangsdk.RequestOpts{KeepResponseBody: true}
@@ -96,7 +96,11 @@ func showSecurityComplianceByOption(iamClient *golangsdk.ServiceClient, optionSt
 	}
 	id, _ := uuid.GenerateUUID()
 	d.SetId(id)
-	err = d.Set(optionStr, utils.PathSearch("config."+optionStr, respBody, make([]interface{}, 0)))
+	if optionStr == "password_regex" {
+		err = d.Set("password_regex", utils.PathSearch("config.password_regex", respBody, ""))
+	} else if optionStr == "password_regex_description" {
+		err = d.Set("password_regex_description", utils.PathSearch("config.password_regex_description", respBody, ""))
+	}
 	if err != nil {
 		return diag.Errorf("error setting showSecurityComplianceByOption fields: %s", err)
 	}

@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccIdentityV5AsymmetricSignatureSwitch_basic(t *testing.T) {
-	resourceName := "huaweicloud_identityv5_asymmetric_signature_switch.test"
+// Please ensure that the user executing the acceptance test has 'admin' permission.
+func TestAccV5AsymmetricSignatureSwitch_basic(t *testing.T) {
+	rName := "huaweicloud_identityv5_asymmetric_signature_switch.test"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
@@ -16,21 +18,22 @@ func TestAccIdentityV5AsymmetricSignatureSwitch_basic(t *testing.T) {
 			acceptance.TestAccPreCheckAdminOnly(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      nil,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccIdentityV5AsymmetricSignatureSwitch_basic,
+				Config: testAccV5AsymmetricSignatureSwitch_basic_step1,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "asymmetric_signature_switch", "true"),
+					resource.TestCheckResourceAttr(rName, "asymmetric_signature_switch", "true"),
 				),
 			},
 			{
-				Config: testAccIdentityV5AsymmetricSignatureSwitch_update,
+				Config: testAccV5AsymmetricSignatureSwitch_basic_step2,
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "asymmetric_signature_switch", "false"),
+					resource.TestCheckResourceAttr(rName, "asymmetric_signature_switch", "false"),
 				),
 			},
 			{
-				ResourceName:      resourceName,
+				ResourceName:      rName,
 				ImportState:       true,
 				ImportStateVerify: true,
 			},
@@ -38,13 +41,13 @@ func TestAccIdentityV5AsymmetricSignatureSwitch_basic(t *testing.T) {
 	})
 }
 
-var testAccIdentityV5AsymmetricSignatureSwitch_basic = `
+const testAccV5AsymmetricSignatureSwitch_basic_step1 = `
 resource "huaweicloud_identityv5_asymmetric_signature_switch" "test" {
   asymmetric_signature_switch = true
 }
 `
 
-var testAccIdentityV5AsymmetricSignatureSwitch_update = `
+const testAccV5AsymmetricSignatureSwitch_basic_step2 = `
 resource "huaweicloud_identityv5_asymmetric_signature_switch" "test" {
   asymmetric_signature_switch = false
 }

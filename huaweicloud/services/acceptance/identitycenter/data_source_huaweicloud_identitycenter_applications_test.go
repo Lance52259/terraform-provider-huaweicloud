@@ -2,9 +2,9 @@ package identitycenter
 
 import (
 	"fmt"
-	"github.com/hashicorp/go-uuid"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -29,7 +29,8 @@ func TestAccDataSourceApplications_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(dataSource, "applications.0.application_urn"),
-					resource.TestCheckResourceAttr(dataSource, "applications.0.application_provider_urn", "IdentityCenter:::applicationProvider:custom-saml"),
+					resource.TestCheckResourceAttr(dataSource,
+						"applications.0.application_provider_urn", "IdentityCenter:::applicationProvider:custom-saml"),
 					resource.TestCheckResourceAttr(dataSource, "applications.0.assignment_config.0.assignment_required", "true"),
 					resource.TestCheckResourceAttrSet(dataSource, "applications.0.created_date"),
 					resource.TestCheckResourceAttr(dataSource, "applications.0.description", "create"),

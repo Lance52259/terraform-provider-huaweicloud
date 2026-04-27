@@ -2,7 +2,7 @@ package rgc
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -112,6 +112,9 @@ func resourceBestPracticeRead(_ context.Context, d *schema.ResourceData, meta in
 	)
 
 	getBestPracticeOverviewClient, err := cfg.NewServiceClient(getBestPracticeOverviewProduct, region)
+	if err != nil {
+		return diag.Errorf("error creating RGC client: %s", err)
+	}
 
 	getBestPracticeOverviewPath := getBestPracticeOverviewClient.Endpoint + getBestPracticeOverviewHttpUrl
 
@@ -172,8 +175,8 @@ func bestPracticeStateRefreshFunc(client *golangsdk.ServiceClient) resource.Stat
 		}
 
 		status := utils.PathSearch("status", getBestPracticeStatusRespBody, "").(string)
-		if err != nil {
-			return nil, "", fmt.Errorf("error getting best practice status")
+		if status == "" {
+			return nil, "", errors.New("error getting best practice status")
 		}
 
 		return getBestPracticeStatusRespBody, status, nil
