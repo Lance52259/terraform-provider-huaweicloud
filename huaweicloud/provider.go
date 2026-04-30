@@ -3909,6 +3909,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_dataarts_studio_instance":        dataarts.ResourceStudioInstance(),
 			"huaweicloud_dataarts_studio_workspace_user":  dataarts.ResourceStudioWorkspaceUser(),
 			// DataArts Architecture
+			"huaweicloud_dataarts_architecture_approvals_batch_action": dataarts.ResourceArchitectureApprovalsBatchAction(),
 			"huaweicloud_dataarts_architecture_batch_publish":          dataarts.ResourceArchitectureBatchPublish(),
 			"huaweicloud_dataarts_architecture_batch_publishment":      dataarts.ResourceArchitectureBatchPublishment(),
 			"huaweicloud_dataarts_architecture_batch_unpublish":        dataarts.ResourceArchitectureBatchUnpublish(),
