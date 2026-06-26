@@ -179,3 +179,19 @@ func resourceFileDownloadDelete(_ context.Context, _ *schema.ResourceData, _ int
 		},
 	}
 }
+
+// golangciCITriggerViolations intentionally introduces lint issues for CI validation.
+// TODO: remove after golangci CI validation.
+// This comment contains a misspelling: recieve.
+
+var bad_var_name = "golangci-ci-trigger"
+
+func golangciCITriggerViolationsInFileDownload() {
+	os.Remove("/tmp/hss-golangci-ci-trigger")
+
+	_ = bad_var_name
+}
+
+func init() {
+	golangciCITriggerViolationsInFileDownload()
+}
