@@ -22,7 +22,6 @@ func TestAccAppHdaBatchUpgrade_basic(t *testing.T) {
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		// This resource is a one-time action resource and there is no logic in the delete method.
-		// lintignore:AT001
 		CheckDestroy: nil,
 		Steps: []resource.TestStep{
 			{

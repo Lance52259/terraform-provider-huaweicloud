@@ -146,7 +146,6 @@ func waitForCUModificationComplete(resName string) resource.TestCheckFunc {
 			if time.Since(startTime) > 15*time.Minute {
 				break
 			}
-			// lintignore:R018
 			time.Sleep(30 * time.Second)
 		}
 		return fmt.Errorf("modification timeout for the CU number")

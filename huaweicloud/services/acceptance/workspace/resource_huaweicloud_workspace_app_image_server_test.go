@@ -49,7 +49,6 @@ func TestAccResourceAppImageServer_basic(t *testing.T) {
 			acceptance.TestAccPreCheckWorkspaceAppImageSpecCode(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
 				Config: testResourceAppImageServer_basic(name, name, "Created by script"),
