@@ -10,21 +10,23 @@ import (
 )
 
 // simulateAPIResponse unmarshals data the same way HttpHelper.doFilter does, converting JSON numbers to float64.
-func simulateAPIResponse(data map[string]interface{}) map[string]interface{} {
+func simulateAPIResponse(t *testing.T, data map[string]interface{}) map[string]interface{} {
+	t.Helper()
+
 	b, err := json.Marshal(data)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(b, &result); err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	return result
 }
 
 func TestFilterContainsOperator(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"topics": []interface{}{
 			map[string]interface{}{"name": "MyTopic", "user_desc": "Test Description"},
 			map[string]interface{}{"name": "Other", "user_desc": "No match"},
@@ -46,7 +48,7 @@ func TestFilterContainsOperator(t *testing.T) {
 }
 
 func TestFilterContainsOperatorCaseInsensitive(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"users": []interface{}{
 			map[string]interface{}{"user_name": "AdminUser", "user_desc": "DESC"},
 			map[string]interface{}{"user_name": "guest", "user_desc": "other"},
@@ -67,7 +69,7 @@ func TestFilterContainsOperatorCaseInsensitive(t *testing.T) {
 }
 
 func TestFilterEqualNumericTypeCoercion(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"items": []interface{}{
 			map[string]interface{}{"id": "rule-1", "status": 1, "white": 0},
 			map[string]interface{}{"id": "rule-2", "status": 0, "white": 1},
@@ -89,7 +91,7 @@ func TestFilterEqualNumericTypeCoercion(t *testing.T) {
 }
 
 func TestFilterEqualBool(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"identity_providers": []interface{}{
 			map[string]interface{}{"id": "provider-1", "enabled": true},
 			map[string]interface{}{"id": "provider-2", "enabled": false},
@@ -109,7 +111,7 @@ func TestFilterEqualBool(t *testing.T) {
 }
 
 func TestFilterNestedWhereKey(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"targets": []interface{}{
 			map[string]interface{}{
 				"target_id": "t1",
@@ -135,7 +137,7 @@ func TestFilterNestedWhereKey(t *testing.T) {
 }
 
 func TestFilterNestedFromPath(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"job_list": map[string]interface{}{
 			"jobs": []interface{}{
 				map[string]interface{}{"job_id": 101, "name": "job-a"},
@@ -157,7 +159,7 @@ func TestFilterNestedFromPath(t *testing.T) {
 }
 
 func TestFilterHasOperatorProduction(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"products": []interface{}{
 			map[string]interface{}{
 				"type":          "cluster",
@@ -196,7 +198,7 @@ func TestFilterInvalidFromPath(t *testing.T) {
 			map[string]interface{}{"id": "2"},
 		},
 	}
-	data := simulateAPIResponse(original)
+	data := simulateAPIResponse(t, original)
 
 	rst, err := New().
 		Data(data).
@@ -232,7 +234,7 @@ func TestFilterSliceWithWhere(t *testing.T) {
 }
 
 func TestFilterWhereNilValueSkipped(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"items": []interface{}{
 			map[string]interface{}{"id": "1", "status": 1},
 			map[string]interface{}{"id": "2", "status": 2},
@@ -253,7 +255,7 @@ func TestFilterWhereNilValueSkipped(t *testing.T) {
 }
 
 func TestFilterEqualString(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"items": []interface{}{
 			map[string]interface{}{"id": "rule-1", "name": "alpha"},
 			map[string]interface{}{"id": "rule-2", "name": "beta"},
@@ -274,7 +276,7 @@ func TestFilterEqualString(t *testing.T) {
 }
 
 func TestFilterNestedWhereDeepKey(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"job_list": map[string]interface{}{
 			"jobs": []interface{}{
 				map[string]interface{}{
@@ -309,7 +311,7 @@ func TestFilterNestedWhereDeepKey(t *testing.T) {
 }
 
 func TestFilterCustomGjsonArrayFilter(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"products": []interface{}{
 			map[string]interface{}{
 				"product_id": "p1",
@@ -359,7 +361,7 @@ func TestFilterCustomGjsonArrayFilter(t *testing.T) {
 }
 
 func TestFilterEmptyResult(t *testing.T) {
-	data := simulateAPIResponse(map[string]interface{}{
+	data := simulateAPIResponse(t, map[string]interface{}{
 		"items": []interface{}{
 			map[string]interface{}{"id": "rule-1", "status": 1},
 			map[string]interface{}{"id": "rule-2", "status": 1},
@@ -377,6 +379,66 @@ func TestFilterEmptyResult(t *testing.T) {
 	assert.True(t, ok, "filtered node should remain a slice")
 	assert.NotNil(t, items, "empty result should be an empty slice, not nil")
 	assert.Len(t, items, 0)
+}
+
+func TestEqualValuesNumericNormalization(t *testing.T) {
+	testCases := []struct {
+		name string
+		x    any
+		y    any
+		want bool
+	}{
+		{name: "float64 and int64", x: float64(1), y: int64(1), want: true},
+		{name: "int and float64", x: int(1), y: float64(1), want: true},
+		{name: "float64 and int", x: float64(1), y: int(1), want: true},
+		{name: "string and float64", x: "1", y: float64(1), want: false},
+		{name: "bool and int", x: true, y: 1, want: false},
+		{name: "equal strings", x: "rule-1", y: "rule-1", want: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, equalValues(tc.x, tc.y))
+		})
+	}
+}
+
+func TestFilterJsonTypedMapNumericEqual(t *testing.T) {
+	data := map[string]interface{}{
+		"items": []map[string]interface{}{
+			{"id": "rule-1", "status": 1},
+			{"id": "rule-2", "status": 2},
+		},
+	}
+
+	rst, err := New().
+		Data(data).
+		From("items").
+		Where("status", "=", float64(1)).
+		Get()
+
+	assert.NoError(t, err)
+	items := rst.(map[string]interface{})["items"].([]interface{})
+	assert.Len(t, items, 1)
+	assert.Equal(t, "rule-1", items[0].(map[string]interface{})["id"])
+}
+
+func TestFilterSliceTypedNumericEqual(t *testing.T) {
+	data := []interface{}{
+		map[string]interface{}{"name": "Tom", "age": 20},
+		map[string]interface{}{"name": "Jerry", "age": 10},
+	}
+
+	rst, err := New().
+		Data(data).
+		Where("age", "=", float64(20)).
+		Get()
+
+	assert.NoError(t, err)
+	items, ok := rst.([]interface{})
+	assert.True(t, ok)
+	assert.Len(t, items, 1)
+	assert.Equal(t, "Tom", items[0].(map[string]interface{})["name"])
 }
 
 func TestFilter1(t *testing.T) {
@@ -854,7 +916,7 @@ func TestCustomFilter1(t *testing.T) {
 	expStr := fmt.Sprintf("%v", expected)
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			tcData := deepCopyMap(data)
+			tcData := deepCopyMap(t, data)
 			rst, err := New().
 				Data(tcData).
 				From("arr").
@@ -880,15 +942,17 @@ func TestCustomFilter1(t *testing.T) {
 	assert.Equal(t, fmt.Sprintf("%v", expected), fmt.Sprintf("%v", rst))
 }
 
-func deepCopyMap(src map[string]interface{}) map[string]interface{} {
+func deepCopyMap(t *testing.T, src map[string]interface{}) map[string]interface{} {
+	t.Helper()
+
 	b, err := json.Marshal(src)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	dst := make(map[string]interface{})
 	if err := json.Unmarshal(b, &dst); err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	return dst
 }
