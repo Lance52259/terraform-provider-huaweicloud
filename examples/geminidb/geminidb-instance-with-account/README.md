@@ -108,8 +108,8 @@ The following variables need to be configured:
 
 ## Requirements
 
-| Name | Version |
-| ---- | ---- |
+| Name | Version   |
+| ---- |-----------|
 | terraform | >= 0.14.0 |
-| huaweicloud | >= 1.96.0 |
-| random | >= 3.0.0 |
+| huaweicloud | >= 1.91.0 |
+| random | >= 3.0.0  |

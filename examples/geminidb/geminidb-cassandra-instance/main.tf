@@ -54,7 +54,7 @@ resource "huaweicloud_geminidb_instance" "test" {
 
   datastore {
     type           = "cassandra"
-    version        = ""
+    version        = "3.11"
     storage_engine = "rocksDB"
   }
 
