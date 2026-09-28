@@ -722,7 +722,7 @@ func GetArchitectureAggregationLogicTableById(client *golangsdk.ServiceClient, w
 				Method:    "GET",
 				URL:       "/v2/{project_id}/design/aggregation-logic-tables/{id}?latest=true",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the aggregation logic table (%s) does not exist", aggregationLogicTableId)),
+				Body:      fmt.Appendf(nil, "the aggregation logic table (%s) does not exist", aggregationLogicTableId),
 			},
 		}
 	}
@@ -967,19 +967,22 @@ func resourceArchitectureAggregationLogicTableUpdate(ctx context.Context, d *sch
 		return diag.Errorf("error creating DataArts Studio Client: %s", err)
 	}
 
-	if err := updateArchitectureAggregationLogicTable(client, d); err != nil {
-		return diag.Errorf("error updating aggregation logic table (%s): %s", d.Id(), err)
-	}
+	if d.HasChangeExcept("enable_force_new") {
+		isTableAttributesChanged := d.HasChange("table_attributes")
+		if err := updateArchitectureAggregationLogicTable(client, d); err != nil {
+			return diag.Errorf("error updating aggregation logic table (%s): %s", d.Id(), err)
+		}
 
-	if d.HasChange("table_attributes") {
-		// If the request is successful, obtain the values of all slice parameters first and save them to the corresponding
-		// '_origin' attributes for subsequent determination and construction of the request body during next updates.
-		// And whether corresponding parameters are changed, the origin values must be refreshed.
-		err = d.Set("table_attributes_origin", refreshTableAttributesOrigin(utils.GetNestedObjectFromRawConfig(d.GetRawConfig(),
-			"table_attributes")))
-		if err != nil {
-			// Don't report an error if origin refresh fails
-			log.Printf("[WARN] Unable to refresh the origin values: %s", err)
+		if isTableAttributesChanged {
+			// If the request is successful, obtain the values of all slice parameters first and save them to the corresponding
+			// '_origin' attributes for subsequent determination and construction of the request body during next updates.
+			// And whether corresponding parameters are changed, the origin values must be refreshed.
+			err = d.Set("table_attributes_origin", refreshTableAttributesOrigin(utils.GetNestedObjectFromRawConfig(d.GetRawConfig(),
+				"table_attributes")))
+			if err != nil {
+				// Don't report an error if origin refresh fails
+				log.Printf("[WARN] Unable to refresh the origin values: %s", err)
+			}
 		}
 	}
 

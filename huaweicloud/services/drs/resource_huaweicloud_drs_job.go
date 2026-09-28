@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -154,6 +154,22 @@ func ResourceDrsJob() *schema.Resource {
 				ForceNew: true,
 				Default:  14,
 			},
+			// Specifies whether to start the job after creation.
+			// Starts the job by default. Set to `false` to disable it.
+			"is_start_job": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "schema: Internal",
+			},
+			// Specifies whether to pre-check the job after creation.
+			// Pre-check is performed by default. Set to `false` to disable it.
+			"is_pre_check": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "schema: Internal",
+			},
 			"start_time": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -279,6 +295,17 @@ func ResourceDrsJob() *schema.Resource {
 							Optional: true,
 							ForceNew: true,
 						},
+
+						// This parameter is not currently exposed by the cloud service but is required for
+						// internal customers.
+						// This parameter will be available on the cloud service starting September 30,
+						// configure it using the v5 API.
+						"transformation_name_case_policy": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "schema: Internal",
+						},
 					},
 				},
 			},
@@ -355,12 +382,14 @@ func ResourceDrsJob() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
+				Computed:     true,
 				RequiredWith: []string{"slave_az"},
 			},
 			"slave_az": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				ForceNew:     true,
+				Computed:     true,
 				RequiredWith: []string{"master_az"},
 			},
 
@@ -504,6 +533,12 @@ func dbInfoSchemaResource() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"az_code": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "schema: Internal",
+			},
 			"port": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -585,6 +620,7 @@ func dbInfoSchemaResource() *schema.Resource {
 			},
 			"security_group_id": {
 				Type:     schema.TypeString,
+				Optional: true,
 				Computed: true,
 			},
 		},
@@ -668,6 +704,7 @@ func dbInfoKafkaSecurityConfigSchemaResource() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceJobCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -758,9 +795,18 @@ func resourceJobCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	err = preCheck(ctx, client, jobId, d.Timeout(schema.TimeoutCreate), "forStartJob")
-	if err != nil {
-		return diag.FromErr(err)
+	if _, ok := d.GetOk("policy_config.0.transformation_name_case_policy"); ok {
+		err = updateJobConfig(clientV5, buildUpdateJobConfigBodyParams(d, "policy"), "policy", d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if getIsPreCheck(d) {
+		err = preCheck(ctx, client, jobId, d.Timeout(schema.TimeoutCreate), "forStartJob")
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if _, ok := d.GetOk("alarm_notify"); ok {
@@ -770,29 +816,32 @@ func resourceJobCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	startTime := d.Get("start_time").(string)
-	startMode := "start"
-	if startTime != "" && startTime != "0" {
-		startMode = "start_later"
-	}
+	if getIsStartJob(d) {
+		startTime := d.Get("start_time").(string)
+		startMode := "start"
+		if startTime != "" && startTime != "0" {
+			startMode = "start_later"
+		}
 
-	startReq := jobs.StartJobReq{
-		Jobs: []jobs.StartInfo{
-			{
-				JobId:     jobId,
-				StartTime: startTime,
+		startReq := jobs.StartJobReq{
+			Jobs: []jobs.StartInfo{
+				{
+					JobId:     jobId,
+					StartTime: startTime,
+				},
 			},
-		},
-	}
-	_, err = jobs.Start(client, startReq)
-	if err != nil {
-		return diag.Errorf("start DRS job failed,error: %s", err)
+		}
+		_, err = jobs.Start(client, startReq)
+		if err != nil {
+			return diag.Errorf("start DRS job failed,error: %s", err)
+		}
+
+		err = waitingforJobStatus(ctx, client, jobId, startMode, d.Timeout(schema.TimeoutCreate))
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
-	err = waitingforJobStatus(ctx, client, jobId, startMode, d.Timeout(schema.TimeoutCreate))
-	if err != nil {
-		return diag.FromErr(err)
-	}
 	return resourceJobRead(ctx, d, meta)
 }
 
@@ -816,6 +865,10 @@ func buildUpdateJobConfigBodyParams(d *schema.ResourceData, updateType string) m
 	case "notify":
 		return map[string]interface{}{
 			"alarm_notify": buildAlarmNotify(d.Get("alarm_notify").([]interface{})),
+		}
+	case "policy":
+		return map[string]interface{}{
+			"policy_config": buildV5PolicyConfig(d.Get("policy_config").([]interface{})),
 		}
 	}
 	return nil
@@ -877,6 +930,19 @@ func buildAlarmNotify(rawArray []interface{}) map[string]interface{} {
 		"rto_delay":     utils.ValueIgnoreEmpty(raw["rto_delay"]),
 	}
 	return rst
+}
+
+func buildV5PolicyConfig(rawArray []interface{}) map[string]interface{} {
+	if len(rawArray) == 0 {
+		return nil
+	}
+	raw, ok := rawArray[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return map[string]interface{}{
+		"transformation_name_case_policy": utils.ValueIgnoreEmpty(raw["transformation_name_case_policy"]),
+	}
 }
 
 func updateJobConfig(client *golangsdk.ServiceClient, jsonBody map[string]interface{}, updateType, id string) error {
@@ -991,8 +1057,16 @@ func resourceJobRead(_ context.Context, d *schema.ResourceData, meta interface{}
 		topicUrn = alarmNotify["topic_urn"].(string)
 	}
 
-	createdAt, _ := strconv.ParseInt(detail.CreateTime, 10, 64)
-	updatedAt, _ := strconv.ParseInt(detail.UpdateTime, 10, 64)
+	createdAt, err := strconv.ParseInt(detail.CreateTime, 10, 64)
+	if err != nil {
+		log.Printf("[WARN] error parsing 'created_at' field to Integer: %s", err)
+	}
+
+	updatedAt, err := strconv.ParseInt(detail.UpdateTime, 10, 64)
+	if err != nil {
+		log.Printf("[WARN] error parsing 'updated_at' field to Integer: %s", err)
+	}
+
 	// engine_type input mongodb will return mongodb-to-dds
 	mErr := multierror.Append(
 		d.Set("region", region),
@@ -1028,7 +1102,18 @@ func resourceJobRead(_ context.Context, d *schema.ResourceData, meta interface{}
 	)
 
 	// set objects
-	if detail.ObjectSwitch {
+	databases := d.Get("databases")
+	tables := d.Get("tables")
+	if !getIsStartJob(d) {
+		// The job is not started by this resource, the API may not return the selected objects.
+		// Backfill databases/tables from the configuration.
+		if dbSet, ok := databases.(*schema.Set); ok && dbSet.Len() > 0 {
+			mErr = multierror.Append(mErr, d.Set("databases", databases))
+		}
+		if tableSet, ok := tables.(*schema.Set); ok && tableSet.Len() > 0 {
+			mErr = multierror.Append(mErr, d.Set("tables", tables))
+		}
+	} else if detail.ObjectSwitch {
 		objectName := flattenObjectName(detail.ObjectInfos, detail.SyncDatabase)
 		if detail.SyncDatabase {
 			mErr = multierror.Append(mErr,
@@ -1066,6 +1151,30 @@ func resourceJobRead(_ context.Context, d *schema.ResourceData, meta interface{}
 	}
 
 	return nil
+}
+
+func getIsStartJob(d *schema.ResourceData) bool {
+	if v := utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "is_start_job"); v != nil {
+		return v.(bool)
+	}
+	// Import/refresh may not provide RawConfig. Keep the value already stored in state.
+	if v := utils.GetNestedObjectFromRawConfig(d.GetRawState(), "is_start_job"); v != nil {
+		return v.(bool)
+	}
+	// Omitted in configuration: keep the historical behavior of starting the job.
+	return true
+}
+
+func getIsPreCheck(d *schema.ResourceData) bool {
+	if v := utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "is_pre_check"); v != nil {
+		return v.(bool)
+	}
+	// Import/refresh may not provide RawConfig. Keep the value already stored in state.
+	if v := utils.GetNestedObjectFromRawConfig(d.GetRawState(), "is_pre_check"); v != nil {
+		return v.(bool)
+	}
+	// Omitted in configuration: keep the historical behavior of performing preCheck.
+	return true
 }
 
 func flattenObjectName(objectInfos []jobs.ObjectInfo, isDateBase bool) []interface{} {
@@ -1134,6 +1243,7 @@ func getSlaveJobID(children []jobs.ChildrenJobInfo, masterJobId string) string {
 	return children[0].Id
 }
 
+// nolint:gocyclo
 func resourceJobUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -1463,7 +1573,7 @@ func executeJobAction(client *golangsdk.ServiceClient, jsonBody map[string]inter
 }
 
 func waitForOrderDetail(ctx context.Context, bssV2Client *golangsdk.ServiceClient, timeout time.Duration, orderId string) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {
@@ -1608,7 +1718,7 @@ func waitingforJobStatus(ctx context.Context, client *golangsdk.ServiceClient, i
 			"RELEASE_CHILD_TRANSFER_COMPLETE", "DELETED"}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: pending,
 		Target:  target,
 		Refresh: func() (interface{}, string, error) {
@@ -1658,15 +1768,20 @@ func buildCreateParamter(d *schema.ResourceData, projectId, enterpriseProjectID 
 	}
 
 	var subnetId string
-	if jobDirection == "up" {
+	switch jobDirection {
+	case "up":
 		if targetDb.InstanceId == "" {
-			return nil, fmt.Errorf("destination_db.0.instance_id is required When diretion is down")
+			return nil, fmt.Errorf("destination_db.0.instance_id is required when direction is up")
 		}
 		subnetId = targetDb.SubnetId
-	} else {
+
+	case "down":
 		if sourceDb.InstanceId == "" {
-			return nil, fmt.Errorf("source_db.0.instance_id is required When diretion is down")
+			return nil, fmt.Errorf("source_db.0.instance_id is required when direction is down")
 		}
+		subnetId = sourceDb.SubnetId
+
+	default:
 		subnetId = sourceDb.SubnetId
 	}
 
@@ -1749,6 +1864,7 @@ func buildDbConfigParamter(d *schema.ResourceData, dbType, projectId string) (*j
 	configRaw := d.Get(dbType).([]interface{})[0].(map[string]interface{})
 	configs := jobs.Endpoint{
 		DbType:              configRaw["engine_type"].(string),
+		AzCode:              configRaw["az_code"].(string),
 		Ip:                  configRaw["ip"].(string),
 		DbName:              configRaw["name"].(string),
 		DbUser:              configRaw["user"].(string),
@@ -1758,6 +1874,7 @@ func buildDbConfigParamter(d *schema.ResourceData, dbType, projectId string) (*j
 		Region:              configRaw["region"].(string),
 		VpcId:               configRaw["vpc_id"].(string),
 		SubnetId:            configRaw["subnet_id"].(string),
+		SecurityGroupId:     configRaw["security_group_id"].(string),
 		ProjectId:           projectId,
 		SslCertPassword:     configRaw["ssl_cert_password"].(string),
 		SslCertCheckSum:     configRaw["ssl_cert_check_sum"].(string),
@@ -1796,10 +1913,12 @@ func buildKafkaSecurityConfigParamter(kafkaSecurityConfig []interface{}) *jobs.K
 
 func setDbInfoToState(d *schema.ResourceData, endpoint jobs.Endpoint, fieldName string) error {
 	result := make([]interface{}, 1)
-	// IP sometimes will not same as input, if input 1, will return 2
+	// IP sometimes will not same as input, if input 1, will return 2.
+	// Query API does not return endpoint `az_code`, keep the configured value to avoid ForceNew drift.
 	item := map[string]interface{}{
 		"engine_type":           endpoint.DbType,
 		"ip":                    d.Get(fieldName + ".0.ip"),
+		"az_code":               d.Get(fieldName + ".0.az_code"),
 		"port":                  endpoint.DbPort,
 		"password":              endpoint.DbPassword,
 		"user":                  endpoint.DbUser,
@@ -1962,8 +2081,14 @@ func testConnectionsForDualAZ(client *golangsdk.ServiceClient, jobId string, opt
 		},
 	}
 
-	sourceEndpointJson, _ := json.Marshal(sourceEndpoint)
-	targetEndpointJson, _ := json.Marshal(targetEndpoint)
+	sourceEndpointJson, err := json.Marshal(sourceEndpoint)
+	if err != nil {
+		log.Printf("[ERROR] error marshaling source endpoint: %s", err)
+	}
+	targetEndpointJson, err := json.Marshal(targetEndpoint)
+	if err != nil {
+		log.Printf("[ERROR] error marshaling target endpoint: %s", err)
+	}
 	reqParams := jobs.TestClusterConnectionsReq{
 		Jobs: []jobs.TestJob{
 			{
@@ -2032,7 +2157,7 @@ func preCheck(ctx context.Context, client *golangsdk.ServiceClient, jobId string
 		return fmt.Errorf("start job: %s preCheck failed,error: %s", jobId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"pending"},
 		Target:  []string{"complete"},
 		Refresh: func() (interface{}, string, error) {

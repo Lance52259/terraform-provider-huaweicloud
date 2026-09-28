@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -245,7 +246,10 @@ func buildClusterUpgradeCreateOpts(d *schema.ResourceData, targetVersion string)
 	}
 
 	if v, ok := d.GetOk("is_only_upgrade"); ok {
-		isOnlyUpgradeRaw, _ := strconv.ParseBool(v.(string))
+		isOnlyUpgradeRaw, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'is_only_upgrade' field to Boolean: %s", err)
+		}
 		result["spec"].(map[string]interface{})["clusterUpgradeAction"].(map[string]interface{})["isOnlyUpgrade"] = isOnlyUpgradeRaw
 	}
 	return result, nil
@@ -399,7 +403,7 @@ func resourceClusterUpgradeCreate(ctx context.Context, d *schema.ResourceData, m
 
 	// Wait for the cce cluster to become available
 	clusterID := d.Get("cluster_id").(string)
-	stateCluster := &resource.StateChangeConf{
+	stateCluster := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      clusterStateRefreshFunc(client, clusterID, []string{"Available"}),
@@ -560,7 +564,7 @@ func createPreCheck(client *golangsdk.ServiceClient, clusterID, currentVersion, 
 
 func clusterPreCheckForStateCompleted(ctx context.Context, client *golangsdk.ServiceClient,
 	clusterID, preCheckTaskId string, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshClusterPreCheckState(client, clusterID, preCheckTaskId),
@@ -572,7 +576,7 @@ func clusterPreCheckForStateCompleted(ctx context.Context, client *golangsdk.Ser
 	return err
 }
 
-func refreshClusterPreCheckState(client *golangsdk.ServiceClient, clusterID, preCheckTaskId string) resource.StateRefreshFunc {
+func refreshClusterPreCheckState(client *golangsdk.ServiceClient, clusterID, preCheckTaskId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		preCheckTaskHttpUrl := "api/v3/projects/{project_id}/clusters/{cluster_id}/operation/precheck/tasks/{task_id}"
 		preCheckTaskPath := client.Endpoint + preCheckTaskHttpUrl
@@ -614,7 +618,7 @@ func refreshClusterPreCheckState(client *golangsdk.ServiceClient, clusterID, pre
 
 func clusterSnapshotWaitingForStateCompleted(ctx context.Context, client *golangsdk.ServiceClient,
 	clusterID, snapTaskId string, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshClusterSnapshotState(client, clusterID, snapTaskId),
@@ -626,7 +630,7 @@ func clusterSnapshotWaitingForStateCompleted(ctx context.Context, client *golang
 	return err
 }
 
-func refreshClusterSnapshotState(client *golangsdk.ServiceClient, clusterID, snapTaskId string) resource.StateRefreshFunc {
+func refreshClusterSnapshotState(client *golangsdk.ServiceClient, clusterID, snapTaskId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		snapshotTaskHttpUrl := "api/v3.1/projects/{project_id}/clusters/{cluster_id}/operation/snapshot/tasks"
 		snapshotTaskPath := client.Endpoint + snapshotTaskHttpUrl
@@ -720,7 +724,7 @@ func checkoutAfterUpgrade(client *golangsdk.ServiceClient, clusterID, currentVer
 
 func clusterUpgradeWaitingForStateCompleted(ctx context.Context, client *golangsdk.ServiceClient,
 	clusterID, taskID string, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

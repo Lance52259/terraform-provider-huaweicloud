@@ -8,6 +8,9 @@ import (
 
 	"github.com/GehirnInc/crypt"
 
+	// Required blank import: registers the SHA512-crypt implementation with
+	// github.com/GehirnInc/crypt at init time. Without it, crypt.SHA512.New()
+	// panics because the algorithm handler is never registered.
 	_ "github.com/GehirnInc/crypt/sha512_crypt"
 )
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -26,6 +27,10 @@ func ResourceV3Group() *schema.Resource {
 		ReadContext:   resourceV3GroupRead,
 		UpdateContext: resourceV3GroupUpdate,
 		DeleteContext: resourceV3GroupDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -108,7 +113,7 @@ func GetV3GroupById(client *golangsdk.ServiceClient, groupId string) (interface{
 	return utils.FlattenResponse(requestResp)
 }
 
-func resourceV3GroupRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceV3GroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg     = meta.(*config.Config)
 		region  = cfg.GetRegion(d)
@@ -119,7 +124,15 @@ func resourceV3GroupRead(_ context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	group, err := GetV3GroupById(client, groupId)
+	var group interface{}
+	// After creation, the group may not be immediately queryable (usually 2-3s, up to 10s).
+	if d.IsNewResource() {
+		group, err = PollRequest(ctx, func() (interface{}, error) {
+			return GetV3GroupById(client, groupId)
+		})
+	} else {
+		group, err = GetV3GroupById(client, groupId)
+	}
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error retrieving group (%s)", groupId))
 	}
@@ -166,6 +179,11 @@ func resourceV3GroupUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	if err != nil {
 		return diag.Errorf("error updating group (%s): %s", groupId, err)
 	}
+
+	// sleep 3 seconds to wait for the group to be updated (during each PATCH operation, the group with the
+	// expected result cannot be queried immediately).
+	// lintignore:R018
+	time.Sleep(3 * time.Second)
 
 	return resourceV3GroupRead(ctx, d, meta)
 }

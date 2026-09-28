@@ -183,11 +183,11 @@ func resourceEventSubscriptionsRead(_ context.Context, d *schema.ResourceData, m
 		return diag.FromErr(err)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	disasterList := utils.PathSearch("event_subscriptions", getDwsEventSubsRespBody, make([]interface{}, 0)).([]interface{})
 	mErr := multierror.Append(
@@ -199,7 +199,7 @@ func resourceEventSubscriptionsRead(_ context.Context, d *schema.ResourceData, m
 }
 
 func flattenEventSubs(resp []interface{}) []interface{} {
-	if resp == nil {
+	if len(resp) == 0 {
 		return nil
 	}
 	rst := make([]interface{}, 0, len(resp))

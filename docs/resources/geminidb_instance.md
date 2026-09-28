@@ -55,6 +55,11 @@ resource "huaweicloud_geminidb_instance" "test" {
     foo = "bar"
     key = "value"
   }
+
+  parameters {
+    name  = "AuthFailLockTime"
+    value = "6"
+  }
 }
 ```
 
@@ -129,6 +134,9 @@ The following arguments are supported:
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the instance.
 
+* `parameters` - (Optional, List) Specify an array of one or more parameters to be set to the GeminiDB instance after
+  launched. You can check on console to see which parameters supported. Structure is documented below.
+
 * `switch_option` - (Optional, String) Specifies whether the autoscaling is enabled.
   The valid values are as follows:
   + **on**: Storage autoscaling is enabled.
@@ -157,6 +165,56 @@ The following arguments are supported:
   -> This parameter is valid and available for **GeminiDB Influx** and **GeminiDB Redis** instances.
     The instances across subnets are not supported.
 
+* `bucket_name` - (Optional, String) Specifies the OBS bucket name.
+
+* `data_export_switch` - (Optional, String) Specifies the instance data export switch.
+  The valid values are as follows:
+  + **open**
+  + **close**
+
+-> 1. The parameters `bucket_name` and `data_export_switch` are used to configuration instance data export.
+  <br/>2. Currently, only the performance-enhanced GeminiDB Influx instance is supported.
+
+* `cold_storage_size` - (Optional, Int) Specifies the size of the cold storage, in GB.
+  The valid value ranges from `500` to `100,000`.
+
+  -> 1. The parameter `cold_storage_size` is used to configuration cold storage.
+  <br/>2. Currently, only the single-node GeminiDB Influx instance is supported.
+
+* `maintenance_start_time` - (Optional, String) Specifies the instance maintenance start time.
+
+* `maintenance_end_time` - (Optional, String) Specifies the instance maintenance end time.
+
+-> 1. The parameters `maintenance_start_time` and `maintenance_end_time` value must be a valid UTC time exactly
+  on the hour in the **HH:MM** format. e.g. **02:00**.
+  <br/>2. The `maintenance_end_time` is `4` hours later than the `maintenance_start_time`. e.g.
+  If the `maintenance_start_time` value is **02:00**, the `maintenance_end_time` value must be **06:00**.
+  <br/>3. The parameters `maintenance_start_time` and `maintenance_end_time` must be used together.
+
+* `node_switch_option` - (Optional, Bool) Specifies whether the switch for automatically adding nodes is enabled.
+  The valid values are **true** and **false**.
+
+  -> The node auto expansion policy is only supported GeminiDB Cassandra instance, and the instance CPU
+    need to greater than `2`.
+
+* `overload_node_threshold` - (Optional, Int) Specifies the percentage of overloaded nodes.
+  The value ranges from `1` to `100`.
+  For example, if there are three nodes in the current instance and the policy needs to be triggered
+  when a threshold is reached for two of them, the value can be 67% (= 2/3; rounded up).
+
+* `cpu_threshold` - (Optional, Int) Specifies the CPU usage of nodes for which autoscaling is triggered.
+  The value ranges from `1` to `100`. Defaults to `80`.
+
+* `mem_threshold` - (Optional, Int) Specifies the memory usage of nodes for which autoscaling is triggered.
+  The value ranges from `1` to `100`. Defaults to `80`.
+
+* `step` - (Optional, Int) Specifies the number of nodes to be added each time.
+  The maximum value cannot exceed the upper limit of nodes that can be added. Defaults to `3`.
+
+* `node_limit` - (Optional, Int) Specifies the maximum number of nodes that can be automatically added.
+  The maximum value cannot exceed the upper limit of nodes that can be added to the current instance.
+  The default value is the maximum number of nodes that can be added to the current instance.
+
 * `access_control` - (Optional, List) Specifies the access control for Load Balancer.
   The [access_control](#access_control_struct) structure is documented below.
 
@@ -177,6 +235,13 @@ The following arguments are supported:
   This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
 * `auto_renew` - (Optional, String) Specifies whether auto-renew is enabled. Valid values are **true** and **false**.
+
+The `parameters` block supports:
+
+* `name` - (Required, String) Specifies the parameter name. Some of them needs the instance to be restarted
+  to take effect.
+
+* `value` - (Required, String) Specifies the parameter value.
 
 <a name="datastore_struct"></a>
 The `datastore` block supports:
@@ -432,8 +497,9 @@ $ terraform import huaweicloud_geminidb_instance.test <id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to the attribute missing from the
-API response. The missing attribute is: `password`, `flavor.0.storage`, `ssl_option`, `delete_node_list`, `auto_renew`,
-`period` and `period_unit`. It is generally recommended running `terraform plan` after importing a GeminiDB instance.
+API response. The missing attribute is: `password`, `flavor.0.storage`, `ssl_option`, `bucket_name`,
+`data_export_switch`, `cold_storage_size`, `delete_node_list`, `auto_renew`, `period` and `period_unit`.
+It is generally recommended running `terraform plan` after importing a GeminiDB instance.
 You can then decide if changes should be applied to the GeminiDB instance or the resource definition should be updated
 to align with the GeminiDB instance. Also you can ignore changes as below.
 
@@ -443,7 +509,8 @@ resource "huaweicloud_geminidb_instance" "test" {
 
   lifecycle {
     ignore_changes = [
-      password, flavor.0.storage, ssl_option, delete_node_list, auto_renew, period, period_unit
+      password, flavor.0.storage, ssl_option, bucket_name, data_export_switch, cold_storage_size,
+      delete_node_list, auto_renew, period, period_unit,
     ]
   }
 }

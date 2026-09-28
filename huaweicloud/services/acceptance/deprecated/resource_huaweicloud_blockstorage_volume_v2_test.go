@@ -1,18 +1,17 @@
 package deprecated
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/blockstorage/v2/volumes"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccBlockStorageV2Volume_basic(t *testing.T) {
@@ -120,10 +119,10 @@ func TestAccBlockStorageV2Volume_timeout(t *testing.T) {
 }
 
 func testAccCheckBlockStorageV2VolumeDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	blockStorageClient, err := config.BlockStorageV2Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	blockStorageClient, err := cfg.BlockStorageV2Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud block storage client: %s", err)
+		return fmt.Errorf("error creating block storage client: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -133,7 +132,7 @@ func testAccCheckBlockStorageV2VolumeDestroy(s *terraform.State) error {
 
 		_, err := volumes.Get(blockStorageClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Volume still exists")
+			return fmt.Errorf("the block storage volume still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 
@@ -144,17 +143,17 @@ func testAccCheckBlockStorageV2VolumeExists(n string, volume *volumes.Volume) re
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the block storage volume %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return fmt.Errorf("no ID set for the block storage volume %s", n)
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		blockStorageClient, err := config.BlockStorageV2Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		blockStorageClient, err := cfg.BlockStorageV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Error creating HuaweiCloud block storage client: %s", err)
+			return fmt.Errorf("error creating block storage client: %s", err)
 		}
 
 		found, err := volumes.Get(blockStorageClient, rs.Primary.ID).Extract()
@@ -163,7 +162,7 @@ func testAccCheckBlockStorageV2VolumeExists(n string, volume *volumes.Volume) re
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("Volume not found")
+			return fmt.Errorf("the block storage volume is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*volume = *found
@@ -172,31 +171,11 @@ func testAccCheckBlockStorageV2VolumeExists(n string, volume *volumes.Volume) re
 	}
 }
 
-func testAccCheckBlockStorageV2VolumeDoesNotExist(t *testing.T, n string, volume *volumes.Volume) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		blockStorageClient, err := config.BlockStorageV2Client(acceptance.HW_REGION_NAME)
-		if err != nil {
-			return fmtp.Errorf("Error creating HuaweiCloud block storage client: %s", err)
-		}
-
-		_, err = volumes.Get(blockStorageClient, volume.ID).Extract()
-		if err != nil {
-			if _, ok := err.(golangsdk.ErrDefault404); ok {
-				return nil
-			}
-			return err
-		}
-
-		return fmtp.Errorf("Volume still exists")
-	}
-}
-
 func testAccCheckBlockStorageV2VolumeMetadata(
 	volume *volumes.Volume, k string, v string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
+	return func(_ *terraform.State) error {
 		if volume.Metadata == nil {
-			return fmtp.Errorf("No metadata")
+			return errors.New("no metadata")
 		}
 
 		for key, value := range volume.Metadata {
@@ -208,10 +187,10 @@ func testAccCheckBlockStorageV2VolumeMetadata(
 				return nil
 			}
 
-			return fmtp.Errorf("Bad value for %s: %s", k, value)
+			return fmt.Errorf("bad value for %s: %s", k, value)
 		}
 
-		return fmtp.Errorf("Metadata not found: %s", k)
+		return fmt.Errorf("metadata not found: %s", k)
 	}
 }
 

@@ -2,6 +2,7 @@ package taurusdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -40,8 +41,11 @@ type ctxType string
 // @API TaurusDB GET /v3/{project_id}/dedicated-resources
 // @API TaurusDB POST /v3/{project_id}/instances
 // @API TaurusDB POST /v3/{project_id}/instance/{instance_id}/audit-log/switch
+// @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/audit-log-policy
+// @API TaurusDB GET /v3/{project_id}/instances/{instance_id}/audit-log-policy
 // @API TaurusDB POST /v3/{project_id}/instances/{instance_id}/sql-filter/switch
 // @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/backups/policy/update
+// @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/backups/offsite-policy
 // @API TaurusDB POST /v3/{project_id}/instances/{instance_id}/proxy
 // @API TaurusDB POST /v3/{project_id}/instances/{instance_id}/restart
 // @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/ops-window
@@ -66,6 +70,8 @@ type ctxType string
 // @API TaurusDB PUT /v3/{project_id}/configurations/{configuration_id}/apply
 // @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/configurations
 // @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/auto-scaling/policy
+// @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/storage/auto-expand-policy
+// @API TaurusDB GET /v3/{project_id}/instances/{instance_id}/storage/auto-expand-policy
 // @API TaurusDB PUT /v3/{project_id}/instances/{instance_id}/multi-tenant
 // @API TaurusDB POST /v3/{project_id}/instances/{instance_id}/backups/encryption
 // @API TaurusDB POST /v3/{project_id}/instances/{instance_id}/slowlog/modify
@@ -311,6 +317,36 @@ func ResourceTaurusDBInstance() *schema.Resource {
 					},
 				},
 			},
+			"cross_region_backup_policy": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"open_auto_backup": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"open_incremental_backup": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"destination_project_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"destination_region": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"keep_days": {
+							Type:         schema.TypeInt,
+							Required:     true,
+							ValidateFunc: validation.IntBetween(1, 1825),
+						},
+					},
+				},
+			},
 			"sql_filter_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -465,6 +501,52 @@ func ResourceTaurusDBInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"audit_log_keep_days": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"audit_types": {
+				Type:     schema.TypeList,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Optional: true,
+				Computed: true,
+			},
+			"reserve_audit_logs": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+			},
+			"storage_auto_expand_policy": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"switch_option": {
+							Type:     schema.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
+						"limit_size": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
+						},
+						"trigger_available_percent": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
+						},
+						"step_percent": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"force_import": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -486,6 +568,10 @@ func ResourceTaurusDBInstance() *schema.Resource {
 			},
 			"upgrade_flag": {
 				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"all_audit_log_action": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"current_version": {
@@ -585,11 +671,12 @@ func resourceGaussDBDataStore(d *schema.ResourceData) instances.DataStoreOpt {
 	return db
 }
 
-func GaussDBInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func GaussDBInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		v, err := instances.Get(client, instanceID).Extract()
 		if err != nil {
-			if _, ok := err.(golangsdk.ErrDefault404); ok {
+			var errDefault404 golangsdk.ErrDefault404
+			if errors.As(err, &errDefault404) {
 				return v, "DELETED", nil
 			}
 			return nil, "", err
@@ -602,6 +689,7 @@ func GaussDBInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID
 	}
 }
 
+// nolint:gocyclo
 func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	client, err := cfg.GaussdbV3Client(cfg.GetRegion(d))
@@ -741,7 +829,7 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 	d.SetId(id)
 
 	// waiting for the instance to become ready
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"BUILD", "BACKING UP"},
 		Target:       []string{"ACTIVE"},
 		Refresh:      GaussDBInstanceStateRefreshFunc(client, id),
@@ -762,7 +850,7 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 
 	// waiting for the instance to become ready again
 	// as instance will become BACKING UP state after ACTIVE
-	stateConf = &resource.StateChangeConf{
+	stateConf = &retry.StateChangeConf{
 		Pending:      []string{"BUILD", "BACKING UP"},
 		Target:       []string{"ACTIVE"},
 		Refresh:      GaussDBInstanceStateRefreshFunc(client, id),
@@ -784,6 +872,13 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	// audit-log policy
+	if _, ok := d.GetOk("audit_log_keep_days"); ok {
+		if err = updateAuditLogPolicy(ctx, client, d, schema.TimeoutCreate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// sql-filter switch
 	if _, ok := d.GetOk("sql_filter_enabled"); ok {
 		err = switchSQLFilter(ctx, client, d, schema.TimeoutCreate)
@@ -794,6 +889,12 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 
 	if _, ok := d.GetOk("backup_strategy"); ok {
 		if err = updateInstanceBackupStrategy(ctx, client, d, schema.TimeoutCreate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.Get("cross_region_backup_policy.0.open_auto_backup").(bool) {
+		if err = updateCrossRegionBackupPolicy(ctx, client, d, schema.TimeoutCreate); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -867,6 +968,12 @@ func resourceGaussDBInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	if d.Get("storage_auto_expand_policy.0.switch_option").(bool) {
+		if err = updateStorageAutoExpandPolicy(ctx, client, d, schema.TimeoutCreate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if v, ok := d.GetOk("encryption_status"); ok && v.(string) == "ON" {
 		if err = updateEncryption(client, d); err != nil {
 			return diag.FromErr(err)
@@ -919,8 +1026,8 @@ func restartGaussDBMySQLInstance(ctx context.Context, client *golangsdk.ServiceC
 	// If parameters which requires restart changed, reboot the instance.
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.Restart(client, d.Id(), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1012,12 +1119,16 @@ func resourceGaussDBInstanceRead(ctx context.Context, d *schema.ResourceData, me
 	mErr = multierror.Append(mErr, setProxy(d, client, instanceID)...)
 	// set audit log status
 	mErr = multierror.Append(mErr, setAuditLog(d, client, instanceID))
+	// set audit log policy
+	mErr = multierror.Append(mErr, setAuditLogPolicy(d, client, instanceID))
 	// set sql filter status
 	mErr = multierror.Append(mErr, setSqlFilter(d, client, instanceID))
 	// set seconds level monitoring
 	mErr = multierror.Append(mErr, setSecondsLevelMonitoring(d, client, instanceID)...)
 	// set auto scaling
 	mErr = multierror.Append(mErr, setAutoScaling(d, client, instanceID))
+	// set storage auto expand policy
+	mErr = multierror.Append(mErr, setStorageAutoExpandPolicy(d, client, instanceID))
 	// set backup encryption
 	mErr = multierror.Append(mErr, setEncryption(d, client, instanceID))
 	// set version
@@ -1175,6 +1286,216 @@ func setAuditLog(d *schema.ResourceData, client *golangsdk.ServiceClient, instan
 	return d.Set("audit_log_enabled", status)
 }
 
+func setAuditLogPolicy(d *schema.ResourceData, client *golangsdk.ServiceClient, instanceId string) error {
+	keepDays, auditTypes, allAuditLogAction, err := getAuditLogPolicy(client, instanceId)
+	if err != nil {
+		log.Printf("[WARN] query instance %s audit log policy failed: %s", instanceId, err)
+		return nil
+	}
+
+	mErr := multierror.Append(nil,
+		d.Set("reserve_audit_logs", d.Get("reserve_audit_logs").(string)),
+		d.Set("audit_log_keep_days", keepDays),
+		d.Set("audit_types", auditTypes),
+		d.Set("all_audit_log_action", allAuditLogAction),
+	)
+	return mErr.ErrorOrNil()
+}
+
+func getAuditLogPolicy(client *golangsdk.ServiceClient, instanceId string) (int, []string, string, error) {
+	getPath := client.Endpoint + "v3/{project_id}/instances/{instance_id}/audit-log-policy"
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
+
+	getOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+	getResp, err := client.Request("GET", getPath, &getOpt)
+	if err != nil {
+		return 0, nil, "", fmt.Errorf("error retrieving audit log policy for instance (%s): %s", instanceId, err)
+	}
+
+	getRespBody, err := utils.FlattenResponse(getResp)
+	if err != nil {
+		return 0, nil, "", err
+	}
+
+	keepDays := int(utils.PathSearch("keep_days", getRespBody, float64(0)).(float64))
+	allAuditLogAction := utils.PathSearch("all_audit_log_action", getRespBody, "").(string)
+
+	auditTypesRaw := utils.PathSearch("audit_types", getRespBody, []interface{}{}).([]interface{})
+	auditTypes := utils.ExpandToStringList(auditTypesRaw)
+
+	return keepDays, auditTypes, allAuditLogAction, nil
+}
+
+func updateAuditLogPolicy(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
+	updatePath := client.Endpoint + "v3/{project_id}/instances/{instance_id}/audit-log-policy"
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+		JSONBody: utils.RemoveNil(buildUpdateAuditLogPolicyRequestBody(d)),
+	}
+
+	retryFunc := func() (interface{}, bool, error) {
+		res, err := client.Request("PUT", updatePath, &updateOpt)
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
+	}
+	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     GaussDBInstanceStateRefreshFunc(client, d.Id()),
+		WaitTarget:   []string{"ACTIVE"},
+		Timeout:      d.Timeout(timeout),
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating audit log policy for instance %s: %s", d.Id(), err)
+	}
+
+	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
+	if err != nil {
+		return err
+	}
+
+	result := utils.PathSearch("result", updateRespBody, "").(string)
+	if result != "COMPLETED" {
+		return fmt.Errorf("error updating audit log policy for instance %s: result is %s", d.Id(), result)
+	}
+
+	return nil
+}
+
+func buildUpdateAuditLogPolicyRequestBody(d *schema.ResourceData) map[string]interface{} {
+	body := map[string]interface{}{
+		"keep_days": d.Get("audit_log_keep_days").(int),
+	}
+
+	if v, ok := d.GetOk("audit_types"); ok {
+		body["audit_types"] = utils.ExpandToStringList(v.([]interface{}))
+	}
+
+	if v, ok := d.GetOk("reserve_audit_logs"); ok {
+		reserveAuditLog, err := strconv.ParseBool(v.(string))
+		if err == nil {
+			body["reserve_audit_logs"] = reserveAuditLog
+		}
+	}
+	return body
+}
+
+func getStorageAutoExpandPolicy(client *golangsdk.ServiceClient, instanceId string) (interface{}, error) {
+	getPath := client.Endpoint + "v3/{project_id}/instances/{instance_id}/storage/auto-expand-policy"
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
+
+	getOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	getResp, err := client.Request("GET", getPath, &getOpt)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving storage auto expand policy for instance (%s): %s", instanceId, err)
+	}
+
+	getRespBody, err := utils.FlattenResponse(getResp)
+	if err != nil {
+		return nil, err
+	}
+
+	switchOption := utils.PathSearch("switch_option", getRespBody, false).(bool)
+	limitSize := int(utils.PathSearch("limit_size", getRespBody, float64(0)).(float64))
+	triggerAvailablePercent := int(utils.PathSearch("trigger_available_percent", getRespBody, float64(0)).(float64))
+	stepPercent := int(utils.PathSearch("step_percent", getRespBody, float64(0)).(float64))
+
+	policy := []interface{}{
+		map[string]interface{}{
+			"switch_option":             switchOption,
+			"limit_size":                limitSize,
+			"trigger_available_percent": triggerAvailablePercent,
+			"step_percent":              stepPercent,
+		},
+	}
+
+	return policy, nil
+}
+
+func setStorageAutoExpandPolicy(d *schema.ResourceData, client *golangsdk.ServiceClient, instanceId string) error {
+	policy, err := getStorageAutoExpandPolicy(client, instanceId)
+	if err != nil {
+		log.Printf("[WARN] query instance %s storage auto expand policy failed: %s", instanceId, err)
+		return nil
+	}
+	return d.Set("storage_auto_expand_policy", policy)
+}
+
+func updateStorageAutoExpandPolicy(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
+	updatePath := client.Endpoint + "v3/{project_id}/instances/{instance_id}/storage/auto-expand-policy"
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+		JSONBody:         utils.RemoveNil(buildUpdateStorageAutoExpandPolicyRequestBody(d)),
+	}
+
+	retryFunc := func() (interface{}, bool, error) {
+		res, err := client.Request("PUT", updatePath, &updateOpt)
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
+	}
+	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     GaussDBInstanceStateRefreshFunc(client, d.Id()),
+		WaitTarget:   []string{"ACTIVE"},
+		Timeout:      d.Timeout(timeout),
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating storage auto expand policy for instance %s: %s", d.Id(), err)
+	}
+
+	_, err = utils.FlattenResponse(r.(*http.Response))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildUpdateStorageAutoExpandPolicyRequestBody(d *schema.ResourceData) map[string]interface{} {
+	policy := d.Get("storage_auto_expand_policy").([]interface{})
+	if len(policy) == 0 {
+		return nil
+	}
+
+	policyMap, ok := policy[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	bodyParams := map[string]interface{}{
+		"switch_option":             policyMap["switch_option"],
+		"limit_size":                utils.ValueIgnoreEmpty(policyMap["limit_size"]),
+		"trigger_available_percent": utils.ValueIgnoreEmpty(policyMap["trigger_available_percent"]),
+		"step_percent":              utils.ValueIgnoreEmpty(policyMap["step_percent"]),
+	}
+	return bodyParams
+}
+
 func setSqlFilter(d *schema.ResourceData, client *golangsdk.ServiceClient, instanceId string) error {
 	resp, err := sqlfilter.Get(client, instanceId).Extract()
 	if err != nil {
@@ -1258,7 +1579,10 @@ func setSlowLogShowOriginalSwitch(d *schema.ResourceData, client *golangsdk.Serv
 		log.Printf("[WARN] query instance %s slow log show original failed: %s", instanceId, err)
 		return nil
 	}
-	slowLogShowOriginalSwitch, _ := strconv.ParseBool(resp.OpenSlowLogSwitch)
+	slowLogShowOriginalSwitch, err := strconv.ParseBool(resp.OpenSlowLogSwitch)
+	if err != nil {
+		log.Printf("[WARN] error parsing 'slow_log_show_original_switch' field to Boolean: %s", err)
+	}
 	return d.Set("slow_log_show_original_switch", slowLogShowOriginalSwitch)
 }
 
@@ -1322,6 +1646,7 @@ func setMultiTenantSwitch(d *schema.ResourceData, client *golangsdk.ServiceClien
 	return d.Set("multi_tenant_switch", multiTenantSwitch)
 }
 
+// nolint:gocyclo
 func resourceGaussDBInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1372,6 +1697,13 @@ func resourceGaussDBInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	if d.HasChange("cross_region_backup_policy") {
+		err = updateCrossRegionBackupPolicy(ctx, client, d, schema.TimeoutUpdate)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("proxy_flavor") {
 		if err = updateInstanceProxyFlavor(ctx, client, d); err != nil {
 			return diag.FromErr(err)
@@ -1387,6 +1719,12 @@ func resourceGaussDBInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	if d.HasChange("audit_log_enabled") {
 		err = switchAuditLog(ctx, client, d, schema.TimeoutUpdate)
 		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChanges("audit_log_keep_days", "audit_types", "reserve_audit_logs") {
+		if err = updateAuditLogPolicy(ctx, client, d, schema.TimeoutUpdate); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1501,6 +1839,13 @@ func resourceGaussDBInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
+	if d.HasChange("storage_auto_expand_policy") {
+		err = updateStorageAutoExpandPolicy(ctx, client, d, schema.TimeoutUpdate)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChanges("encryption_status", "encryption_type", "kms_key_id") {
 		err = updateEncryption(client, d)
 		if err != nil {
@@ -1567,7 +1912,7 @@ func resourceGaussDBInstanceDelete(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE", "BACKING UP", "FAILED"},
 		Target:     []string{"DELETED"},
 		Refresh:    GaussDBInstanceStateRefreshFunc(client, instanceId),
@@ -1592,8 +1937,8 @@ func updateInstanceName(ctx context.Context, client *golangsdk.ServiceClient, d 
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdateName(client, d.Id(), updateNameOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1620,8 +1965,8 @@ func updateInstancePassword(ctx context.Context, client *golangsdk.ServiceClient
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdatePass(client, d.Id(), updatePassOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1650,8 +1995,8 @@ func updateInstanceFlavor(ctx context.Context, client, bssClient *golangsdk.Serv
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.Resize(client, d.Id(), resizeOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1728,8 +2073,8 @@ func createInstanceReadReplica(ctx context.Context, client, bssClient *golangsdk
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.CreateReplica(client, d.Id(), createReplicaOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1799,8 +2144,8 @@ func deleteInstanceReadReplica(ctx context.Context, client, bssClient *golangsdk
 	for i := 0; i < shrinkSize; i++ {
 		retryFunc := func() (interface{}, bool, error) {
 			res, err := instances.DeleteReplica(client, d.Id(), slaveNodes[i]).ExtractJobResponse()
-			retry, err := handleMultiOperationsError(err)
-			return res, retry, err
+			shouldRetry, err := handleMultiOperationsError(err)
+			return res, shouldRetry, err
 		}
 		r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -1853,8 +2198,8 @@ func updateInstanceVolumeSize(ctx context.Context, client, bssClient *golangsdk.
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.ExtendVolume(client, d.Id(), extendOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1908,8 +2253,8 @@ func updateInstanceBackupStrategy(ctx context.Context, client *golangsdk.Service
 
 	retryFunc := func() (interface{}, bool, error) {
 		err := backups.Update(client, d.Id(), updateOpts).ExtractErr()
-		retry, err := handleMultiOperationsError(err)
-		return nil, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return nil, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1924,6 +2269,70 @@ func updateInstanceBackupStrategy(ctx context.Context, client *golangsdk.Service
 		return fmt.Errorf("error updating backup_strategy: %s", err)
 	}
 	return nil
+}
+
+func updateCrossRegionBackupPolicy(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
+	updatePath := client.Endpoint + "v3/{project_id}/instances/{instance_id}/backups/offsite-policy"
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+		JSONBody:         buildUpdateCrossRegionBackupPolicyRequestBody(d),
+	}
+
+	retryFunc := func() (interface{}, bool, error) {
+		updateResp, err := client.Request("PUT", updatePath, &updateOpt)
+		shouldRetry, err := handleMultiOperationsError(err)
+		return updateResp, shouldRetry, err
+	}
+	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+		Ctx:          ctx,
+		RetryFunc:    retryFunc,
+		WaitFunc:     GaussDBInstanceStateRefreshFunc(client, d.Id()),
+		WaitTarget:   []string{"ACTIVE"},
+		Timeout:      d.Timeout(timeout),
+		DelayTimeout: 10 * time.Second,
+		PollInterval: 10 * time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating cross region backup policy for instance %s: %s", d.Id(), err)
+	}
+
+	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
+	if err != nil {
+		return err
+	}
+
+	result := utils.PathSearch("result", updateRespBody, "").(string)
+	if result != "SUCCESS" {
+		return fmt.Errorf("error updating cross region backup policy for instance %s: result is %s", d.Id(), result)
+	}
+
+	return nil
+}
+
+func buildUpdateCrossRegionBackupPolicyRequestBody(d *schema.ResourceData) map[string]interface{} {
+	policy := d.Get("cross_region_backup_policy").([]interface{})
+	if len(policy) == 0 {
+		return nil
+	}
+	policyMap, ok := policy[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	bodyParams := map[string]interface{}{
+		"backup_policy": map[string]interface{}{
+			"open_auto_backup":        policyMap["open_auto_backup"],
+			"open_incremental_backup": policyMap["open_incremental_backup"],
+			"destination_project_id":  policyMap["destination_project_id"],
+			"destination_region":      policyMap["destination_region"],
+			"keep_days":               policyMap["keep_days"],
+		},
+	}
+	return bodyParams
 }
 
 func updateInstanceProxyFlavor(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
@@ -1947,8 +2356,8 @@ func enableInstanceProxy(ctx context.Context, client *golangsdk.ServiceClient, d
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.EnableProxy(client, d.Id(), proxyOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1969,8 +2378,8 @@ func enableInstanceProxy(ctx context.Context, client *golangsdk.ServiceClient, d
 func deleteInstanceProxy(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.DeleteProxy(client, d.Id()).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1997,8 +2406,8 @@ func updateInstanceProxyNodeNum(ctx context.Context, client *golangsdk.ServiceCl
 		}
 		retryFunc := func() (interface{}, bool, error) {
 			res, err := instances.EnlargeProxy(client, d.Id(), enlargeProxyOpts).ExtractJobResponse()
-			retry, err := handleMultiOperationsError(err)
-			return res, retry, err
+			shouldRetry, err := handleMultiOperationsError(err)
+			return res, shouldRetry, err
 		}
 		r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -2035,8 +2444,8 @@ func switchAuditLog(ctx context.Context, client *golangsdk.ServiceClient, d *sch
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := auditlog.Update(client, d.Id(), opts)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2064,8 +2473,8 @@ func switchSQLFilter(ctx context.Context, client *golangsdk.ServiceClient, d *sc
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := sqlfilter.Update(client, d.Id(), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2090,8 +2499,8 @@ func updateConfiguration(ctx context.Context, d *schema.ResourceData, client *go
 
 	retryFunc := func() (interface{}, bool, error) {
 		_, err := configurations.Apply(client, d.Get("configuration_id").(string), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return nil, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return nil, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2139,8 +2548,8 @@ func modifyParameters(ctx context.Context, client *golangsdk.ServiceClient, d *s
 	parameterOpts *parameters.UpdateParametersOpts) (bool, error) {
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := parameters.Update(client, d.Id(), *parameterOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2169,8 +2578,8 @@ func updatePrivateWriteIp(ctx context.Context, client *golangsdk.ServiceClient, 
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdatePrivateIp(client, d.Id(), updatePrivateWriteIpOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2196,8 +2605,8 @@ func updatePort(ctx context.Context, client *golangsdk.ServiceClient, d *schema.
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdatePort(client, d.Id(), updatePortOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2223,8 +2632,8 @@ func updateSecurityGroup(ctx context.Context, client *golangsdk.ServiceClient, d
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdateSecurityGroup(client, d.Id(), updateSecurityGroupOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2250,8 +2659,8 @@ func applyPrivateDNSName(ctx context.Context, client *golangsdk.ServiceClient, d
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.ApplyPrivateDnsName(client, d.Id(), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2277,8 +2686,8 @@ func updatePrivateDNSName(ctx context.Context, client *golangsdk.ServiceClient, 
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdatePrivateDnsName(client, d.Id(), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2320,8 +2729,8 @@ func updatesSecondsLevelMonitoring(ctx context.Context, client *golangsdk.Servic
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdateSecondLevelMonitoring(client, d.Id(), opts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2341,15 +2750,18 @@ func updatesSecondsLevelMonitoring(ctx context.Context, client *golangsdk.Servic
 }
 
 func updateSslOption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
-	sslOption, _ := strconv.ParseBool(d.Get("ssl_option").(string))
+	sslOption, err := strconv.ParseBool(d.Get("ssl_option").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'ssl_option' field to Boolean: %s", err)
+	}
 	updateSslOptionOpts := instances.UpdateSslOptionOpts{
 		SslOption: sslOption,
 	}
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := instances.UpdateSslOption(client, d.Id(), updateSslOptionOpts).ExtractJobResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2418,8 +2830,8 @@ func updateAutoScaling(ctx context.Context, client *golangsdk.ServiceClient, d *
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := autoscaling.Update(client, d.Id(), updateAutoScalingOpts).ExtractUpdateResponse()
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2461,7 +2873,10 @@ func updateMultiTenantSwitch(ctx context.Context, client *golangsdk.ServiceClien
 	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
 	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
 
-	multiTenantSwitch, _ := strconv.ParseBool(d.Get("multi_tenant_switch").(string))
+	multiTenantSwitch, err := strconv.ParseBool(d.Get("multi_tenant_switch").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'multi_tenant_switch' field to Boolean: %s", err)
+	}
 	updateOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		MoreHeaders: map[string]string{
@@ -2473,8 +2888,8 @@ func updateMultiTenantSwitch(ctx context.Context, client *golangsdk.ServiceClien
 	}
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
+		shouldRetry, err := handleMultiOperationsError(err)
+		return res, shouldRetry, err
 	}
 	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2535,7 +2950,7 @@ func getMultiTenantSwitch(client *golangsdk.ServiceClient, instanceId string) (s
 }
 
 func checkGaussDBMySQLJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending", "Running"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDBMysqlDatabaseStatusRefreshFunc(client, jobID),
@@ -2549,7 +2964,7 @@ func checkGaussDBMySQLJobFinish(ctx context.Context, client *golangsdk.ServiceCl
 	return nil
 }
 
-func gaussDBMysqlDatabaseStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func gaussDBMysqlDatabaseStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"

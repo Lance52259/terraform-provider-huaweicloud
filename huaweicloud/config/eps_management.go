@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -94,7 +94,7 @@ func (cfg *Config) MigrateEnterpriseProject(ctx context.Context, d *schema.Resou
 	}
 
 	// Wait for the Enterprise Project ID changed.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -180,7 +180,7 @@ func getAssociatedResourceById(client *golangsdk.ServiceClient, projectId, epsId
 	}
 	return nil, golangsdk.ErrDefault404{
 		ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-			Body: []byte(fmt.Sprintf("unable to find the resource under a specified enterprise_project_id (%s)", epsId)),
+			Body: fmt.Appendf(nil, "unable to find the resource under a specified enterprise_project_id (%s)", epsId),
 		},
 	}
 }

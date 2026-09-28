@@ -1,6 +1,7 @@
 package deprecated
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccNetworkingV2SubnetDataSource_basic(t *testing.T) {
@@ -23,7 +23,8 @@ func TestAccNetworkingV2SubnetDataSource_basic(t *testing.T) {
 				Config: testAccHuaweiCloudNetworkingSubnetV2DataSource_basic,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckNetworkingSubnetV2DataSourceID("data.huaweicloud_networking_subnet_v2.subnet_1"),
-					testAccCheckNetworkingSubnetV2DataSourceGoodNetwork("data.huaweicloud_networking_subnet_v2.subnet_1", "huaweicloud_networking_network_v2.network_1"),
+					testAccCheckNetworkingSubnetV2DataSourceGoodNetwork("data.huaweicloud_networking_subnet_v2.subnet_1",
+						"huaweicloud_networking_network_v2.network_1"),
 					resource.TestCheckResourceAttr(
 						"data.huaweicloud_networking_subnet_v2.subnet_1", "name", "subnet_1"),
 				),
@@ -77,7 +78,8 @@ func TestAccNetworkingV2SubnetDataSource_networkIdAttribute(t *testing.T) {
 				Config: testAccHuaweiCloudNetworkingSubnetV2DataSource_networkIdAttribute,
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckNetworkingSubnetV2DataSourceID("data.huaweicloud_networking_subnet_v2.subnet_1"),
-					testAccCheckNetworkingSubnetV2DataSourceGoodNetwork("data.huaweicloud_networking_subnet_v2.subnet_1", "huaweicloud_networking_network_v2.network_1"),
+					testAccCheckNetworkingSubnetV2DataSourceGoodNetwork("data.huaweicloud_networking_subnet_v2.subnet_1",
+						"huaweicloud_networking_network_v2.network_1"),
 					testAccCheckNetworkingPortV2ID("huaweicloud_networking_port_v2.port_1"),
 				),
 			},
@@ -89,11 +91,11 @@ func testAccCheckNetworkingSubnetV2DataSourceID(n string) resource.TestCheckFunc
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Can't find subnet data source: %s", n)
+			return fmt.Errorf("can't find subnet data source: %s", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("Subnet data source ID not set")
+			return errors.New("subnet data source ID not set")
 		}
 
 		return nil
@@ -104,11 +106,11 @@ func testAccCheckNetworkingPortV2ID(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Can't find port resource: %s", n)
+			return fmt.Errorf("can't find port resource: %s", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("Port resource ID not set")
+			return errors.New("port resource ID not set")
 		}
 
 		return nil
@@ -119,24 +121,24 @@ func testAccCheckNetworkingSubnetV2DataSourceGoodNetwork(n1, n2 string) resource
 	return func(s *terraform.State) error {
 		ds1, ok := s.RootModule().Resources[n1]
 		if !ok {
-			return fmtp.Errorf("Can't find subnet data source: %s", n1)
+			return fmt.Errorf("can't find subnet data source: %s", n1)
 		}
 
 		if ds1.Primary.ID == "" {
-			return fmtp.Errorf("Subnet data source ID not set")
+			return errors.New("subnet data source ID not set")
 		}
 
 		rs2, ok := s.RootModule().Resources[n2]
 		if !ok {
-			return fmtp.Errorf("Can't find network resource: %s", n2)
+			return fmt.Errorf("can't find network resource: %s", n2)
 		}
 
 		if rs2.Primary.ID == "" {
-			return fmtp.Errorf("Network resource ID not set")
+			return errors.New("network resource ID not set")
 		}
 
 		if rs2.Primary.ID != ds1.Primary.Attributes["network_id"] {
-			return fmtp.Errorf("Network id and subnet network_id don't match")
+			return errors.New("network ID and subnet network_id don't match")
 		}
 
 		return nil

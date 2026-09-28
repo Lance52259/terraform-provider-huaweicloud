@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -196,11 +196,6 @@ func ResourceMigrationTask() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
-			},
-			"enable_kms": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -506,7 +501,6 @@ func buildcreateTaskBodyParams(d *schema.ResourceData, cfg *config.Config) (map[
 	bodyParams := map[string]interface{}{
 		"task_type":                      d.Get("type"),
 		"src_node":                       buildSrcNodeOpts(d.Get("source_object").([]interface{})),
-		"enable_kms":                     d.Get("enable_kms").(bool),
 		"description":                    utils.ValueIgnoreEmpty(d.Get("description").(string)),
 		"bandwidth_policy":               buildBandwidthPolicyOpts(d.Get("bandwidth_policy").([]interface{})),
 		"smn_config":                     buildSmnConfigOpts(d.Get("smn_config").([]interface{})),
@@ -561,7 +555,7 @@ func resourceMigrationTaskCreate(ctx context.Context, d *schema.ResourceData, me
 
 	createOpts, err := buildcreateTaskBodyParams(d, cfg)
 	if err != nil {
-		return nil
+		return diag.Errorf("error building migration task body params: %s", err)
 	}
 
 	log.Printf("[DEBUG] Create Task options: %#v", createOpts)
@@ -638,7 +632,6 @@ func resourceMigrationTaskRead(_ context.Context, d *schema.ResourceData, meta i
 
 	mErr := multierror.Append(nil,
 		d.Set("type", utils.PathSearch("task_type", getTaskRespBody, nil)),
-		d.Set("enable_kms", utils.PathSearch("enable_kms", getTaskRespBody, nil)),
 		d.Set("description", utils.PathSearch("description", getTaskRespBody, nil)),
 		d.Set("bandwidth_policy", flattenBandwidthPolicy(getTaskRespBody)),
 		d.Set("source_cdn", flattenSourceCdn(getTaskRespBody)),
@@ -797,7 +790,7 @@ func stopTask(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 }
 
 func waitForTaskStopped(ctx context.Context, client *golangsdk.ServiceClient, taskID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"0", "7"},
 		Target:     []string{"3"},
 		Refresh:    getTaskStatus(client, taskID),
@@ -903,7 +896,7 @@ func resourceMigrationTaskDelete(ctx context.Context, d *schema.ResourceData, me
 		}
 	}
 
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutUpdate), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutUpdate), func() *retry.RetryError {
 		_, err = client.Request("DELETE", deleteTaskPath, &deleteTaskOpt)
 		if err == nil {
 			return nil
@@ -911,9 +904,9 @@ func resourceMigrationTaskDelete(ctx context.Context, d *schema.ResourceData, me
 
 		// ErrorCode "OMS.0063" means the task is in progress. This ErrorCode is not accurate, we need retry it.
 		if hasErrorCode(err, "OMS.0063") {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
-		return resource.NonRetryableError(err)
+		return retry.NonRetryableError(err)
 	})
 	if err != nil {
 		return diag.Errorf("error deleting OMS migration task: %s", err)
@@ -922,7 +915,7 @@ func resourceMigrationTaskDelete(ctx context.Context, d *schema.ResourceData, me
 	return nil
 }
 
-func getTaskStatus(client *golangsdk.ServiceClient, taskId string) resource.StateRefreshFunc {
+func getTaskStatus(client *golangsdk.ServiceClient, taskId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getTaskHttpUrl = "v2/{project_id}/tasks/{task_id}"
@@ -952,7 +945,7 @@ func getTaskStatus(client *golangsdk.ServiceClient, taskId string) resource.Stat
 }
 
 func waitForTaskStartedORCompleted(ctx context.Context, client *golangsdk.ServiceClient, taskID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"0", "1"},
 		Target:     []string{"2", "5"},
 		Refresh:    getTaskStatus(client, taskID),

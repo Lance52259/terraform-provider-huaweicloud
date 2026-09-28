@@ -298,7 +298,10 @@ func flattenIOs(ios []products.IOEntity) []map[string]interface{} {
 }
 
 func convertStringNumberIgnoreErr(strNum string) int {
-	result, _ := strconv.Atoi(strNum)
+	result, err := strconv.Atoi(strNum)
+	if err != nil {
+		log.Printf("[WARN] failed to parse string to number: %s", err)
+	}
 	return result
 }
 

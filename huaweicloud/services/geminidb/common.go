@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/jmespath/go-jmespath"
 
@@ -137,8 +137,8 @@ func updateGeminiDbInstanceField(ctx context.Context, d *schema.ResourceData, cl
 	if params.isRetry {
 		retryFunc := func() (interface{}, bool, error) {
 			r, err := client.Request(params.httpMethod, updatePath, &updateOpt)
-			retry, err := handleMultiOperationsError(err)
-			return r, retry, err
+			shouldRetry, err := handleMultiOperationsError(err)
+			return r, shouldRetry, err
 		}
 		res, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -213,7 +213,7 @@ func checkJobAndOrderExpression(params updateInstanceFieldParams, jobId, orderId
 }
 
 func waitForGeminiDBInstanceReady(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{"ACTIVE"},
 		Refresh:      geminiDbInstanceStatusRefreshFunc(client, d.Id()),
 		Timeout:      d.Timeout(schema.TimeoutUpdate),
@@ -274,7 +274,7 @@ func handleDeletionError(err error) (bool, error) {
 
 func checkGeminiDbJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      geminiDbJobRefreshFunc(client, jobID),
@@ -288,7 +288,7 @@ func checkGeminiDbJobFinish(ctx context.Context, client *golangsdk.ServiceClient
 	return nil
 }
 
-func geminiDbJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func geminiDbJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"
@@ -351,4 +351,26 @@ func getInstanceField(client *golangsdk.ServiceClient, params getInstanceFieldPa
 		return nil, err
 	}
 	return utils.FlattenResponse(getResp)
+}
+
+func handleTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// if the http status code is 500 and the error code is DBS.111205, it indicates timeout for the service
+	// error should be ignored, just wait for success
+	if errCode, ok := err.(golangsdk.ErrDefault500); ok {
+		var apiError interface{}
+		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
+			return false
+		}
+		errorCode, errorCodeErr := jmespath.Search("error_code", apiError)
+		if errorCodeErr != nil {
+			return false
+		}
+		if errorCode.(string) == "DBS.111205" {
+			return true
+		}
+	}
+	return false
 }

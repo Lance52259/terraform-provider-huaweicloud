@@ -34,7 +34,7 @@ func testAccPreCheckServiceEndpoints(t *testing.T) {
 
 	projectID := os.Getenv("HW_PROJECT_ID")
 	if projectID == "" {
-		t.Fatalf(yellow("HW_PROJECT_ID must be set for service endpoint acceptance test"))
+		t.Fatalf("%s", yellow("HW_PROJECT_ID must be set for service endpoint acceptance test"))
 	}
 }
 
@@ -493,6 +493,7 @@ func TestAccServiceEndpoints_Security(t *testing.T) {
 	t.Logf("WAF dedicated endpoint:\t %s", actualURL)
 }
 
+// nolint:gocyclo
 func TestAccServiceEndpoints_Application(t *testing.T) {
 	testAccPreCheckServiceEndpoints(t)
 
@@ -645,7 +646,6 @@ func TestAccServiceEndpoints_Application(t *testing.T) {
 // include computeV1Client,computeV11Client,computeV2Client,autoscalingV1Client,imageV2Client,
 // cceV3Client,cceAddonV3Client,cciV1Client,cciV1BetaClient and FgsV2Client
 func TestAccServiceEndpoints_Compute(t *testing.T) {
-
 	testAccPreCheckServiceEndpoints(t)
 
 	testProvider := Provider()
@@ -773,7 +773,6 @@ func TestAccServiceEndpoints_Compute(t *testing.T) {
 // include blockStorageV2Client, BlockStorageV21Client, sfsV2Client, sfsV1Client,
 // csbsV1Client, vbsV2Client and cbrV3Client
 func TestAccServiceEndpoints_Storage(t *testing.T) {
-
 	testAccPreCheckServiceEndpoints(t)
 
 	testProvider := Provider()
@@ -853,8 +852,8 @@ func TestAccServiceEndpoints_Storage(t *testing.T) {
 }
 
 // TestAccServiceEndpoints_Network test for the endpoints of the clients used in network
+// nolint:gocyclo
 func TestAccServiceEndpoints_Network(t *testing.T) {
-
 	testAccPreCheckServiceEndpoints(t)
 
 	testProvider := Provider()
@@ -951,7 +950,7 @@ func TestAccServiceEndpoints_Network(t *testing.T) {
 	compareURL(expectedURL, actualURL, "fw", "v2.0", t)
 
 	// test the endpoint of DNS service
-	serviceClient, err = cfg.DnsV2Client(HW_REGION_NAME)
+	serviceClient, err = cfg.DNSV2Client(HW_REGION_NAME)
 	if err != nil {
 		t.Fatalf("Error creating HuaweiCloud DNS client: %s", err)
 	}
@@ -963,7 +962,7 @@ func TestAccServiceEndpoints_Network(t *testing.T) {
 	t.Logf("DNS endpoint:\t %s", actualURL)
 
 	// test the endpoint of DNS service (with region)
-	serviceClient, err = cfg.DnsWithRegionClient(HW_REGION_NAME)
+	serviceClient, err = cfg.DNSWithRegionClient(HW_REGION_NAME)
 	if err != nil {
 		t.Fatalf("Error creating HuaweiCloud DNS region client: %s", err)
 	}
@@ -1011,6 +1010,7 @@ func TestAccServiceEndpoints_Network(t *testing.T) {
 	t.Logf("DC endpoint:\t %s", actualURL)
 }
 
+// nolint:gocyclo
 func TestAccServiceEndpoints_EnterpriseIntelligence(t *testing.T) {
 	testAccPreCheckServiceEndpoints(t)
 
@@ -1240,7 +1240,6 @@ func TestAccServiceEndpoints_EnterpriseIntelligence(t *testing.T) {
 		t.Fatalf("Workspace region endpoint: expected %s but got %s", green(expectedURL), yellow(actualURL))
 	}
 	t.Logf("Workspace region endpoint:\t %s", actualURL)
-
 }
 
 func TestAccServiceEndpoints_Edge(t *testing.T) {

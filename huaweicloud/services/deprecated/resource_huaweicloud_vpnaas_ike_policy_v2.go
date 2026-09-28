@@ -1,9 +1,12 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -11,8 +14,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceVpnIKEPolicyV2() *schema.Resource {
@@ -107,10 +108,10 @@ func ResourceVpnIKEPolicyV2() *schema.Resource {
 }
 
 func resourceVpnIKEPolicyV2Create(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	lifetime := resourceIKEPolicyV2LifetimeCreateOpts(d.Get("lifetime").(*schema.Set))
@@ -134,14 +135,14 @@ func resourceVpnIKEPolicyV2Create(d *schema.ResourceData, meta interface{}) erro
 		},
 		MapValueSpecs(d),
 	}
-	logp.Printf("[DEBUG] Create IKE policy: %#v", opts)
+	log.Printf("[DEBUG] Create IKE policy: %#v", opts)
 
 	policy, err := ikepolicies.Create(networkingClient, opts).Extract()
 	if err != nil {
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"PENDING_CREATE"},
 		Target:     []string{"ACTIVE"},
 		Refresh:    waitForIKEPolicyCreation(networkingClient, policy.ID),
@@ -149,9 +150,9 @@ func resourceVpnIKEPolicyV2Create(d *schema.ResourceData, meta interface{}) erro
 		Delay:      0,
 		MinTimeout: 2 * time.Second,
 	}
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
-	logp.Printf("[DEBUG] IKE policy created: %#v", policy)
+	log.Printf("[DEBUG] IKE policy created: %#v", policy)
 
 	d.SetId(policy.ID)
 
@@ -159,12 +160,12 @@ func resourceVpnIKEPolicyV2Create(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceVpnIKEPolicyV2Read(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Retrieve information about IKE policy: %s", d.Id())
+	log.Printf("[DEBUG] Retrieve information about IKE policy: %s", d.Id())
 
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	policy, err := ikepolicies.Get(networkingClient, d.Id()).Extract()
@@ -172,7 +173,7 @@ func resourceVpnIKEPolicyV2Read(d *schema.ResourceData, meta interface{}) error 
 		return common.CheckDeleted(d, err, "IKE policy")
 	}
 
-	logp.Printf("[DEBUG] Read HuaweiCloud IKE Policy %s: %#v", d.Id(), policy)
+	log.Printf("[DEBUG] Read IKE Policy %s: %#v", d.Id(), policy)
 
 	d.Set("name", policy.Name)
 	d.Set("description", policy.Description)
@@ -182,7 +183,7 @@ func resourceVpnIKEPolicyV2Read(d *schema.ResourceData, meta interface{}) error 
 	d.Set("pfs", policy.PFS)
 	d.Set("phase1_negotiation_mode", policy.Phase1NegotiationMode)
 	d.Set("ike_version", policy.IKEVersion)
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	// Set the lifetime
 	var lifetimeMap map[string]interface{}
@@ -192,17 +193,17 @@ func resourceVpnIKEPolicyV2Read(d *schema.ResourceData, meta interface{}) error 
 	var lifetime []map[string]interface{}
 	lifetime = append(lifetime, lifetimeMap)
 	if err := d.Set("lifetime", &lifetime); err != nil {
-		logp.Printf("[WARN] unable to set IKE policy lifetime")
+		log.Printf("[WARN] unable to set IKE policy lifetime")
 	}
 
 	return nil
 }
 
 func resourceVpnIKEPolicyV2Update(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	opts := ikepolicies.UpdateOpts{}
@@ -248,14 +249,14 @@ func resourceVpnIKEPolicyV2Update(d *schema.ResourceData, meta interface{}) erro
 		hasChange = true
 	}
 
-	logp.Printf("[DEBUG] Updating IKE policy with id %s: %#v", d.Id(), opts)
+	log.Printf("[DEBUG] Updating IKE policy with id %s: %#v", d.Id(), opts)
 
 	if hasChange {
 		err = ikepolicies.Update(networkingClient, d.Id(), opts).Err
 		if err != nil {
 			return err
 		}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:    []string{"PENDING_UPDATE"},
 			Target:     []string{"ACTIVE"},
 			Refresh:    waitForIKEPolicyUpdate(networkingClient, d.Id()),
@@ -263,7 +264,7 @@ func resourceVpnIKEPolicyV2Update(d *schema.ResourceData, meta interface{}) erro
 			Delay:      0,
 			MinTimeout: 2 * time.Second,
 		}
-		if _, err = stateConf.WaitForState(); err != nil {
+		if _, err = stateConf.WaitForStateContext(context.Background()); err != nil {
 			return err
 		}
 	}
@@ -272,15 +273,15 @@ func resourceVpnIKEPolicyV2Update(d *schema.ResourceData, meta interface{}) erro
 }
 
 func resourceVpnIKEPolicyV2Delete(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Destroy IKE policy: %s", d.Id())
+	log.Printf("[DEBUG] Destroy IKE policy: %s", d.Id())
 
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForIKEPolicyDeletion(networkingClient, d.Id()),
@@ -289,14 +290,14 @@ func resourceVpnIKEPolicyV2Delete(d *schema.ResourceData, meta interface{}) erro
 		MinTimeout: 2 * time.Second,
 	}
 
-	if _, err = stateConf.WaitForState(); err != nil {
+	if _, err = stateConf.WaitForStateContext(context.Background()); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func waitForIKEPolicyDeletion(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForIKEPolicyDeletion(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		err := ikepolicies.Delete(networkingClient, id).Err
 		if err == nil {
@@ -307,7 +308,7 @@ func waitForIKEPolicyDeletion(networkingClient *golangsdk.ServiceClient, id stri
 	}
 }
 
-func waitForIKEPolicyCreation(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForIKEPolicyCreation(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		policy, err := ikepolicies.Get(networkingClient, id).Extract()
 		if err != nil {
@@ -317,7 +318,7 @@ func waitForIKEPolicyCreation(networkingClient *golangsdk.ServiceClient, id stri
 	}
 }
 
-func waitForIKEPolicyUpdate(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForIKEPolicyUpdate(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		policy, err := ikepolicies.Get(networkingClient, id).Extract()
 		if err != nil {
@@ -417,7 +418,6 @@ func resourceIKEPolicyV2LifetimeCreateOpts(d *schema.Set) ikepolicies.LifetimeCr
 		lifetimeCreateOpts.Value = value
 	}
 	return lifetimeCreateOpts
-
 }
 
 func resourceIKEPolicyV2LifetimeUpdateOpts(d *schema.Set) ikepolicies.LifetimeUpdateOpts {
@@ -432,5 +432,4 @@ func resourceIKEPolicyV2LifetimeUpdateOpts(d *schema.Set) ikepolicies.LifetimeUp
 		lifetimeUpdateOpts.Value = value
 	}
 	return lifetimeUpdateOpts
-
 }

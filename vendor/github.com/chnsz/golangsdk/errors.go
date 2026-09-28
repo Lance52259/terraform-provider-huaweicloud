@@ -2,7 +2,9 @@ package golangsdk
 
 import (
 	"fmt"
-	"strings"
+	"log"
+	"os"
+	"strconv"
 )
 
 // BaseError is an error type that all other error types embed.
@@ -132,18 +134,22 @@ func (e ErrDefault401) Error() string {
 	return "Authentication failed"
 }
 func (e ErrDefault403) Error() string {
-	var maxLength int = 200
-	var unAuthorized string = "Request not authorized"
-
-	messageBody := string(e.Body)
-	if len(messageBody) > maxLength {
-		if strings.Contains(messageBody, unAuthorized) {
-			messageBody = unAuthorized
+	messageMaxLengthRaw := os.Getenv("HW_MESSAGE_MAX_LENGTH")
+	var maxLength = 0
+	if messageMaxLengthRaw != "" {
+		v, err := strconv.Atoi(messageMaxLengthRaw)
+		if err != nil || v <= 0 {
+			log.Printf("[ERROR] the environment param HW_MESSAGE_MAX_LENGTH(%s) should be an integer and the "+
+				"value should greater then 0", messageMaxLengthRaw)
 		} else {
-			messageBody = messageBody[:maxLength] + "\n..."
+			maxLength = v
 		}
 	}
 
+	messageBody := string(e.Body)
+	if maxLength > 0 && maxLength < len(messageBody) {
+		messageBody = messageBody[:maxLength] + "\n..."
+	}
 	e.DefaultErrString = fmt.Sprintf(
 		"Action forbidden: [%s %s], request_id: %s, error message: %s",
 		e.Method, e.URL, e.RequestId, messageBody,

@@ -729,7 +729,7 @@ func buildHistoryConferenceGetOpts(uuid, userId, token string) conferences.GetHi
 
 func buildHistoryConferenceListOpts(userId, startTime, token string, duration int) (conferences.ListHistoryOpts,
 	error) {
-	tm, err := time.Parse(standardTimeFormat, startTime)
+	nanoTimestamp, err := time.Parse(standardTimeFormat, startTime)
 	if err != nil {
 		return conferences.ListHistoryOpts{}, nil
 	}
@@ -737,8 +737,8 @@ func buildHistoryConferenceListOpts(userId, startTime, token string, duration in
 		UserUUID: userId,
 		// The time range here refers to the time range when the meeting starts, the actual start time depends on when
 		// the meeting is used.
-		StartDate: int(tm.Unix()) * 1000, //ms
-		EndDate:   (int(tm.Unix()) + duration*60) * 1000,
+		StartDate: int(nanoTimestamp.Unix()) * 1000,
+		EndDate:   (int(nanoTimestamp.Unix()) + duration*60) * 1000,
 		Limit:     500,
 		Token:     token,
 	}, nil
@@ -768,7 +768,10 @@ func GetConferenceDetail(client *golangsdk.ServiceClient, d *schema.ResourceData
 	if err == nil {
 		return resp, nil
 	}
-	if _, ok := parseConferenceNotFoundError(err).(golangsdk.ErrDefault404); ok {
+
+	parseErr := parseConferenceNotFoundError(err)
+	if _, ok := parseErr.(golangsdk.ErrDefault404); ok {
+		log.Printf("[DEBUG] The conference is outdate, try to get history conference: %v", err)
 		var uuid interface{}
 		if uuid, ok = d.GetOk("conference_uuid"); !ok {
 			startTime := d.Get("start_time").(string)
@@ -989,7 +992,7 @@ func resourceConferenceRead(_ context.Context, d *schema.ResourceData, meta inte
 		d.Set("join_password", flattenJoinPasswords(resp.Conference.PasswordEntry)),
 	)
 	if timezoneId, err := strconv.Atoi(resp.Conference.TimeZoneId); err != nil {
-		log.Printf("[ERROR] The format of timezone ID (%#v) is wrong: %v", resp.Conference.TimeZoneId, err)
+		log.Printf("[WARN] The format of timezone ID (%#v) is wrong: %v", resp.Conference.TimeZoneId, err)
 	} else {
 		mErr = multierror.Append(mErr, d.Set("timezone_id", timezoneId))
 	}
@@ -1126,7 +1129,8 @@ func resourceConferenceDelete(_ context.Context, d *schema.ResourceData, meta in
 
 	opt := buildConferenceDeleteOpts(d, token)
 	log.Printf("[DEBUG] The DeleteOpts of the cloud conference is: %v", opt)
-	if conferences.Delete(NewMeetingV1Client(conf), opt) != nil {
+	err = conferences.Delete(NewMeetingV1Client(conf), opt)
+	if err != nil {
 		if _, ok := parseConferenceNotFoundError(err).(golangsdk.ErrDefault404); !ok {
 			return diag.Errorf("error deleting conference (%s): %s", d.Id(), err)
 		}
@@ -1135,7 +1139,7 @@ func resourceConferenceDelete(_ context.Context, d *schema.ResourceData, meta in
 	return nil
 }
 
-func resourceConferenceImportState(_ context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData,
+func resourceConferenceImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData,
 	error) {
 	var mErr *multierror.Error
 	parts := strings.Split(d.Id(), "/")

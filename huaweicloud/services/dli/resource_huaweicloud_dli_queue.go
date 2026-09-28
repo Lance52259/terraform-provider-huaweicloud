@@ -2,6 +2,7 @@ package dli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -217,6 +218,14 @@ func ResourceDliQueue() *schema.Resource {
 				Type:     schema.TypeInt,
 				Computed: true,
 			},
+			"owner": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"resource_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 
 			"management_subnet_cidr": {
 				Type:       schema.TypeString,
@@ -368,6 +377,8 @@ func resourceDliQueueRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("resource_mode", queueDetail.ResourceMode),
 		d.Set("feature", queueDetail.Feature),
 		d.Set("create_time", queueDetail.CreateTime),
+		d.Set("owner", queueDetail.Owner),
+		d.Set("resource_id", queueDetail.ResourceId),
 		d.Set("vpc_cidr", queueDetail.CidrInVpc),
 		d.Set("elastic_resource_pool_name", queueDetail.ElasticResourcePoolName),
 		d.Set("tags", d.Get("tags")),
@@ -389,7 +400,7 @@ func resourceDliQueueRead(_ context.Context, d *schema.ResourceData, meta interf
 
 	sparkDriver, err := getSparkDriverByQueueName(v3Client, queueName)
 	if err != nil {
-		return diag.Errorf("error getting properties of the queue (%s): %s", queueName, err)
+		log.Printf("[ERROR] error getting properties of the queue (%s): %s", queueName, err)
 	}
 	mErr = multierror.Append(mErr, d.Set("spark_driver", sparkDriver))
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -409,11 +420,13 @@ func getSparkDriverByQueueName(client *golangsdk.ServiceClient, queueName string
 	for _, property := range resp {
 		switch property.Key {
 		case MaxInstance:
-			sparkDriver["max_instance"], err = strconv.Atoi(property.Value)
-			err = multierror.Append(mErr, err)
+			if sparkDriver["max_instance"], err = strconv.Atoi(property.Value); err != nil {
+				err = multierror.Append(mErr, err)
+			}
 		case MaxConcurrent:
-			sparkDriver["max_concurrent"], err = strconv.Atoi(property.Value)
-			err = multierror.Append(mErr, err)
+			if sparkDriver["max_concurrent"], err = strconv.Atoi(property.Value); err != nil {
+				err = multierror.Append(mErr, err)
+			}
 		case MaxPrefetchInstance:
 			sparkDriver["max_prefetch_instance"] = property.Value
 		}
@@ -441,7 +454,7 @@ func filterByQueueName(body interface{}, queueName string) (r *queues.Queue, err
 					Method:    "GET",
 					URL:       "/v1.0/{project_id}/queues",
 					RequestId: "NONE",
-					Body:      []byte(fmt.Sprintf("unable to query the queue list: %s", queueList.Message)),
+					Body:      fmt.Appendf(nil, "unable to query the queue list: %s", queueList.Message),
 				},
 			}
 		}
@@ -456,7 +469,7 @@ func filterByQueueName(body interface{}, queueName string) (r *queues.Queue, err
 				Method:    "GET",
 				URL:       "/v1.0/{project_id}/queues",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the queue (%s) does not exist", queueName)),
+				Body:      fmt.Appendf(nil, "the queue (%s) does not exist", queueName),
 			},
 		}
 	}
@@ -466,7 +479,7 @@ func filterByQueueName(body interface{}, queueName string) (r *queues.Queue, err
 			Method:    "GET",
 			URL:       "/v1.0/{project_id}/queues",
 			RequestId: "NONE",
-			Body:      []byte(fmt.Sprintf("the response type of sdk-client is wrong, want '*queues.ListResult', but got '%T'", body)),
+			Body:      fmt.Appendf(nil, "the response type of sdk-client is wrong, want '*queues.ListResult', but got '%T'", body),
 		},
 	}
 }
@@ -559,7 +572,7 @@ func resourceDliQueueUpdate(ctx context.Context, d *schema.ResourceData, meta in
 			return diag.Errorf("update dli queues failed, queueName=%s, error:%s", queueName, result.Err)
 		}
 
-		updateStateConf := &resource.StateChangeConf{
+		updateStateConf := &retry.StateChangeConf{
 			Pending: []string{fmt.Sprintf("%d", oldValue)},
 			Target:  []string{fmt.Sprintf("%d", newValue)},
 			Refresh: func() (interface{}, string, error) {
@@ -668,7 +681,7 @@ func deleteQueueProperties(client *golangsdk.ServiceClient, queueName string, ma
 	}
 
 	if !resp.IsSuccess {
-		return fmt.Errorf(resp.Message)
+		return errors.New(resp.Message)
 	}
 	return nil
 }
@@ -757,7 +770,7 @@ func updateQueueSparkDriver(client *golangsdk.ServiceClient, queueName string, m
 	}
 
 	if !resp.IsSuccess {
-		return fmt.Errorf(resp.Message)
+		return errors.New(resp.Message)
 	}
 	return nil
 }

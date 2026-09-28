@@ -169,7 +169,10 @@ func buildDataConnectionRequestBodySourceInfo(rawParams interface{}) string {
 			"password":        utils.ValueIgnoreEmpty(raw["password"]),
 		}
 
-		data, _ := json.Marshal(params)
+		data, err := json.Marshal(params)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling data connection params: %s", err)
+		}
 		return string(data)
 	}
 	return ""
@@ -235,25 +238,14 @@ func resourceDataConnectionRead(_ context.Context, d *schema.ResourceData, meta 
 }
 
 func flattenGetDataConnectionResponseBodySourceInfo(resp interface{}, password string) []interface{} {
-	var rst []interface{}
-	curString := utils.PathSearch("source_info", resp, "").(string)
-
-	var curJson map[string]interface{}
-	err := json.Unmarshal([]byte(curString), &curJson)
-	if err != nil {
-		log.Printf("[ERROR] error parsing source_info to json= %#v", resp)
-		return rst
-	}
-
-	rst = []interface{}{
+	return []interface{}{
 		map[string]interface{}{
-			"db_instance_id": curJson["rds_instance_id"],
-			"db_name":        curJson["db_name"],
-			"user_name":      curJson["user_name"],
+			"db_instance_id": utils.PathSearch("source_info.rds_instance_id", resp, "").(string),
+			"db_name":        utils.PathSearch("source_info.db_name", resp, "").(string),
+			"user_name":      utils.PathSearch("source_info.user_name", resp, "").(string),
 			"password":       password,
 		},
 	}
-	return rst
 }
 
 func resourceDataConnectionUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

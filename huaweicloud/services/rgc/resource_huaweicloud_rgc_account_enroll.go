@@ -7,8 +7,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -116,6 +117,19 @@ func ResourceAccountEnroll() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
+			},
 		},
 	}
 }
@@ -156,7 +170,7 @@ func resourceEnrollAccountCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("unable to find the account operation ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      accountStateRefreshFunc(enrollAccountClient, operationID),
@@ -256,7 +270,7 @@ func resourceEnrollAccountUpdate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("unable to find the account operation ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      accountStateRefreshFunc(updateAccountClient, operationID),
@@ -309,7 +323,7 @@ func resourceEnrollAccountDelete(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("unable to find the account operation ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      accountStateRefreshFunc(unEnrollAccountClient, operationID),

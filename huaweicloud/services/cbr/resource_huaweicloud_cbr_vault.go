@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -331,8 +331,18 @@ func buildBillingStructure(d *schema.ResourceData) map[string]interface{} {
 		billing["charging_mode"] = "pre_paid"
 		billing["period_type"] = d.Get("period_unit").(string)
 		billing["period_num"] = d.Get("period").(int)
-		billing["is_auto_renew"], _ = strconv.ParseBool(d.Get("auto_renew").(string))
-		billing["is_auto_pay"], _ = strconv.ParseBool(cbc.GetAutoPay(d))
+
+		autoRenew, err := strconv.ParseBool(d.Get("auto_renew").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'auto_renew' field to Boolean: %s", err)
+		}
+		billing["is_auto_renew"] = autoRenew
+
+		autoPay, err := strconv.ParseBool(cbc.GetAutoPay(d))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'auto_pay' field to Boolean: %s", err)
+		}
+		billing["is_auto_pay"] = autoPay
 	}
 
 	return utils.RemoveNil(billing)
@@ -440,10 +450,11 @@ func orderVaultServerResourcesByResourcesOrigin(resources, resourcesOrigin []int
 				break
 			}
 		}
-		if keepRemoteState {
-			// Add any remaining unsorted resources to the end of the sorted list.
-			sortedResources = append(sortedResources, resourcesCopy)
-		}
+	}
+
+	if keepRemoteState {
+		// Add any remaining unsorted resources to the end of the sorted list.
+		sortedResources = append(sortedResources, resourcesCopy...)
 	}
 
 	return sortedResources
@@ -730,7 +741,7 @@ func findAddDiskResourcesToVault(resourceType string, rawConfigResources, remote
 
 func waitForAllResourcesDissociated(ctx context.Context, client *golangsdk.ServiceClient, vaultId string,
 	resourceIds []interface{}, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -782,7 +793,7 @@ func dissociateResources(ctx context.Context, client *golangsdk.ServiceClient, v
 
 func waitForAllResourcesAssociated(ctx context.Context, client *golangsdk.ServiceClient, vaultId string,
 	resources []interface{}, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -1002,7 +1013,11 @@ func getPoliciesByVaultId(client *golangsdk.ServiceClient, vaultId string) ([]in
 // Convert Mega Bytes to Giga Bytes, the result is to two decimal places.
 func getNumberInGB(megaBytes float64) float64 {
 	denominator := float64(1024)
-	result, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", megaBytes/denominator), 64)
+	result, err := strconv.ParseFloat(fmt.Sprintf("%.2f", megaBytes/denominator), 64)
+	if err != nil {
+		log.Printf("[WARN] error parsing field to Float: %s", err)
+	}
+
 	return result
 }
 
@@ -1111,6 +1126,7 @@ func resourceVaultRead(_ context.Context, d *schema.ResourceData, meta interface
 		d.Set("status", utils.PathSearch("billing.status", respBody, nil)),
 		d.Set("storage", utils.PathSearch("billing.storage_unit", respBody, nil)),
 	)
+
 	if err := mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error setting vault resource fields: %s", err)
 	}
@@ -1271,6 +1287,9 @@ func resourceVaultUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		if err := updatePoliciesBinding(client, vaultId, oPolicies, nPolicies); err != nil {
 			return diag.FromErr(err)
 		}
+		// Avoid hitting cache nodes belonging to the same process to make sure the API response data is updated.
+		// lintignore:R018
+		time.Sleep(30 * time.Second)
 	}
 
 	if d.HasChange("tags") {
@@ -1336,7 +1355,7 @@ func resourceVaultDelete(ctx context.Context, d *schema.ResourceData, meta inter
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"available", "deleting"},
 		Target:       []string{"deleted"},
 		Refresh:      vaultStateRefreshFunc(client, vaultId),
@@ -1351,7 +1370,7 @@ func resourceVaultDelete(ctx context.Context, d *schema.ResourceData, meta inter
 	return nil
 }
 
-func vaultStateRefreshFunc(client *golangsdk.ServiceClient, vaultId string) resource.StateRefreshFunc {
+func vaultStateRefreshFunc(client *golangsdk.ServiceClient, vaultId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := GetVaultById(client, vaultId)
 		if err != nil {

@@ -1,9 +1,12 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -12,8 +15,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceFWFirewallGroupV2() *schema.Resource {
@@ -86,11 +87,10 @@ func ResourceFWFirewallGroupV2() *schema.Resource {
 }
 
 func resourceFWFirewallGroupV2Create(d *schema.ResourceData, meta interface{}) error {
-
-	config := meta.(*config.Config)
-	fwClient, err := config.FwV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	fwClient, err := cfg.FwV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud fw client: %s", err)
+		return fmt.Errorf("error creating fw client: %s", err)
 	}
 
 	var createOpts firewall_groups.CreateOptsBuilder
@@ -110,7 +110,7 @@ func resourceFWFirewallGroupV2Create(d *schema.ResourceData, meta interface{}) e
 
 	portsRaw := d.Get("ports").(*schema.Set).List()
 	if len(portsRaw) > 0 {
-		logp.Printf("[DEBUG] Will attempt to associate Firewall group with port(s): %+v", portsRaw)
+		log.Printf("[DEBUG] Will attempt to associate Firewall group with port(s): %+v", portsRaw)
 
 		var portIds []string
 		for _, v := range portsRaw {
@@ -123,69 +123,68 @@ func resourceFWFirewallGroupV2Create(d *schema.ResourceData, meta interface{}) e
 		}
 	}
 
-	logp.Printf("[DEBUG] Create firewall group: %#v", createOpts)
+	log.Printf("[DEBUG] Create firewall group: %#v", createOpts)
 
-	firewall_group, err := firewall_groups.Create(fwClient, createOpts).Extract()
+	firewallGroup, err := firewall_groups.Create(fwClient, createOpts).Extract()
 	if err != nil {
 		return err
 	}
 
-	logp.Printf("[DEBUG] Firewall group created: %#v", firewall_group)
+	log.Printf("[DEBUG] Firewall group created: %#v", firewallGroup)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"PENDING_CREATE"},
 		Target:     []string{"ACTIVE"},
-		Refresh:    waitForFirewallGroupActive(fwClient, firewall_group.ID),
+		Refresh:    waitForFirewallGroupActive(fwClient, firewallGroup.ID),
 		Timeout:    d.Timeout(schema.TimeoutCreate),
 		Delay:      0,
 		MinTimeout: 2 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
-	logp.Printf("[DEBUG] Firewall group (%s) is active.", firewall_group.ID)
+	_, err = stateConf.WaitForStateContext(context.Background())
+	log.Printf("[DEBUG] Firewall group (%s) is active.", firewallGroup.ID)
 
-	d.SetId(firewall_group.ID)
+	d.SetId(firewallGroup.ID)
 
 	return resourceFWFirewallGroupV2Read(d, meta)
 }
 
 func resourceFWFirewallGroupV2Read(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Retrieve information about firewall: %s", d.Id())
+	log.Printf("[DEBUG] Retrieve information about firewall: %s", d.Id())
 
-	config := meta.(*config.Config)
-	fwClient, err := config.FwV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	fwClient, err := cfg.FwV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud fw client: %s", err)
+		return fmt.Errorf("error creating fw client: %s", err)
 	}
 
-	var firewall_group FirewallGroup
-	err = firewall_groups.Get(fwClient, d.Id()).ExtractInto(&firewall_group)
+	var firewallGroup FirewallGroup
+	err = firewall_groups.Get(fwClient, d.Id()).ExtractInto(&firewallGroup)
 	if err != nil {
 		return common.CheckDeleted(d, err, "firewall")
 	}
 
-	logp.Printf("[DEBUG] Read HuaweiCloud Firewall group %s: %#v", d.Id(), firewall_group)
+	log.Printf("[DEBUG] Read firewall group %s: %#v", d.Id(), firewallGroup)
 
-	d.Set("name", firewall_group.Name)
-	d.Set("description", firewall_group.Description)
-	d.Set("ingress_policy_id", firewall_group.IngressPolicyID)
-	d.Set("egress_policy_id", firewall_group.EgressPolicyID)
-	d.Set("admin_state_up", firewall_group.AdminStateUp)
-	d.Set("tenant_id", firewall_group.TenantID)
-	if err := d.Set("ports", firewall_group.PortIDs); err != nil {
-		return fmtp.Errorf("[DEBUG] Error saving ports to state for HuaweiCloud firewall group (%s): %s", d.Id(), err)
+	d.Set("name", firewallGroup.Name)
+	d.Set("description", firewallGroup.Description)
+	d.Set("ingress_policy_id", firewallGroup.IngressPolicyID)
+	d.Set("egress_policy_id", firewallGroup.EgressPolicyID)
+	d.Set("admin_state_up", firewallGroup.AdminStateUp)
+	d.Set("tenant_id", firewallGroup.TenantID)
+	if err := d.Set("ports", firewallGroup.PortIDs); err != nil {
+		return fmt.Errorf("error saving ports to state for firewall group (%s): %s", d.Id(), err)
 	}
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }
 
 func resourceFWFirewallGroupV2Update(d *schema.ResourceData, meta interface{}) error {
-
-	config := meta.(*config.Config)
-	fwClient, err := config.FwV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	fwClient, err := cfg.FwV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud fw client: %s", err)
+		return fmt.Errorf("error creating fw client: %s", err)
 	}
 
 	// PolicyID is required
@@ -211,7 +210,7 @@ func resourceFWFirewallGroupV2Update(d *schema.ResourceData, meta interface{}) e
 	var portIds []string
 	if d.HasChange("ports") {
 		portsRaw := d.Get("ports").(*schema.Set).List()
-		logp.Printf("[DEBUG] Will attempt to associate Firewall group with port(s): %+v", portsRaw)
+		log.Printf("[DEBUG] Will attempt to associate Firewall group with port(s): %+v", portsRaw)
 		for _, v := range portsRaw {
 			portIds = append(portIds, v.(string))
 		}
@@ -224,14 +223,14 @@ func resourceFWFirewallGroupV2Update(d *schema.ResourceData, meta interface{}) e
 		updateOpts = opts
 	}
 
-	logp.Printf("[DEBUG] Updating firewall with id %s: %#v", d.Id(), updateOpts)
+	log.Printf("[DEBUG] Updating firewall with id %s: %#v", d.Id(), updateOpts)
 
 	err = firewall_groups.Update(fwClient, d.Id(), updateOpts).Err
 	if err != nil {
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"PENDING_CREATE", "PENDING_UPDATE"},
 		Target:     []string{"ACTIVE"},
 		Refresh:    waitForFirewallGroupActive(fwClient, d.Id()),
@@ -240,22 +239,22 @@ func resourceFWFirewallGroupV2Update(d *schema.ResourceData, meta interface{}) e
 		MinTimeout: 2 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
 	return resourceFWFirewallGroupV2Read(d, meta)
 }
 
 func resourceFWFirewallGroupV2Delete(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Destroy firewall group: %s", d.Id())
+	log.Printf("[DEBUG] Destroy firewall group: %s", d.Id())
 
-	config := meta.(*config.Config)
-	fwClient, err := config.FwV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	fwClient, err := cfg.FwV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud fw client: %s", err)
+		return fmt.Errorf("error creating fw client: %s", err)
 	}
 
 	// Ensure the firewall group was fully created/updated before being deleted.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"PENDING_CREATE", "PENDING_UPDATE"},
 		Target:     []string{"ACTIVE"},
 		Refresh:    waitForFirewallGroupActive(fwClient, d.Id()),
@@ -264,7 +263,7 @@ func resourceFWFirewallGroupV2Delete(d *schema.ResourceData, meta interface{}) e
 		MinTimeout: 2 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
 	err = firewall_groups.Delete(fwClient, d.Id()).Err
 
@@ -272,7 +271,7 @@ func resourceFWFirewallGroupV2Delete(d *schema.ResourceData, meta interface{}) e
 		return err
 	}
 
-	stateConf = &resource.StateChangeConf{
+	stateConf = &retry.StateChangeConf{
 		Pending:    []string{"DELETING"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForFirewallGroupDeletion(fwClient, d.Id()),
@@ -281,13 +280,12 @@ func resourceFWFirewallGroupV2Delete(d *schema.ResourceData, meta interface{}) e
 		MinTimeout: 2 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
 	return err
 }
 
-func waitForFirewallGroupActive(fwClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
-
+func waitForFirewallGroupActive(fwClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var fw FirewallGroup
 
@@ -299,21 +297,20 @@ func waitForFirewallGroupActive(fwClient *golangsdk.ServiceClient, id string) re
 	}
 }
 
-func waitForFirewallGroupDeletion(fwClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
-
+func waitForFirewallGroupDeletion(fwClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		fw, err := firewall_groups.Get(fwClient, id).Extract()
-		logp.Printf("[DEBUG] Got firewall group %s => %#v", id, fw)
+		log.Printf("[DEBUG] Got firewall group %s => %#v", id, fw)
 
 		if err != nil {
 			if _, ok := err.(golangsdk.ErrDefault404); ok {
-				logp.Printf("[DEBUG] Firewall group %s is actually deleted", id)
+				log.Printf("[DEBUG] Firewall group %s is actually deleted", id)
 				return "", "DELETED", nil
 			}
-			return nil, "", fmtp.Errorf("Unexpected error: %s", err)
+			return nil, "", fmt.Errorf("unexpected error: %s", err)
 		}
 
-		logp.Printf("[DEBUG] Firewall group %s deletion is pending", id)
+		log.Printf("[DEBUG] Firewall group %s deletion is pending", id)
 		return fw, "DELETING", nil
 	}
 }

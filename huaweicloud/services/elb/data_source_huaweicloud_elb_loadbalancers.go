@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -438,6 +439,7 @@ func dataSourceElbLoadBalancersRead(_ context.Context, d *schema.ResourceData, m
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
+// nolint:gocyclo
 func buildListLoadBalancersQueryParams(d *schema.ResourceData, enterpriseProjectId string) string {
 	res := ""
 	if v, ok := d.GetOk("loadbalancer_id"); ok {
@@ -456,7 +458,10 @@ func buildListLoadBalancersQueryParams(d *schema.ResourceData, enterpriseProject
 		res = fmt.Sprintf("%s&billing_info=%v", res, v)
 	}
 	if v, ok := d.GetOk("deletion_protection_enable"); ok {
-		deletionProtectionEnable, _ := strconv.ParseBool(v.(string))
+		deletionProtectionEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'deletion_protection_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&deletion_protection_enable=%v", res, deletionProtectionEnable)
 	}
 	if v, ok := d.GetOk("global_eips"); ok {

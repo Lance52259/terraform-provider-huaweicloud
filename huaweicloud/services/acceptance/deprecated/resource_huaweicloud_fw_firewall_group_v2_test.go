@@ -1,6 +1,7 @@
 package deprecated
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 // FirewallGroup is an HuaweiCloud firewall group.
@@ -146,10 +146,10 @@ func TestAccFWFirewallGroupV2_port_remove(t *testing.T) {
 }
 
 func testAccCheckFWFirewallGroupV2Destroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	fwClient, err := config.FwV2Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	fwClient, err := cfg.FwV2Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud fw client: %s", err)
+		return fmt.Errorf("error creating fw client: %s", err)
 	}
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "huaweicloud_firewall_group" {
@@ -158,7 +158,7 @@ func testAccCheckFWFirewallGroupV2Destroy(s *terraform.State) error {
 
 		_, err = firewall_groups.Get(fwClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Firewall group (%s) still exists.", rs.Primary.ID)
+			return fmt.Errorf("the firewall group still exists, which ID is %s", rs.Primary.ID)
 		}
 		if _, ok := err.(golangsdk.ErrDefault404); !ok {
 			return err
@@ -171,17 +171,17 @@ func testAccCheckFWFirewallGroupV2Exists(n string, firewall_group *FirewallGroup
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the firewall group %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		fwClient, err := config.FwV2Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		fwClient, err := cfg.FwV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Exists) Error creating HuaweiCloud fw client: %s", err)
+			return fmt.Errorf("error creating fw client: %s", err)
 		}
 
 		var found FirewallGroup
@@ -191,7 +191,7 @@ func testAccCheckFWFirewallGroupV2Exists(n string, firewall_group *FirewallGroup
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("Firewall group not found")
+			return fmt.Errorf("the firewall group is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*firewall_group = found
@@ -201,9 +201,9 @@ func testAccCheckFWFirewallGroupV2Exists(n string, firewall_group *FirewallGroup
 }
 
 func testAccCheckFWFirewallPortCount(firewall_group *FirewallGroup, expected int) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
+	return func(_ *terraform.State) error {
 		if len(firewall_group.PortIDs) != expected {
-			return fmtp.Errorf("Expected %d Ports, got %d", expected, len(firewall_group.PortIDs))
+			return fmt.Errorf("expected %d Ports, got %d", expected, len(firewall_group.PortIDs))
 		}
 
 		return nil
@@ -214,17 +214,17 @@ func testAccCheckFWFirewallGroupV2(n, expectedName, expectedDescription string, 
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the firewall group %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		fwClient, err := config.FwV2Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		fwClient, err := cfg.FwV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Exists) Error creating HuaweiCloud fw client: %s", err)
+			return fmt.Errorf("error creating fw client: %s", err)
 		}
 
 		var found *firewall_groups.FirewallGroup
@@ -234,7 +234,7 @@ func testAccCheckFWFirewallGroupV2(n, expectedName, expectedDescription string, 
 			found, err = firewall_groups.Get(fwClient, rs.Primary.ID).Extract()
 			if err != nil {
 				if _, ok := err.(golangsdk.ErrDefault404); ok {
-					//lintignore:R018
+					// lintignore:R018
 					time.Sleep(time.Second)
 					continue
 				}
@@ -245,19 +245,19 @@ func testAccCheckFWFirewallGroupV2(n, expectedName, expectedDescription string, 
 
 		switch {
 		case found.Name != expectedName:
-			err = fmtp.Errorf("Expected Name to be <%s> but found <%s>", expectedName, found.Name)
+			err = fmt.Errorf("expected name to be <%s> but found <%s>", expectedName, found.Name)
 		case found.Description != expectedDescription:
-			err = fmtp.Errorf("Expected Description to be <%s> but found <%s>",
+			err = fmt.Errorf("expected description to be <%s> but found <%s>",
 				expectedDescription, found.Description)
 		case found.IngressPolicyID == "":
-			err = fmtp.Errorf("Ingress Policy should not be empty")
+			err = fmt.Errorf("ingress policy should not be empty")
 		case found.EgressPolicyID == "":
-			err = fmtp.Errorf("Egress Policy should not be empty")
+			err = fmt.Errorf("egress policy should not be empty")
 		case ipolicyID != nil && found.IngressPolicyID == *ipolicyID:
-			err = fmtp.Errorf("Ingress Policy had not been correctly updated. Went from <%s> to <%s>",
+			err = fmt.Errorf("ingress policy had not been correctly updated. Went from <%s> to <%s>",
 				expectedName, found.Name)
 		case epolicyID != nil && found.EgressPolicyID == *epolicyID:
-			err = fmtp.Errorf("Egress Policy had not been correctly updated. Went from <%s> to <%s>",
+			err = fmt.Errorf("egress policy had not been correctly updated. Went from <%s> to <%s>",
 				expectedName, found.Name)
 		}
 

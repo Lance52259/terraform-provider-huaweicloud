@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -231,7 +231,7 @@ func GetAssociationById(client *golangsdk.ServiceClient, instanceId, routeTableI
 	if association == nil {
 		return nil, golangsdk.ErrDefault404{
 			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-				Body: []byte(fmt.Sprintf("the association (%s) does not exist", associationId)),
+				Body: fmt.Appendf(nil, "the association (%s) does not exist", associationId),
 			},
 		}
 	}
@@ -240,7 +240,7 @@ func GetAssociationById(client *golangsdk.ServiceClient, instanceId, routeTableI
 }
 
 func associationStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId, routeTableId, associationId string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetAssociationById(client, instanceId, routeTableId, associationId)
 		if err != nil {
@@ -289,7 +289,7 @@ func resourceAssociationCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	d.SetId(associationId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: associationStatusRefreshFunc(client, instanceId, routeTableId, d.Id(), []string{"available"}),
@@ -406,22 +406,24 @@ func resourceAssociationUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating ER client: %s", err)
 	}
 
-	_, err = changeAssociationRoutePolicy(client, instanceId, routeTableId, associationId, routePolicies)
-	if err != nil {
-		return diag.Errorf("error updating the route policy of association (%s): %s", associationId, err)
-	}
+	if d.HasChanges("route_policy") {
+		_, err = changeAssociationRoutePolicy(client, instanceId, routeTableId, associationId, routePolicies)
+		if err != nil {
+			return diag.Errorf("error updating the route policy of association (%s): %s", associationId, err)
+		}
 
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"PENDING"},
-		Target:       []string{"COMPLETED"},
-		Refresh:      associationStatusRefreshFunc(client, instanceId, routeTableId, associationId, []string{"available"}),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		Delay:        10 * time.Second,
-		PollInterval: 10 * time.Second,
-	}
-	_, err = stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return diag.Errorf("error waiting for the association (%s) route policy update to complete: %s", associationId, err)
+		stateConf := &retry.StateChangeConf{
+			Pending:      []string{"PENDING"},
+			Target:       []string{"COMPLETED"},
+			Refresh:      associationStatusRefreshFunc(client, instanceId, routeTableId, associationId, []string{"available"}),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        10 * time.Second,
+			PollInterval: 10 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return diag.Errorf("error waiting for the association (%s) route policy update to complete: %s", associationId, err)
+		}
 	}
 
 	return resourceAssociationRead(ctx, d, meta)
@@ -468,7 +470,7 @@ func resourceAssociationDelete(ctx context.Context, d *schema.ResourceData, meta
 		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting association (%s)", associationId))
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: associationStatusRefreshFunc(client, instanceId, routeTableId, associationId, nil),

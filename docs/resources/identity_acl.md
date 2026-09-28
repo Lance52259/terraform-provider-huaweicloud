@@ -19,6 +19,8 @@ The ACL policies allowing user access only from specified IP address ranges and 
 
 ## Example Usage
 
+### API Access
+
 ```hcl
 resource "huaweicloud_identity_acl" "acl" {
   type = "api"
@@ -30,6 +32,29 @@ resource "huaweicloud_identity_acl" "acl" {
   ip_ranges {
     range       = "0.0.0.0-255.255.255.0"
     description = "This is a test IP range"
+  }
+}
+```
+
+### Console Access with IPv4 and IPv6 Ranges
+
+The following example restricts console access to specific IPv4 and IPv6 address ranges.
+
+~> When configuring console ACL, please ensure that the IP address of your current machine is included in the access
+   addresses to avoid being locked out of the console.
+
+```hcl
+resource "huaweicloud_identity_acl" "console_acl" {
+  type = "console"
+
+  ip_ranges {
+    range       = "10.212.1.156-10.202.1.157"
+    description = "Office IPv4 address range"
+  }
+
+  ipv6_ranges {
+    range       = "2001:db8:0:0:0:0:0:0-2001:db8:0:0:0:0:FFFF:FFFF"
+    description = "Office IPv6 address range"
   }
 }
 ```
@@ -51,6 +76,12 @@ The following arguments are supported:
 
 -> Up to `200` **ip_cidrs** and **ip_ranges** can be created in total for each access method.
 
+* `ipv6_cidrs` - (Optional, List) Specifies the IPv6 CIDR blocks from which console access or API access is allowed.
+  The [ipv6_cidrs](#iam_acl_ipv6_cidrs) structure is documented below.
+
+* `ipv6_ranges` - (Optional, List) Specifies the IPv6 address ranges from which console access is allowed.
+  The [ipv6_ranges](#iam_acl_ipv6_ranges) structure is documented below.
+
 <a name="iam_acl_ip_cidrs"></a>
 The `ip_cidrs` block supports:
 
@@ -70,6 +101,20 @@ The `ip_ranges` block supports:
 
 * `description` - (Optional, String) Specifies a description about an IP address range. This parameter can contain a
   maximum of `255` characters and the following characters are not allowed:**@#%^&*<>\\**.
+
+<a name="iam_acl_ipv6_cidrs"></a>
+The `ipv6_cidrs` block supports:
+
+* `cidr` - (Required, String) Specifies the IPv6 CIDR block which allow access through console.
+
+* `description` - (Optional, String) Specifies a description about an IPv6 CIDR block.
+
+<a name="iam_acl_ipv6_ranges"></a>
+The `ipv6_ranges` block supports:
+
+* `range` - (Required, String) Specifies the IPv6 address range which allow access through console.
+
+* `description` - (Optional, String) Specifies a description about an IP address range.
 
 ## Attribute Reference
 

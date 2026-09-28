@@ -11,7 +11,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -21,6 +22,15 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var apigInstanceV2NonUpdatableParams = []string{
+	"vpc_id",
+	"subnet_id",
+	"availability_zones",
+	"ipv6_enable",
+	"available_zones",
+	"loadbalancer_provider",
+}
 
 // @API APIG POST /v2/{project_id}/apigw/instances
 // @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}
@@ -58,7 +68,10 @@ func ResourceApigInstanceV2() *schema.Resource {
 			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 
-		CustomizeDiff: config.MergeDefaultTags(),
+		CustomizeDiff: customdiff.All(
+			config.FlexibleForceNew(apigInstanceV2NonUpdatableParams),
+			config.MergeDefaultTags(),
+		),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -81,13 +94,11 @@ func ResourceApigInstanceV2() *schema.Resource {
 			"vpc_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `The ID of the VPC used to create the dedicated instance.`,
 			},
 			"subnet_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `The ID of the VPC subnet used to create the dedicated instance.`,
 			},
 			"security_group_id": {
@@ -99,7 +110,6 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:        schema.TypeList,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: `schema: Required; The name list of availability zones for the dedicated instance.`,
 			},
@@ -123,7 +133,6 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Description: `Whether public access with an IPv6 address is supported.`,
 			},
 			"elb_ids": {
@@ -236,7 +245,6 @@ func ResourceApigInstanceV2() *schema.Resource {
 			"available_zones": {
 				Type:        schema.TypeList,
 				Optional:    true,
-				ForceNew:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: `schema: Deprecated; The name list of availability zones for the dedicated instance.`,
 			},
@@ -263,11 +271,22 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
-				ForceNew: true,
 				Description: utils.SchemaDesc(
 					`The type of loadbalancer provider used by the instance.`,
 					utils.SchemaDescInput{
 						Computed: true,
+					}),
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
 					}),
 			},
 		},
@@ -361,7 +380,7 @@ func QueryInstanceDetail(client *golangsdk.ServiceClient, instanceId string) (in
 	return utils.FlattenResponse(requestResp)
 }
 
-func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) resource.StateRefreshFunc {
+func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryInstanceDetail(client, instanceId)
 		if err != nil {
@@ -386,7 +405,7 @@ func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string
 }
 
 func associatedElbStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, elbIds []interface{},
-	isDelete bool) resource.StateRefreshFunc {
+	isDelete bool) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getInstanceExtraElbs(client, instanceId)
 		if err != nil {
@@ -425,7 +444,7 @@ func batchDeleteExtraElbs(ctx context.Context, client *golangsdk.ServiceClient, 
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      associatedElbStateRefreshFunc(client, instanceId, elbIds, true),
@@ -475,7 +494,7 @@ func batchCreateExtraElbs(ctx context.Context, client *golangsdk.ServiceClient, 
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      associatedElbStateRefreshFunc(client, instanceId, elbIds, false),
@@ -558,7 +577,7 @@ func resourceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta in
 	instanceId := utils.PathSearch("instance_id", respBody, "").(string)
 	d.SetId(instanceId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -772,7 +791,7 @@ func updateInstanceBasicConfiguration(ctx context.Context, client *golangsdk.Ser
 		return fmt.Errorf("error updating dedicated instance: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -805,7 +824,7 @@ func updatePostPaidInstanceEdition(ctx context.Context, client *golangsdk.Servic
 		return fmt.Errorf("error updating the specification of the dedicated instance (%s): %s", instanceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -961,7 +980,7 @@ func updateInstanceTags(client *golangsdk.ServiceClient, d *schema.ResourceData)
 
 func waitForElbIngressAccessCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId, action string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshInstanceFunc(client, instanceId, action),
@@ -978,7 +997,7 @@ func waitForElbIngressAccessCompleted(ctx context.Context, client *golangsdk.Ser
 	return nil
 }
 
-func refreshInstanceFunc(client *golangsdk.ServiceClient, instanceId, action string) resource.StateRefreshFunc {
+func refreshInstanceFunc(client *golangsdk.ServiceClient, instanceId, action string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryInstanceDetail(client, instanceId)
 		if err != nil {
@@ -1054,7 +1073,7 @@ func resourceInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error creating APIG client: %s", err)
 	}
 
-	if d.HasChanges("instance_name", "description", "security_group_id", "vpcep_service_name", "maintain_begin", "maintain_end") {
+	if d.HasChanges("name", "description", "security_group_id", "vpcep_service_name", "maintain_begin", "maintain_end") {
 		if err = updateInstanceBasicConfiguration(ctx, client, d); err != nil {
 			return diag.FromErr(err)
 		}
@@ -1223,7 +1242,7 @@ func resourceInstanceDelete(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error deleting dedicated instance (%s): %s", instanceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, d.Id(), nil),

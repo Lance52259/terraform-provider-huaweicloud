@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -46,7 +46,7 @@ func ResourceVirtualPrivateCloudV1() *schema.Resource {
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(10 * time.Minute),
-			Delete: schema.DefaultTimeout(3 * time.Minute),
+			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 
 		CustomizeDiff: config.MergeDefaultTags(),
@@ -148,7 +148,10 @@ func resourceVirtualPrivateCloudCreate(ctx context.Context, d *schema.ResourceDa
 		BlockServiceEndpointStates: d.Get("block_service_endpoint_states").(string),
 	}
 	if v, ok := d.GetOk("enhanced_local_route"); ok {
-		enhancedLocalRoute, _ := strconv.ParseBool(v.(string))
+		enhancedLocalRoute, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'enhanced_local_route' field to Boolean: %s", err)
+		}
 		createOpts.EnhancedLocalRoute = &enhancedLocalRoute
 	}
 
@@ -165,7 +168,7 @@ func resourceVirtualPrivateCloudCreate(ctx context.Context, d *schema.ResourceDa
 	d.SetId(n.ID)
 	log.Printf("[DEBUG] VPC ID: %s", n.ID)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"CREATING"},
 		Target:     []string{"ACTIVE"},
 		Refresh:    waitForVpcActive(v1Client, n.ID),
@@ -291,6 +294,7 @@ func resourceVirtualPrivateCloudRead(_ context.Context, d *schema.ResourceData, 
 	return nil
 }
 
+// nolint:gocyclo
 func resourceVirtualPrivateCloudUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -314,7 +318,10 @@ func resourceVirtualPrivateCloudUpdate(ctx context.Context, d *schema.ResourceDa
 			updateOpts.Description = &desc
 		}
 		if d.HasChange("enhanced_local_route") {
-			enhancedLocalRoute, _ := strconv.ParseBool(d.Get("enhanced_local_route").(string))
+			enhancedLocalRoute, err := strconv.ParseBool(d.Get("enhanced_local_route").(string))
+			if err != nil {
+				log.Printf("[WARN] error parsing 'enhanced_local_route' field to Boolean: %s", err)
+			}
 			updateOpts.EnhancedLocalRoute = &enhancedLocalRoute
 		}
 
@@ -393,7 +400,7 @@ func resourceVirtualPrivateCloudDelete(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("error creating VPC client: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForVpcDelete(v1Client, d.Id()),
@@ -410,7 +417,7 @@ func resourceVirtualPrivateCloudDelete(ctx context.Context, d *schema.ResourceDa
 	return nil
 }
 
-func waitForVpcActive(vpcClient *golangsdk.ServiceClient, vpcId string) resource.StateRefreshFunc {
+func waitForVpcActive(vpcClient *golangsdk.ServiceClient, vpcId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		n, err := vpcs.Get(vpcClient, vpcId).Extract()
 		if err != nil {
@@ -430,9 +437,8 @@ func waitForVpcActive(vpcClient *golangsdk.ServiceClient, vpcId string) resource
 	}
 }
 
-func waitForVpcDelete(vpcClient *golangsdk.ServiceClient, vpcId string) resource.StateRefreshFunc {
+func waitForVpcDelete(vpcClient *golangsdk.ServiceClient, vpcId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-
 		r, err := vpcs.Get(vpcClient, vpcId).Extract()
 		if err != nil {
 			if _, ok := err.(golangsdk.ErrDefault404); ok {

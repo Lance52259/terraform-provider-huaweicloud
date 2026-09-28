@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/jmespath/go-jmespath"
 
@@ -180,7 +181,10 @@ func buildTrustPolicy(delegatedServiceName string) string {
 		"Version":   "5.0",
 		"Statement": statement,
 	}
-	s, _ := json.Marshal(trustPolicy)
+	s, err := json.Marshal(trustPolicy)
+	if err != nil {
+		log.Printf("[ERROR] error marshaling trust policy: %s", err)
+	}
 
 	return string(s)
 }
@@ -215,7 +219,7 @@ func resourceV3ServiceAgencyRead(_ context.Context, d *schema.ResourceData, meta
 
 	// extract delegated service name
 	var policy interface{}
-	trustPolicy := utils.PathSearch("trust_policy", agency, nil)
+	trustPolicy := utils.PathSearch("trust_policy", agency, "")
 	err = json.Unmarshal([]byte(trustPolicy.(string)), &policy)
 	if err != nil {
 		return diag.Errorf("error unmarshaling trust policy: %s", err)
@@ -437,31 +441,31 @@ func attachPolicyByID(ctx context.Context, client *golangsdk.ServiceClient, agen
 		},
 	}
 	count := 0
-	err := resource.RetryContext(ctx, timeout, func() *resource.RetryError {
+	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
 		_, err := client.Request("POST", attachPath, &attachOpt)
 		if err != nil {
 			// send a maximum of three requests, wait for agency to be created complete
 			if count == 3 {
-				return resource.NonRetryableError(err)
+				return retry.NonRetryableError(err)
 			}
 			if errCode, ok := err.(golangsdk.ErrDefault404); ok {
 				var apiError interface{}
 				if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
-					return resource.NonRetryableError(jsonErr)
+					return retry.NonRetryableError(jsonErr)
 				}
 
 				errorCode, errorCodeErr := jmespath.Search("error_code", apiError)
 				if errorCodeErr != nil {
-					return resource.NonRetryableError(errorCodeErr)
+					return retry.NonRetryableError(errorCodeErr)
 				}
 				if errorCode.(string) == "PAP5.0012" {
 					count++
 					// lintignore:R018
 					time.Sleep(2 * time.Second)
-					return resource.RetryableError(err)
+					return retry.RetryableError(err)
 				}
 			}
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 		return nil
 	})

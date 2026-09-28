@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -64,8 +64,8 @@ func ResourceVPCRouteV2() *schema.Resource {
 }
 
 func resourceVpcRouteV2Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	vpcRouteClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vpcRouteClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 
 	if err != nil {
 		return diag.Errorf("error creating vpc route client: %s", err)
@@ -90,12 +90,11 @@ func resourceVpcRouteV2Create(ctx context.Context, d *schema.ResourceData, meta 
 	d.SetId(n.RouteID)
 
 	return resourceVpcRouteV2Read(ctx, d, meta)
-
 }
 
 func resourceVpcRouteV2Read(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	vpcRouteClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vpcRouteClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating Vpc route client: %s", err)
 	}
@@ -114,20 +113,19 @@ func resourceVpcRouteV2Read(_ context.Context, d *schema.ResourceData, meta inte
 	d.Set("nexthop", n.NextHop)
 	d.Set("destination", n.Destination)
 	d.Set("vpc_id", n.VPC_ID)
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }
 
 func resourceVpcRouteV2Delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
-	config := meta.(*config.Config)
-	vpcRouteClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vpcRouteClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating vpc route: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForVpcRouteDelete(vpcRouteClient, d.Id()),
@@ -145,9 +143,8 @@ func resourceVpcRouteV2Delete(ctx context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
-func waitForVpcRouteDelete(vpcRouteClient *golangsdk.ServiceClient, routeId string) resource.StateRefreshFunc {
+func waitForVpcRouteDelete(vpcRouteClient *golangsdk.ServiceClient, routeId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-
 		r, err := routes.Get(vpcRouteClient, routeId).Extract()
 
 		if err != nil {

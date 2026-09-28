@@ -8,13 +8,14 @@ package cph
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -59,7 +60,7 @@ func ResourceCphServer() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
-				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+				DiffSuppressFunc: func(_, oldValue, newValue string, _ *schema.ResourceData) bool {
 					return newValue+"-1" == oldValue
 				},
 				Description: `Server name.`,
@@ -485,12 +486,18 @@ func buildCreateCphServerRequestBodyBandWidth(rawParams interface{}) map[string]
 			"band_width_size": utils.ValueIgnoreEmpty(raw["size"]),
 		}
 
-		shareType, _ := strconv.Atoi(utils.ValueIgnoreEmpty(raw["share_type"]).(string))
+		shareType, err := strconv.Atoi(utils.ValueIgnoreEmpty(raw["share_type"]).(string))
+		if err != nil {
+			log.Printf("[WARN] failed to parse share type: %s", err)
+		}
 		params["band_width_share_type"] = shareType
 
 		chargeMode := utils.ValueIgnoreEmpty(raw["charge_mode"]).(string)
 		if len(chargeMode) > 0 {
-			chargeModeInteger, _ := strconv.Atoi(chargeMode)
+			chargeModeInteger, err := strconv.Atoi(chargeMode)
+			if err != nil {
+				log.Printf("[WARN] failed to parse charge mode: %s", err)
+			}
 			params["band_width_charge_mode"] = chargeModeInteger
 		}
 
@@ -567,7 +574,7 @@ func buildCreateCphServerRequestBodyShareDataVolume(rawParams interface{}) map[s
 }
 
 func createCphServerWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -817,7 +824,7 @@ func resourceCphServerDelete(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func deleteCphServerWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -942,7 +949,7 @@ func updateServerName(client *golangsdk.ServiceClient, d *schema.ResourceData) e
 }
 
 func checkCphJobStatus(ctx context.Context, client *golangsdk.ServiceClient, id string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      jobStatusRefreshFunc(client, id),

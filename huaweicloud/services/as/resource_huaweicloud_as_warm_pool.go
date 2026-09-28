@@ -8,8 +8,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -25,8 +26,8 @@ var warmPoolNonUpdatableParams = []string{"scaling_group_id"}
 // @API AS DELETE /v2/{project_id}/scaling-groups/{scaling_group_id}/warm-pool
 func ResourceAsWarmPool() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: resourceAsWarmPoolCreateOrUpdate,
-		UpdateContext: resourceAsWarmPoolCreateOrUpdate,
+		CreateContext: resourceAsWarmPoolCreate,
+		UpdateContext: resourceAsWarmPoolUpdate,
 		ReadContext:   resourceAsWarmPoolRead,
 		DeleteContext: resourceAsWarmPoolDelete,
 		CustomizeDiff: config.FlexibleForceNew(warmPoolNonUpdatableParams),
@@ -64,15 +65,27 @@ func ResourceAsWarmPool() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
+			},
 		},
 	}
 }
 
-func resourceAsWarmPoolCreateOrUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceAsWarmPoolCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg            = meta.(*config.Config)
 		region         = cfg.GetRegion(d)
-		httpUrl        = "v2/{project_id}/scaling-groups/{scaling_group_id}/warm-pool"
 		product        = "autoscaling"
 		scalingGroupID = d.Get("scaling_group_id").(string)
 	)
@@ -80,6 +93,42 @@ func resourceAsWarmPoolCreateOrUpdate(ctx context.Context, d *schema.ResourceDat
 	if err != nil {
 		return diag.Errorf("error creating AS client: %s", err)
 	}
+
+	err = updateASWarmPool(client, scalingGroupID, d)
+	if err != nil {
+		return diag.Errorf("error creating AS warm pool: %s", err)
+	}
+
+	d.SetId(scalingGroupID)
+	return resourceAsWarmPoolRead(ctx, d, meta)
+}
+
+func resourceAsWarmPoolUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var (
+		cfg            = meta.(*config.Config)
+		region         = cfg.GetRegion(d)
+		product        = "autoscaling"
+		scalingGroupID = d.Get("scaling_group_id").(string)
+	)
+	client, err := cfg.NewServiceClient(product, region)
+	if err != nil {
+		return diag.Errorf("error creating AS client: %s", err)
+	}
+
+	if d.HasChangeExcept("enable_force_new") {
+		err = updateASWarmPool(client, scalingGroupID, d)
+		if err != nil {
+			return diag.Errorf("error updating AS warm pool: %s", err)
+		}
+	}
+
+	return resourceAsWarmPoolRead(ctx, d, meta)
+}
+
+func updateASWarmPool(client *golangsdk.ServiceClient, scalingGroupID string, d *schema.ResourceData) error {
+	var (
+		httpUrl = "v2/{project_id}/scaling-groups/{scaling_group_id}/warm-pool"
+	)
 
 	updatePath := client.Endpoint + httpUrl
 	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
@@ -95,13 +144,8 @@ func resourceAsWarmPoolCreateOrUpdate(ctx context.Context, d *schema.ResourceDat
 		JSONBody: utils.RemoveNil(buildCreateOrUpdateASWarmPoolBodyParams(d)),
 	}
 
-	_, err = client.Request("PUT", updatePath, &putOpt)
-	if err != nil {
-		return diag.Errorf("error creating or updating AS warm pool: %s", err)
-	}
-
-	d.SetId(d.Get("scaling_group_id").(string))
-	return resourceAsWarmPoolRead(ctx, d, meta)
+	_, err := client.Request("PUT", updatePath, &putOpt)
+	return err
 }
 
 func buildCreateOrUpdateASWarmPoolBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -176,7 +220,7 @@ func resourceAsWarmPoolDelete(ctx context.Context, d *schema.ResourceData, meta 
 	if err != nil {
 		return common.CheckDeletedDiag(d, common.ConvertExpected400ErrInto404Err(err, "error.code", "AS.2007"), "error deleting AS warm pool")
 	}
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      waitForWarmPoolDelete(client, d.Id()),
@@ -192,7 +236,7 @@ func resourceAsWarmPoolDelete(ctx context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
-func waitForWarmPoolDelete(client *golangsdk.ServiceClient, serverId string) resource.StateRefreshFunc {
+func waitForWarmPoolDelete(client *golangsdk.ServiceClient, serverId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getRespBody, err := getWarmPool(client, serverId)
 		if err != nil {
@@ -231,7 +275,6 @@ func getWarmPool(client *golangsdk.ServiceClient, instanceId string) (interface{
 
 func resourceAsWarmPoolImportState(_ context.Context, d *schema.ResourceData, _ interface{}) (
 	[]*schema.ResourceData, error) {
-
 	mErr := multierror.Append(
 		nil,
 		d.Set("scaling_group_id", d.Id()),

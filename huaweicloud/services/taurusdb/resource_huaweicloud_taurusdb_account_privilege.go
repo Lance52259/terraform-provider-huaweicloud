@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -128,15 +128,15 @@ func resourceTaurusDBAccountPrivilegeCreate(ctx context.Context, d *schema.Resou
 	createGaussDBAccountPrivilegeOpt.JSONBody = utils.RemoveNil(buildCreateGaussDBAccountPrivilegeBodyParams(d, accountName, host))
 
 	var createGaussDBAccountPrivilegeResp *http.Response
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *retry.RetryError {
 		createGaussDBAccountPrivilegeResp, err = createGaussDBAccountPrivilegeClient.Request("POST",
 			createGaussDBAccountPrivilegePath, &createGaussDBAccountPrivilegeOpt)
 		isRetry, err := handleGaussDBMysqlOperationError(err)
 		if isRetry {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
 		if err != nil {
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 		return nil
 	})
@@ -294,7 +294,7 @@ func flattenGetGaussDBAccountPrivilegeResponseBody(resp interface{}, accountName
 }
 
 func flattenGetGaussDBAccountPrivilegeResponseBodyDatabase(databases []interface{}) []interface{} {
-	if databases == nil {
+	if len(databases) == 0 {
 		return nil
 	}
 	rst := make([]interface{}, 0, len(databases))
@@ -336,15 +336,15 @@ func resourceTaurusDBAccountPrivilegeDelete(ctx context.Context, d *schema.Resou
 	deleteGaussDBAccountPrivilegeOpt.JSONBody = utils.RemoveNil(buildDeleteGaussDBAccountPrivilegeBodyParams(d))
 
 	var deleteGaussDBAccountPrivilegeResp *http.Response
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutDelete), func() *retry.RetryError {
 		deleteGaussDBAccountPrivilegeResp, err = deleteGaussDBAccountPrivilegeClient.Request("DELETE",
 			deleteGaussDBAccountPrivilegePath, &deleteGaussDBAccountPrivilegeOpt)
 		isRetry, err := handleGaussDBMysqlOperationError(err)
 		if isRetry {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
 		if err != nil {
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 		return nil
 	})

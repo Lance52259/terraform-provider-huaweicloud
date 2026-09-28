@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/jmespath/go-jmespath"
@@ -312,7 +312,6 @@ func resourceExtensionScaleGroupsSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
-		Computed: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
 				"metadata": {
@@ -437,8 +436,14 @@ func ignoreDiffIfScaleGroupsEqual() schema.CustomizeDiffFunc {
 			return err
 		}
 
-		oldJson, _ := json.Marshal(oldSorted)
-		newJson, _ := json.Marshal(newSorted)
+		oldJson, err := json.Marshal(oldSorted)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling old sorted nodes: %s", err)
+		}
+		newJson, err := json.Marshal(newSorted)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling new sorted nodes: %s", err)
+		}
 
 		if string(oldJson) == string(newJson) {
 			if err := d.Clear(key); err != nil {
@@ -464,12 +469,14 @@ func buildPodSecurityGroups(ids []interface{}) []nodepools.PodSecurityGroupSpec 
 }
 
 func buildExtensionScaleGroups(d *schema.ResourceData) []nodepools.ExtensionScaleGroups {
-	_, ok := d.GetOk("extension_scale_groups")
-	if !ok {
-		return nil
+	// Use Get instead of GetOk so that an explicit empty list can be distinguished and sent
+	// as [] on update (clearing all extension scale groups).
+	newGroups := d.Get("extension_scale_groups").([]interface{})
+	if len(newGroups) == 0 {
+		return make([]nodepools.ExtensionScaleGroups, 0)
 	}
 
-	oldRaw, newRaw := d.GetChange("extension_scale_groups")
+	oldRaw, _ := d.GetChange("extension_scale_groups")
 	oldGroups := oldRaw.([]interface{})
 	oldGroupsMap := make(map[string]string)
 	for _, oldGroup := range oldGroups {
@@ -477,14 +484,14 @@ func buildExtensionScaleGroups(d *schema.ResourceData) []nodepools.ExtensionScal
 		uid := utils.PathSearch("metadata[0].uid", oldGroup, "").(string)
 		oldGroupsMap[name] = uid
 	}
-	newGroups := newRaw.([]interface{})
-	res := make([]nodepools.ExtensionScaleGroups, len(newGroups))
-	for i, newGroup := range newGroups {
+
+	res := make([]nodepools.ExtensionScaleGroups, 0, len(newGroups))
+	for _, newGroup := range newGroups {
 		if group, ok := newGroup.(map[string]interface{}); ok {
-			res[i] = nodepools.ExtensionScaleGroups{
-				Metadata: buildExtensionScaleGroupsMetadata(utils.PathSearch("metadata", group, nil), oldGroupsMap),
-				Spec:     buildExtensionScaleGroupsSpec(utils.PathSearch("spec", group, nil)),
-			}
+			res = append(res, nodepools.ExtensionScaleGroups{
+				Metadata: buildExtensionScaleGroupsMetadata(utils.PathSearch("metadata", group, make([]interface{}, 0)), oldGroupsMap),
+				Spec:     buildExtensionScaleGroupsSpec(utils.PathSearch("spec", group, make([]interface{}, 0))),
+			})
 		}
 	}
 
@@ -512,9 +519,9 @@ func buildExtensionScaleGroupsSpec(spec interface{}) *nodepools.ExtensionScaleGr
 	res := nodepools.ExtensionScaleGroupsSpec{
 		Flavor:      utils.PathSearch("[0].flavor", spec, "").(string),
 		Az:          utils.PathSearch("[0].az", spec, "").(string),
-		Autoscaling: buildAutoscaling(utils.PathSearch("[0].autoscaling", spec, nil)),
+		Autoscaling: buildAutoscaling(utils.PathSearch("[0].autoscaling", spec, make([]interface{}, 0))),
 		CapacityReservationSpecification: buildCapacityReservationSpecification(
-			utils.PathSearch("[0].capacity_reservation_specification", spec, nil)),
+			utils.PathSearch("[0].capacity_reservation_specification", spec, make([]interface{}, 0))),
 	}
 
 	return &res
@@ -644,7 +651,7 @@ func resourceNodePoolCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	// Wait for the cce cluster to become available.
 	clusterId := d.Get("cluster_id").(string)
-	stateCluster := &resource.StateChangeConf{
+	stateCluster := &retry.StateChangeConf{
 		Pending:    []string{"PENDING"},
 		Target:     []string{"COMPLETED"},
 		Refresh:    clusterStateRefreshFunc(cceClient, clusterId, []string{"Available"}),
@@ -671,7 +678,7 @@ func resourceNodePoolCreate(ctx context.Context, d *schema.ResourceData, meta in
 	}
 	d.SetId(resp.Metadata.Id)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase includes "Synchronizing" and "Synchronized".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
@@ -704,7 +711,6 @@ func resourceNodePoolRead(_ context.Context, d *schema.ResourceData, meta interf
 
 	// The following parameters are not returned:
 	// password, ignore_initial_node_count, pod_security_groups
-	// extension_scale_groups not save, because the order of groups will change and computed not working in TypeSet
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
 		d.Set("name", s.Metadata.Name),
@@ -966,29 +972,31 @@ func resourceNodePoolUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error creating CCE v3 client: %s", err)
 	}
 
-	updateOpts, err := buildNodePoolUpdateOpts(d, cfg)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	clusterId := d.Get("cluster_id").(string)
-	nodePoolId := d.Id()
-	_, err = nodepools.Update(cceClient, clusterId, nodePoolId, updateOpts).Extract()
-	if err != nil {
-		return diag.Errorf("error updating CCE node pool (%s): %s", nodePoolId, err)
-	}
+	if d.HasChangeExcept("enable_force_new") {
+		updateOpts, err := buildNodePoolUpdateOpts(d, cfg)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		clusterId := d.Get("cluster_id").(string)
+		nodePoolId := d.Id()
+		_, err = nodepools.Update(cceClient, clusterId, nodePoolId, updateOpts).Extract()
+		if err != nil {
+			return diag.Errorf("error updating CCE node pool (%s): %s", nodePoolId, err)
+		}
 
-	stateConf := &resource.StateChangeConf{
-		// The statuses of pending phase includes "Synchronizing" and "Synchronized".
-		Pending:      []string{"PENDING"},
-		Target:       []string{"COMPLETED"},
-		Refresh:      nodePoolStateRefreshFunc(cceClient, clusterId, nodePoolId, []string{""}),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		Delay:        30 * time.Second,
-		PollInterval: 10 * time.Second,
-	}
-	_, err = stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return diag.Errorf("error waiting for CCE node pool (%s) to become available: %s", nodePoolId, err)
+		stateConf := &retry.StateChangeConf{
+			// The statuses of pending phase includes "Synchronizing" and "Synchronized".
+			Pending:      []string{"PENDING"},
+			Target:       []string{"COMPLETED"},
+			Refresh:      nodePoolStateRefreshFunc(cceClient, clusterId, nodePoolId, []string{""}),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        30 * time.Second,
+			PollInterval: 10 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return diag.Errorf("error waiting for CCE node pool (%s) to become available: %s", nodePoolId, err)
+		}
 	}
 
 	return resourceNodePoolRead(ctx, d, meta)
@@ -1008,7 +1016,7 @@ func resourceNodePoolDelete(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error deleting CCE node pool (%s): %s", nodePoolId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase include "Deleting".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
@@ -1025,7 +1033,7 @@ func resourceNodePoolDelete(ctx context.Context, d *schema.ResourceData, meta in
 }
 
 func nodePoolStateRefreshFunc(cceClient *golangsdk.ServiceClient, clusterId, nodePoolId string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		log.Printf("[DEBUG] Expect the status of CCE add-on to be any one of the status list: %v.", targets)
 		resp, err := nodepools.Get(cceClient, clusterId, nodePoolId).Extract()

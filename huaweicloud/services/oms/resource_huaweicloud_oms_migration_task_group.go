@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -167,12 +167,6 @@ func ResourceMigrationTaskGroup() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
-			},
-			"enable_kms": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: true,
-				Computed: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -417,7 +411,6 @@ func buildTaskGroupCreateOpts(conf *config.Config, d *schema.ResourceData) (map[
 		"description":                    utils.ValueIgnoreEmpty(d.Get("description")),
 		"dst_node":                       dstNodeOpts,
 		"enable_failed_object_recording": d.Get("enable_failed_object_recording"),
-		"enable_kms":                     d.Get("enable_kms").(bool),
 		"bandwidth_policy":               buildBandwidthPolicyOpts(d.Get("bandwidth_policy").([]interface{})),
 		"source_cdn":                     buildSourceCdnOpts(d.Get("source_cdn").([]interface{})),
 		"migrate_since":                  migrateSinceOpt,
@@ -460,7 +453,7 @@ func resourceMigrationTaskGroupCreate(ctx context.Context, d *schema.ResourceDat
 
 	createOpts, err := buildTaskGroupCreateOpts(cfg, d)
 	if err != nil {
-		return nil
+		return diag.Errorf("error building migration task group body params: %s", err)
 	}
 
 	log.Printf("[DEBUG] Create Task Group options: %#v", createOpts)
@@ -475,12 +468,10 @@ func resourceMigrationTaskGroupCreate(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 
-	id := utils.PathSearch("group_id", createTaskGroupRespBody, nil)
-	if id == nil {
+	groupID := utils.PathSearch("group_id", createTaskGroupRespBody, "").(string)
+	if groupID == "" {
 		return diag.Errorf("error creating OMS migration task group: ID is not found in API response")
 	}
-
-	groupID := id.(string)
 
 	d.SetId(groupID)
 
@@ -688,7 +679,6 @@ func resourceMigrationTaskGroupRead(_ context.Context, d *schema.ResourceData, m
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
 		d.Set("type", utils.PathSearch("task_type", getTaskGroupRespBody, nil)),
-		d.Set("enable_kms", utils.PathSearch("enable_kms", getTaskGroupRespBody, nil)),
 		d.Set("description", utils.PathSearch("description", getTaskGroupRespBody, nil)),
 		d.Set("object_overwrite_mode", utils.PathSearch("object_overwrite_mode", getTaskGroupRespBody, nil)),
 		d.Set("consistency_check", utils.PathSearch("consistency_check", getTaskGroupRespBody, nil)),
@@ -833,7 +823,7 @@ func resourceMigrationTaskGroupDelete(ctx context.Context, d *schema.ResourceDat
 		}
 	}
 
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutUpdate), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutUpdate), func() *retry.RetryError {
 		_, err := deleteTaskGroupClient.Request("DELETE", deleteTaskGroupPath, &deleteTaskGroupOpt)
 		if err == nil {
 			return nil
@@ -841,9 +831,9 @@ func resourceMigrationTaskGroupDelete(ctx context.Context, d *schema.ResourceDat
 
 		// ErrorCode "OMS.0063" means the task group is in progress. This ErrorCode is not accurate, we need retry it.
 		if hasErrorCode(err, "OMS.0063") {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
-		return resource.NonRetryableError(err)
+		return retry.NonRetryableError(err)
 	})
 	if err != nil {
 		return diag.Errorf("error deleting OMS migration task group: %s", err)
@@ -857,7 +847,7 @@ func resourceMigrationTaskGroupDelete(ctx context.Context, d *schema.ResourceDat
 	return nil
 }
 
-func getTaskGroupGroupStatus(client *golangsdk.ServiceClient, groupID string) resource.StateRefreshFunc {
+func getTaskGroupGroupStatus(client *golangsdk.ServiceClient, groupID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getTaskGroupHttpUrl = "v2/{project_id}/taskgroups/{group_id}"
@@ -905,7 +895,7 @@ func getTaskGroupGroupStatus(client *golangsdk.ServiceClient, groupID string) re
 }
 
 func waitForTaskGroupStartedOrCompleted(ctx context.Context, client *golangsdk.ServiceClient, groupID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"0", "1"},
 		Target:       []string{"2", "6"},
 		Refresh:      getTaskGroupGroupStatus(client, groupID),
@@ -919,7 +909,7 @@ func waitForTaskGroupStartedOrCompleted(ctx context.Context, client *golangsdk.S
 }
 
 func waitForTaskGroupStopped(ctx context.Context, client *golangsdk.ServiceClient, groupID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"7"},
 		Target:       []string{"3", "6"},
 		Refresh:      getTaskGroupGroupStatus(client, groupID),
@@ -933,7 +923,7 @@ func waitForTaskGroupStopped(ctx context.Context, client *golangsdk.ServiceClien
 }
 
 func waitForTaskGroupDeleted(ctx context.Context, client *golangsdk.ServiceClient, groupID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"8", "9"},
 		Target:       []string{"DELETED"},
 		Refresh:      getTaskGroupGroupStatus(client, groupID),

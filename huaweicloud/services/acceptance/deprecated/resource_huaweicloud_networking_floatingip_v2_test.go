@@ -1,18 +1,17 @@
 package deprecated
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk/openstack/compute/v2/servers"
 	"github.com/chnsz/golangsdk/openstack/networking/v2/extensions/layer3/floatingips"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccNetworkingV2FloatingIP_basic(t *testing.T) {
@@ -58,10 +57,10 @@ func TestAccNetworkingV2FloatingIP_fixedip_bind(t *testing.T) {
 }
 
 func testAccCheckNetworkingV2FloatingIPDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	networkClient, err := config.NetworkingV2Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	networkClient, err := cfg.NetworkingV2Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud floating IP: %s", err)
+		return fmt.Errorf("error creating floating IP: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -71,7 +70,7 @@ func testAccCheckNetworkingV2FloatingIPDestroy(s *terraform.State) error {
 
 		_, err := floatingips.Get(networkClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("FloatingIP still exists")
+			return fmt.Errorf("the floating IP still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 
@@ -82,17 +81,17 @@ func testAccCheckNetworkingV2FloatingIPExists(n string, kp *floatingips.Floating
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the floating IP %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		networkClient, err := config.NetworkingV2Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		networkClient, err := cfg.NetworkingV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+			return fmt.Errorf("error creating networking client: %s", err)
 		}
 
 		found, err := floatingips.Get(networkClient, rs.Primary.ID).Extract()
@@ -101,7 +100,7 @@ func testAccCheckNetworkingV2FloatingIPExists(n string, kp *floatingips.Floating
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("FloatingIP not found")
+			return fmt.Errorf("the floating IP is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*kp = *found
@@ -111,34 +110,12 @@ func testAccCheckNetworkingV2FloatingIPExists(n string, kp *floatingips.Floating
 }
 
 func testAccCheckNetworkingV2FloatingIPBoundToCorrectIP(fip *floatingips.FloatingIP, fixed_ip string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
+	return func(_ *terraform.State) error {
 		if fip.FixedIP != fixed_ip {
-			return fmtp.Errorf("Floating ip associated with wrong fixed ip")
+			return errors.New("the floating IP associated with wrong fixed IP")
 		}
 
 		return nil
-	}
-}
-
-func testAccCheckNetworkingV2InstanceFloatingIPAttach(
-	instance *servers.Server, fip *floatingips.FloatingIP) resource.TestCheckFunc {
-
-	// When Neutron is used, the Instance sometimes does not know its floating IP until some time
-	// after the attachment happened. This can be anywhere from 2-20 seconds. Because of that delay,
-	// the test usually completes with failure.
-	// However, the Fixed IP is known on both sides immediately, so that can be used as a bridge
-	// to ensure the two are now related.
-	// I think a better option is to introduce some state changing config in the actual resource.
-	return func(s *terraform.State) error {
-		for _, networkAddresses := range instance.Addresses {
-			for _, element := range networkAddresses.([]interface{}) {
-				address := element.(map[string]interface{})
-				if address["OS-EXT-IPS:type"] == "fixed" && address["addr"] == fip.FixedIP {
-					return nil
-				}
-			}
-		}
-		return fmtp.Errorf("Floating IP %+v was not attached to instance %+v", fip, instance)
 	}
 }
 

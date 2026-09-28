@@ -3,6 +3,7 @@ package deprecated
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -589,7 +590,7 @@ func buildFunctionGraphTriggerParameters(d *schema.ResourceData, cfg *config.Con
 		}
 		opts.EventData = eventData
 	default:
-		return opts, fmt.Errorf("Currently, trigger type only support 'TIMER', 'OBS', 'SMN', 'DIS', 'KAFKA', 'APIG', 'LTS' " +
+		return opts, errors.New("currently, trigger type only support 'TIMER', 'OBS', 'SMN', 'DIS', 'KAFKA', 'APIG', 'LTS' " +
 			"and 'DEDICATEDGATEWAY'.")
 	}
 	return opts, nil
@@ -770,11 +771,11 @@ func setTriggerEventData(d *schema.ResourceData, resp *trigger.Trigger) error {
 	case ltsTrigger:
 		return setLtsEventData(d, resp.EventData)
 	}
-	return fmt.Errorf("the type of trigger currently only support 'TIMER', 'OBS', 'SMN', 'DIS', 'KAFKA', 'APIG', 'LTS' and " +
+	return errors.New("the type of trigger currently only support 'TIMER', 'OBS', 'SMN', 'DIS', 'KAFKA', 'APIG', 'LTS' and " +
 		"'DEDICATEDGATEWAY'.")
 }
 
-func setTriggerParamters(d *schema.ResourceData, resp *trigger.Trigger) error {
+func setTriggerParameters(d *schema.ResourceData, resp *trigger.Trigger) error {
 	mErr := multierror.Append(nil,
 		d.Set("type", resp.TriggerTypeCode),
 		d.Set("status", resp.Status),
@@ -807,18 +808,18 @@ func resourceFunctionGraphTriggerRead(_ context.Context, d *schema.ResourceData,
 			v := v
 			mErr := multierror.Append(nil,
 				d.Set("region", cfg.GetRegion(d)),
-				setTriggerParamters(d, &v),
+				setTriggerParameters(d, &v),
 			)
 			if mErr.ErrorOrNil() != nil {
-				return diag.Errorf("error setting Trigger Parameters: %s", mErr.ErrorOrNil())
+				return diag.Errorf("error setting trigger parameters: %s", mErr.ErrorOrNil())
 			}
 			return nil
 		}
 	}
 	return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{
 		ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-			Body: []byte(fmt.Sprintf("unable to find the FunctionGraph trigger (%s) from function (%s), the trigger "+
-				"has been deleted", d.Id(), urn)),
+			Body: fmt.Appendf(nil, "unable to find the FunctionGraph trigger (%s) from function (%s), the trigger "+
+				"has been deleted", d.Id(), urn),
 		},
 	}, "error retrieving FunctionGraph trigger")
 }
@@ -841,7 +842,7 @@ func resourceFunctionGraphTriggerUpdate(ctx context.Context, d *schema.ResourceD
 		return diag.Errorf("updating FunctionGraph trigger failed: %s", err)
 	}
 	// After request send, check the cluster state and wait for it become running.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{targetStatus},
 		Refresh:      triggerV2StateRefreshFunc(client, urn, d.Id()),
 		Timeout:      d.Timeout(schema.TimeoutUpdate),
@@ -856,7 +857,7 @@ func resourceFunctionGraphTriggerUpdate(ctx context.Context, d *schema.ResourceD
 	return resourceFunctionGraphTriggerRead(ctx, d, meta)
 }
 
-func triggerV2StateRefreshFunc(client *golangsdk.ServiceClient, urn, triggerId string) resource.StateRefreshFunc {
+func triggerV2StateRefreshFunc(client *golangsdk.ServiceClient, urn, triggerId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		pages, err := trigger.List(client, urn).AllPages()
 		if err != nil {

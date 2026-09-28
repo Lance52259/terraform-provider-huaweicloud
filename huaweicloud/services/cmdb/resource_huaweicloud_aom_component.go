@@ -13,7 +13,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	entity2 "github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/entity"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient_go"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient-go"
 )
 
 // @API CMDB POST /v1/components
@@ -142,7 +142,7 @@ func ResourceAomComponentCreate(ctx context.Context, d *schema.ResourceData, met
 	return diag.Errorf("error create Component %v. error: %s", opts.Name, string(body))
 }
 
-func ResourceAomComponentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceAomComponentRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	client, err := httpclient_go.NewHttpClientGo(conf, "cmdb", conf.GetRegion(d))
 	if err != nil {
@@ -182,7 +182,7 @@ func ResourceAomComponentRead(ctx context.Context, d *schema.ResourceData, meta 
 	return nil
 }
 
-func ResourceAomComponentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceAomComponentUpdate(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	client, err := httpclient_go.NewHttpClientGo(conf, "cmdb", conf.GetRegion(d))
 	if err != nil {
@@ -216,7 +216,7 @@ func ResourceAomComponentUpdate(ctx context.Context, d *schema.ResourceData, met
 	return diag.Errorf("error update Component %s:  %s", opts.Name, string(body))
 }
 
-func ResourceAomComponentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func ResourceAomComponentDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	client, err := httpclient_go.NewHttpClientGo(conf, "cmdb", conf.GetRegion(d))
 	if err != nil {

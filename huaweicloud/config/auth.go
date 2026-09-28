@@ -17,6 +17,7 @@ import (
 	"github.com/chnsz/golangsdk/auth"
 	"github.com/chnsz/golangsdk/auth/core/signer"
 	huaweisdk "github.com/chnsz/golangsdk/openstack"
+
 	iam_model "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/pathorcontents"
@@ -63,9 +64,11 @@ type StsToken struct {
 func buildClient(c *Config) error {
 	if c.Token != "" {
 		return buildClientByToken(c)
-	} else if c.AccessKey != "" && c.SecretKey != "" {
+	}
+	if c.AccessKey != "" && c.SecretKey != "" {
 		return buildClientByAKSK(c)
-	} else if c.Password != "" && (c.Username != "" || c.UserID != "") {
+	}
+	if c.Password != "" && (c.Username != "" || c.UserID != "") {
 		return buildClientByPassword(c)
 	}
 
@@ -138,7 +141,7 @@ func genClient(c *Config, ao golangsdk.AuthOptionsProvider) (*golangsdk.Provider
 			Rt:         transport,
 			MaxRetries: c.MaxRetries,
 		},
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(req *http.Request, _ []*http.Request) error {
 			if client.AKSKAuthOptions.AccessKey != "" {
 				if c.SigningAlgorithm == "" || c.SigningAlgorithm == signer.HmacSHA256 {
 					return auth.Sign(req, client.AKSKAuthOptions.AccessKey, client.AKSKAuthOptions.SecretKey)
@@ -218,7 +221,6 @@ func buildClientByToken(c *Config) error {
 	for _, ao := range []*golangsdk.AuthOptions{&projectAuthOptions, &domainAuthOptions} {
 		ao.IdentityEndpoint = c.IdentityEndpoint
 		ao.TokenID = c.Token
-
 	}
 	return genClients(c, projectAuthOptions, domainAuthOptions)
 }
@@ -542,7 +544,7 @@ func getAuthConfigByMeta(c *Config) error {
 	securityToken := utils.PathSearch("credential.securitytoken", parsedBody, "").(string)
 
 	if accessKey == "" || secretKey == "" || securityToken == "" || expiresAt == "" {
-		return fmt.Errorf("Error fetching metadata authentication information")
+		return errors.New("Error fetching metadata authentication information")
 	}
 	expairesTime, err := time.Parse(time.RFC3339, expiresAt)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -113,7 +113,7 @@ func ResourceNetworkingSecGroup() *schema.Resource {
 		},
 
 		Timeouts: &schema.ResourceTimeout{
-			Delete: schema.DefaultTimeout(10 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
 		},
 
 		CustomizeDiff: config.MergeDefaultTags(),
@@ -382,12 +382,18 @@ func flattenSecurityGroupRulesV3(rules []v3rules.SecurityGroupRule) ([]map[strin
 						rule.MultiPort, len(rule.MultiPort))
 					return sgRules, fmt.Errorf("the parameter format of the 'ports' is invalid")
 				}
-				minVal, _ := strconv.Atoi(rangeSet[1])
+				minVal, err := strconv.Atoi(rangeSet[1])
+				if err != nil {
+					log.Printf("[WARN] failed to parse port range min: %s", err)
+				}
 				ruleInfo["port_range_min"] = minVal
 				if rangeSet[2] == "" {
 					ruleInfo["port_range_max"] = minVal
 				} else {
-					maxVal, _ := strconv.Atoi(rangeSet[2])
+					maxVal, err := strconv.Atoi(rangeSet[2])
+					if err != nil {
+						log.Printf("[WARN] failed to parse port range max: %s", err)
+					}
 					ruleInfo["port_range_max"] = maxVal
 				}
 			}
@@ -445,8 +451,8 @@ func resourceNetworkingSecGroupUpdate(ctx context.Context, d *schema.ResourceDat
 	return resourceNetworkingSecGroupRead(ctx, d, meta)
 }
 
-func resourceNetworkingSecGroupUpdateV2(d *schema.ResourceData, config *config.Config, region string) error {
-	v2Client, err := config.NetworkingV2Client(region)
+func resourceNetworkingSecGroupUpdateV2(d *schema.ResourceData, cfg *config.Config, region string) error {
+	v2Client, err := cfg.NetworkingV2Client(region)
 	if err != nil {
 		return fmt.Errorf("error creating networking v2 client: %s", err)
 	}
@@ -469,7 +475,7 @@ func resourceNetworkingSecGroupDelete(ctx context.Context, d *schema.ResourceDat
 		return diag.Errorf("error creating networking v1 client: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForSecGroupDelete(client, d.Id()),
@@ -487,7 +493,7 @@ func resourceNetworkingSecGroupDelete(ctx context.Context, d *schema.ResourceDat
 	return nil
 }
 
-func waitForSecGroupDelete(client *golangsdk.ServiceClient, secGroupId string) resource.StateRefreshFunc {
+func waitForSecGroupDelete(client *golangsdk.ServiceClient, secGroupId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		log.Printf("[DEBUG] Attempting to delete Security Group %s.", secGroupId)
 

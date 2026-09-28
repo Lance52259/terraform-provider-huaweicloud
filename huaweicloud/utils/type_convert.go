@@ -30,37 +30,11 @@ func Int(v int) *int {
 	return &v
 }
 
-// Int32 returns a pointer to the int32 value
-func Int32(v int32) *int32 {
-	return &v
-}
-
 // Int returns a pointer to the int value. if v is empty, return nil
 func IntIgnoreEmpty(v int) *int {
 	if v == 0 {
 		return nil
 	}
-	return &v
-}
-
-// Int32 returns a pointer to the int32 value. if v is empty, return nil
-func Int32IgnoreEmpty(v int32) *int32 {
-	if v == 0 {
-		return nil
-	}
-	return &v
-}
-
-// Int32 returns a pointer to the int32 value
-func Int64IgnoreEmpty(v int64) *int64 {
-	if v == 0 {
-		return nil
-	}
-	return &v
-}
-
-// Float64 returns a pointer to the float64 value
-func Float64(v float64) *float64 {
 	return &v
 }
 
@@ -72,7 +46,7 @@ func StringToInt(i *string) *int {
 
 	r, err := strconv.Atoi(*i)
 	if err != nil {
-		log.Printf("[ERROR] convert the string %q to int failed.", *i)
+		log.Printf("[WARN] convert the string %q to int failed.", *i)
 	}
 	return &r
 }
@@ -82,21 +56,13 @@ func StringToBool(v interface{}) *bool {
 	if v, ok := v.(string); ok {
 		b, err := strconv.ParseBool(v)
 		if err != nil {
-			log.Printf("[ERROR] convert the string %q to boolean failed.", v)
+			log.Printf("[WARN] convert the string %q to boolean failed.", v)
 		}
 
 		return &b
 	}
 
 	return nil
-}
-
-// StringValue returns the string value
-func StringValue(v *string) string {
-	if v == nil {
-		return ""
-	}
-	return *v
 }
 
 // ValueIgnoreEmpty returns to the string value. if v is empty, return nil
@@ -135,7 +101,7 @@ func StringToJson(jsonStrObj string, defaultVal ...interface{}) interface{} {
 	var jsonResult interface{}
 	err := json.Unmarshal([]byte(jsonStrObj), &jsonResult)
 	if err != nil {
-		log.Printf("[ERROR] Unable to convert the JSON string to the map object: %s", err)
+		log.Printf("[WARN] Unable to convert the JSON string to the map object: %s", err)
 	}
 	return jsonResult
 }
@@ -149,7 +115,7 @@ func StringToJsonArray(jsonStrArray string) interface{} {
 	jsonArray := make([]map[string]interface{}, 0)
 	err := json.Unmarshal([]byte(jsonStrArray), &jsonArray)
 	if err != nil {
-		log.Printf("[ERROR] Unable to convert the JSON string to the JSON array: %s", err)
+		log.Printf("[WARN] Unable to convert the JSON string to the JSON array: %s", err)
 	}
 	return jsonArray
 }
@@ -161,7 +127,7 @@ func JsonToString(jsonObj interface{}) string {
 	}
 	jsonStr, err := json.Marshal(jsonObj)
 	if err != nil {
-		log.Printf("[ERROR] Unable to convert the JSON object to string: %s", err)
+		log.Printf("[WARN] Unable to convert the JSON object to string: %s", err)
 	}
 	return string(jsonStr)
 }

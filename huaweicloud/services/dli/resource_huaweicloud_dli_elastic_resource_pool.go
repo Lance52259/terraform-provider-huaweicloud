@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -189,7 +189,7 @@ func resourceElasticResourcePoolCreate(ctx context.Context, d *schema.ResourceDa
 
 	err = waitForElasticResourcePoolStatusCompleted(ctx, client, d)
 	if err != nil {
-		diag.Errorf("error waiting for the elastic resource pool (%s) status to become success: %s", resourceId, err)
+		return diag.Errorf("error waiting for the elastic resource pool (%s) status to become success: %s", resourceId, err)
 	}
 
 	return resourceElasticResourcePoolRead(ctx, d, meta)
@@ -276,7 +276,7 @@ func buildCreateElasticResourcePoolBodyParams(d *schema.ResourceData, epsId stri
 func parseElasticResourcePoolAutoRenew(autoRenew string) bool {
 	result, err := strconv.ParseBool(autoRenew)
 	if err != nil {
-		log.Printf("[ERROR] unable to convert auto_renew to bool value")
+		log.Printf("[WARN] unable to convert auto_renew to bool value")
 		return false
 	}
 
@@ -284,7 +284,7 @@ func parseElasticResourcePoolAutoRenew(autoRenew string) bool {
 }
 
 func waitForElasticResourcePoolStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      elasticResourcePoolStatusRefreshFunc(client, d, []string{"AVAILABLE"}),
@@ -296,7 +296,7 @@ func waitForElasticResourcePoolStatusCompleted(ctx context.Context, client *gola
 	return err
 }
 
-func elasticResourcePoolStatusRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData, targets []string) resource.StateRefreshFunc {
+func elasticResourcePoolStatusRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resourceName := d.Get("name").(string)
 		respBody, err := GetElasticResourcePoolByName(client, resourceName)
@@ -433,7 +433,7 @@ func GetElasticResourcePoolByName(client *golangsdk.ServiceClient, resourceName 
 	}
 	return nil, golangsdk.ErrDefault404{
 		ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-			Body: []byte(fmt.Sprintf("unable to find the elastic resource pool using its name (%s)", lowercaseName)),
+			Body: fmt.Appendf(nil, "unable to find the elastic resource pool using its name (%s)", lowercaseName),
 		},
 	}
 }
@@ -551,7 +551,7 @@ func resourceElasticResourcePoolDelete(ctx context.Context, d *schema.ResourceDa
 
 	err = waitForElasticResourcePoolDeleted(ctx, client, d)
 	if err != nil {
-		diag.Errorf("error waiting for the elastic resource pool (%s) status to become deleted: %s", resourceName, err)
+		return diag.Errorf("error waiting for the elastic resource pool (%s) status to become deleted: %s", resourceName, err)
 	}
 	return nil
 }
@@ -584,7 +584,7 @@ func deleteElasticResourcePool(client *golangsdk.ServiceClient, resourceName str
 }
 
 func waitForElasticResourcePoolDeleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      elasticResourcePoolStatusRefreshFunc(client, d, nil),

@@ -3,6 +3,7 @@ package secmaster
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -416,7 +417,7 @@ func resourceIncidentRead(_ context.Context, d *schema.ResourceData, meta interf
 	plannedClosureTime := utils.PathSearch("sla", dataObject, "").(string)
 	if plannedClosureTime != "" {
 		outputTimeFormat := "2006-01-02T15:04:05.000-0700"
-		plannedClosureTimeWithoutZ := fmt.Sprintf(plannedClosureTime[:23] + plannedClosureTime[24:])
+		plannedClosureTimeWithoutZ := plannedClosureTime[:23] + plannedClosureTime[24:]
 		plannedClosureTime, err := time.Parse(outputTimeFormat, plannedClosureTimeWithoutZ)
 		if err != nil {
 			return diag.Errorf("error parsing planned_closure_time: %s", err)
@@ -550,7 +551,10 @@ func resourceIncidentDelete(_ context.Context, d *schema.ResourceData, meta inte
 		return common.CheckDeletedDiag(d, err, "error deleting SecMaster incident")
 	}
 
-	dataObject, _ := GetIncident(deleteIncidentClient, d.Get("workspace_id").(string), d.Id())
+	dataObject, err := GetIncident(deleteIncidentClient, d.Get("workspace_id").(string), d.Id())
+	if err != nil {
+		log.Printf("[ERROR] error getting SecMaster incident: %s", err)
+	}
 	if dataObject != nil {
 		return diag.Errorf("error deleting SecMaster incident, the incident still exists")
 	}

@@ -254,11 +254,11 @@ func dataSourceCCGlobalConnectionBandwidthsRead(_ context.Context, d *schema.Res
 		result = filter(result, resourceIDs)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	var mErr *multierror.Error
 	mErr = multierror.Append(
@@ -437,7 +437,7 @@ func filter(items []interface{}, resourceIDs []string) []interface{} {
 }
 
 func flattenListGCBResponseBody(resp []interface{}) []interface{} {
-	if resp == nil {
+	if len(resp) == 0 {
 		return nil
 	}
 

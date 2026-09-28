@@ -1,9 +1,12 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -12,8 +15,6 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceVBSBackupV2() *schema.Resource {
@@ -128,10 +129,10 @@ func resourceVBSBackupTagsV2(d *schema.ResourceData) []backups.Tag {
 }
 
 func resourceVBSBackupV2Create(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud vbs client: %s", err)
+		return fmt.Errorf("error creating vbs client: %s", err)
 	}
 
 	createOpts := backups.CreateOpts{
@@ -144,7 +145,7 @@ func resourceVBSBackupV2Create(d *schema.ResourceData, meta interface{}) error {
 
 	n, err := backups.Create(vbsClient, createOpts).ExtractJobResponse()
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud VBS Backup: %s", err)
+		return fmt.Errorf("error creating VBS backup: %s", err)
 	}
 
 	// for job APIs: update the endpoint of vbsClient
@@ -156,7 +157,7 @@ func resourceVBSBackupV2Create(d *schema.ResourceData, meta interface{}) error {
 	entity, err := backups.GetJobEntity(vbsClient, n.JobID, "backup_id")
 	id, ok := entity.(string)
 	if !ok {
-		return fmtp.Errorf("Unexpected error when converting the VBS Backup ID")
+		return fmt.Errorf("unexpected error when converting the VBS backup ID")
 	}
 
 	d.SetId(id)
@@ -164,15 +165,15 @@ func resourceVBSBackupV2Create(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceVBSBackupV2Read(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud vbs client: %s", err)
+		return fmt.Errorf("error creating VBS client: %s", err)
 	}
 
 	n, err := backups.Get(vbsClient, d.Id()).Extract()
 	if err != nil {
-		return common.CheckDeleted(d, err, "VBS Backup")
+		return common.CheckDeleted(d, err, "VBS backup")
 	}
 
 	d.Set("name", n.Name)
@@ -185,19 +186,19 @@ func resourceVBSBackupV2Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("object_count", n.ObjectCount)
 	d.Set("created_at", n.CreatedAt.Format(time.RFC3339))
 	d.Set("volume_id", n.VolumeId)
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }
 
 func resourceVBSBackupV2Delete(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud vbs: %s", err)
+		return fmt.Errorf("error creating VBS: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"available", "deleting"},
 		Target:     []string{"deleted"},
 		Refresh:    waitForBackupDelete(vbsClient, d.Id()),
@@ -206,16 +207,16 @@ func resourceVBSBackupV2Delete(d *schema.ResourceData, meta interface{}) error {
 		MinTimeout: 5 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 	if err != nil {
-		return fmtp.Errorf("Error deleting huaweicloud VBS Backup: %s", err)
+		return fmt.Errorf("error deleting VBS backup: %s", err)
 	}
 
 	d.SetId("")
 	return nil
 }
 
-func waitForBackupDelete(client *golangsdk.ServiceClient, backupID string) resource.StateRefreshFunc {
+func waitForBackupDelete(client *golangsdk.ServiceClient, backupID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		r, err := backups.Get(client, backupID).Extract()
 		if err != nil {
@@ -229,7 +230,7 @@ func waitForBackupDelete(client *golangsdk.ServiceClient, backupID string) resou
 			err := backups.Delete(client, backupID).ExtractErr()
 			if err != nil {
 				if _, ok := err.(golangsdk.ErrDefault404); ok {
-					logp.Printf("[INFO] Successfully deleted huaweicloud VBS backup %s", backupID)
+					log.Printf("[INFO] Successfully deleted VBS backup %s", backupID)
 					return r, "deleted", nil
 				}
 				return r, r.Status, err

@@ -1,6 +1,8 @@
 package deprecated
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -12,7 +14,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccNetworkingV2Port_basic(t *testing.T) {
@@ -185,10 +186,10 @@ func TestAccNetworkingV2Port_updateExtraDHCPOpts(t *testing.T) {
 }
 
 func testAccCheckNetworkingV2PortDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -198,7 +199,7 @@ func testAccCheckNetworkingV2PortDestroy(s *terraform.State) error {
 
 		_, err := ports.Get(networkingClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Port still exists")
+			return fmt.Errorf("the port still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 
@@ -209,17 +210,17 @@ func testAccCheckNetworkingV2PortExists(n string, port *ports.Port) resource.Tes
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the port %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		networkingClient, err := config.NetworkingV2Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		networkingClient, err := cfg.NetworkingV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+			return fmt.Errorf("error creating networking client: %s", err)
 		}
 
 		found, err := ports.Get(networkingClient, rs.Primary.ID).Extract()
@@ -228,7 +229,7 @@ func testAccCheckNetworkingV2PortExists(n string, port *ports.Port) resource.Tes
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("Port not found")
+			return fmt.Errorf("the port is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*port = *found
@@ -238,20 +239,9 @@ func testAccCheckNetworkingV2PortExists(n string, port *ports.Port) resource.Tes
 }
 
 func testAccCheckNetworkingV2PortCountFixedIPs(port *ports.Port, expected int) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
+	return func(_ *terraform.State) error {
 		if len(port.FixedIPs) != expected {
-			return fmtp.Errorf("Expected %d Fixed IPs, got %d", expected, len(port.FixedIPs))
-		}
-
-		return nil
-	}
-}
-
-func testAccCheckNetworkingV2PortCountAllowedAddressPairs(
-	port *ports.Port, expected int) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		if len(port.AllowedAddressPairs) != expected {
-			return fmtp.Errorf("Expected %d Allowed Address Pairs, got %d", expected, len(port.AllowedAddressPairs))
+			return fmt.Errorf("expected %d fixed IPs, got %d", expected, len(port.FixedIPs))
 		}
 
 		return nil
@@ -303,77 +293,6 @@ resource "huaweicloud_networking_port_v2" "port_1" {
 
   fixed_ip {
     subnet_id =  "${huaweicloud_networking_subnet_v2.subnet_1.id}"
-  }
-}
-`
-
-const testAccNetworkingV2Port_allowedAddressPairs = `
-resource "huaweicloud_networking_network_v2" "vrrp_network" {
-  name = "vrrp_network"
-  admin_state_up = "true"
-}
-
-resource "huaweicloud_networking_subnet_v2" "vrrp_subnet" {
-  name = "vrrp_subnet"
-  cidr = "10.0.0.0/24"
-  ip_version = 4
-  network_id = "${huaweicloud_networking_network_v2.vrrp_network.id}"
-
-  allocation_pools {
-    start = "10.0.0.2"
-    end = "10.0.0.200"
-  }
-}
-
-resource "huaweicloud_networking_secgroup_v2" "secgroup_1" {
-  name = "secgroup_1"
-  description = "terraform security group acceptance test"
-}
-
-resource "huaweicloud_networking_router_v2" "vrrp_router" {
-  name = "vrrp_router"
-}
-
-resource "huaweicloud_networking_router_interface_v2" "vrrp_interface" {
-  router_id = "${huaweicloud_networking_router_v2.vrrp_router.id}"
-  subnet_id = "${huaweicloud_networking_subnet_v2.vrrp_subnet.id}"
-}
-
-resource "huaweicloud_networking_port_v2" "vrrp_port_1" {
-  name = "vrrp_port_1"
-  admin_state_up = "true"
-  network_id = "${huaweicloud_networking_network_v2.vrrp_network.id}"
-
-  fixed_ip {
-    subnet_id =  "${huaweicloud_networking_subnet_v2.vrrp_subnet.id}"
-    ip_address = "10.0.0.202"
-  }
-}
-
-resource "huaweicloud_networking_port_v2" "vrrp_port_2" {
-  name = "vrrp_port_2"
-  admin_state_up = "true"
-  network_id = "${huaweicloud_networking_network_v2.vrrp_network.id}"
-
-  fixed_ip {
-    subnet_id =  "${huaweicloud_networking_subnet_v2.vrrp_subnet.id}"
-    ip_address = "10.0.0.201"
-  }
-}
-
-resource "huaweicloud_networking_port_v2" "instance_port" {
-  name = "instance_port"
-  admin_state_up = "true"
-  network_id = "${huaweicloud_networking_network_v2.vrrp_network.id}"
-
-  allowed_address_pairs {
-    ip_address = "${huaweicloud_networking_port_v2.vrrp_port_1.fixed_ip.0.ip_address}"
-    mac_address = "${huaweicloud_networking_port_v2.vrrp_port_1.mac_address}"
-  }
-
-  allowed_address_pairs {
-    ip_address = "${huaweicloud_networking_port_v2.vrrp_port_2.fixed_ip.0.ip_address}"
-    mac_address = "${huaweicloud_networking_port_v2.vrrp_port_2.mac_address}"
   }
 }
 `

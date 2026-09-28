@@ -10,8 +10,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -68,6 +69,19 @@ func ResourceControl() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
+			},
 		},
 	}
 }
@@ -89,7 +103,7 @@ func resourceControlCreate(ctx context.Context, d *schema.ResourceData, meta int
 
 	body, err := buildControlBodyParams(d)
 	if err != nil {
-		diag.FromErr(err)
+		return diag.FromErr(err)
 	}
 	enableControlOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -111,7 +125,7 @@ func resourceControlCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.Errorf("get empty operationId")
 	}
 
-	stateConf := resource.StateChangeConf{
+	stateConf := retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      controlStateRefreshFunc(enableControlClient, operationId),
@@ -206,7 +220,7 @@ func resourceControlDelete(ctx context.Context, d *schema.ResourceData, meta int
 
 	body, err := buildControlBodyParams(d)
 	if err != nil {
-		diag.FromErr(err)
+		return diag.FromErr(err)
 	}
 	disableControlOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -225,7 +239,7 @@ func resourceControlDelete(ctx context.Context, d *schema.ResourceData, meta int
 
 	operationId := utils.PathSearch("control_operate_request_id", disableControlRespBody, "").(string)
 
-	stateConf := resource.StateChangeConf{
+	stateConf := retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      controlStateRefreshFunc(disableControlClient, operationId),
@@ -262,7 +276,7 @@ func buildControlBodyParams(d *schema.ResourceData) (map[string]interface{}, err
 	return bodyParams, nil
 }
 
-func controlStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) resource.StateRefreshFunc {
+func controlStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getControlStatusHttpUrl := "v1/governance/operation-control-status/{operation_control_status_id}"
 		getControlStatusPath := client.Endpoint + getControlStatusHttpUrl
@@ -280,7 +294,7 @@ func controlStateRefreshFunc(client *golangsdk.ServiceClient, operationId string
 		if err != nil {
 			return nil, "", err
 		}
-		controlOperation := utils.PathSearch("control_operation", getControlStatusRespBody, nil).(map[string]interface{})
+		controlOperation := utils.PathSearch("control_operation", getControlStatusRespBody, make(map[string]interface{})).(map[string]interface{})
 		status := controlOperation["status"].(string)
 		if status == "FAILED" {
 			message := utils.PathSearch("message", getControlStatusRespBody, nil)

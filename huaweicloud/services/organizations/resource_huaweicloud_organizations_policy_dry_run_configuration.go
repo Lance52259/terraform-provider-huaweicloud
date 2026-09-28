@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -153,7 +153,7 @@ func updatePolicyDryRunConfiguration(ctx context.Context, client *golangsdk.Serv
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: policyDryRunConfigurationRefreshFunc(client, utils.PathSearch("root_id", bodyParams, "").(string),
@@ -166,7 +166,7 @@ func updatePolicyDryRunConfiguration(ctx context.Context, client *golangsdk.Serv
 	return err
 }
 
-func policyDryRunConfigurationRefreshFunc(client *golangsdk.ServiceClient, rootId, policyType string) resource.StateRefreshFunc {
+func policyDryRunConfigurationRefreshFunc(client *golangsdk.ServiceClient, rootId, policyType string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetPolicyDryRunConfiguration(client, rootId, policyType)
 		if err != nil {
@@ -240,10 +240,12 @@ func resourcePolicyDryRunConfigurationUpdate(ctx context.Context, d *schema.Reso
 		return diag.Errorf("error creating Organizations client: %s", err)
 	}
 
-	err = updatePolicyDryRunConfiguration(ctx, client, buildPolicyDryRunConfigurationBodyParams(d, d.Get("status").(string)),
-		d.Timeout(schema.TimeoutUpdate))
-	if err != nil {
-		return diag.Errorf("error updating policy dry-run configuration: %s", err)
+	if d.HasChangeExcept("enable_force_new") {
+		err = updatePolicyDryRunConfiguration(ctx, client, buildPolicyDryRunConfigurationBodyParams(d, d.Get("status").(string)),
+			d.Timeout(schema.TimeoutUpdate))
+		if err != nil {
+			return diag.Errorf("error updating policy dry-run configuration: %s", err)
+		}
 	}
 
 	return resourcePolicyDryRunConfigurationRead(ctx, d, meta)

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/jmespath/go-jmespath"
@@ -1082,6 +1082,7 @@ func hasErrorCode(err error, expectCode string) bool {
 	return false
 }
 
+// nolint:gocyclo
 func setNodeConfigsAndAzToState(clusterDetail interface{}, d *schema.ResourceData) error {
 	instances := utils.PathSearch("instances", clusterDetail, make([]interface{}, 0)).([]interface{})
 	if len(instances) == 0 {
@@ -1223,6 +1224,7 @@ func getNodeConfigMapAndAzArray(instances []interface{}) (map[string]map[string]
 	return nodeConfigMap, azArray
 }
 
+// nolint:gocyclo
 func resourceCssClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -2058,7 +2060,7 @@ func resourceCssClusterDelete(ctx context.Context, d *schema.ResourceData, meta 
 
 func checkClusterCreateResult(ctx context.Context, client *golangsdk.ServiceClient, clusterId string,
 	timeout time.Duration) error {
-	createStateConf := &resource.StateChangeConf{
+	createStateConf := &retry.StateChangeConf{
 		Pending: []string{ClusterStatusInProcess},
 		Target:  []string{ClusterStatusAvailable},
 		Refresh: func() (interface{}, string, error) {
@@ -2066,7 +2068,7 @@ func checkClusterCreateResult(ctx context.Context, client *golangsdk.ServiceClie
 			if err != nil {
 				return nil, "failed", err
 			}
-			return resp, utils.PathSearch("status", resp, nil).(string), err
+			return resp, utils.PathSearch("status", resp, "").(string), err
 		},
 		Timeout:      timeout,
 		PollInterval: 10 * timeout,
@@ -2080,7 +2082,7 @@ func checkClusterCreateResult(ctx context.Context, client *golangsdk.ServiceClie
 }
 
 func checkClusterDeleteResult(ctx context.Context, client *golangsdk.ServiceClient, clusterId string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"Pending"},
 		Target:  []string{"Done"},
 		Refresh: func() (interface{}, string, error) {
@@ -2106,7 +2108,7 @@ func checkClusterDeleteResult(ctx context.Context, client *golangsdk.ServiceClie
 }
 
 func checkClusterOperationResult(ctx context.Context, client *golangsdk.ServiceClient, clusterId string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"Pending"},
 		Target:  []string{"Done"},
 		Refresh: func() (interface{}, string, error) {
@@ -2291,6 +2293,7 @@ func getFlavorList(client *golangsdk.ServiceClient) (interface{}, error) {
 	return utils.FlattenResponse(getEsFlavorResp)
 }
 
+// nolint:gocyclo
 func extendInstanceNumber(ctx context.Context, d *schema.ResourceData, conf *config.Config,
 	addMasterNode, addClientNode bool) error {
 	if d.HasChange("ess_node_config.0.instance_number") {

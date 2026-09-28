@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"strings"
+	"time"
 
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/keybase/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/internal/vault/sdk/jsonutil"
 )
@@ -16,16 +17,44 @@ const (
 	kbPrefix = "keybase:"
 )
 
+type keybaseLookupStatus struct {
+	Name string
+}
+
+type keybasePrimaryKey struct {
+	Bundle string
+}
+
+type keybasePublicKeys struct {
+	Primary keybasePrimaryKey
+}
+
+type keybaseLookupUser struct {
+	keybasePublicKeys `json:"public_keys"`
+}
+
+type keybaseLookupResponse struct {
+	Status keybaseLookupStatus
+	Them   []keybaseLookupUser
+}
+
 // FetchKeybasePubkeys fetches public keys from Keybase given a set of
 // usernames, which are derived from correctly formatted input entries. It
 // doesn't use their client code due to both the API and the fact that it is
 // considered alpha and probably best not to rely on it.  The keys are returned
 // as base64-encoded strings.
-func FetchKeybasePubkeys(input []string) (map[string]string, error) {
-	client := cleanhttp.DefaultClient()
-	if client == nil {
-		return nil, fmt.Errorf("unable to create an http client")
+func defaultHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DisableKeepAlives = true
+	transport.MaxIdleConnsPerHost = -1
+	return &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
 	}
+}
+
+func FetchKeybasePubkeys(input []string) (map[string]string, error) {
+	client := defaultHTTPClient()
 
 	if len(input) == 0 {
 		return nil, nil
@@ -50,25 +79,8 @@ func FetchKeybasePubkeys(input []string) (map[string]string, error) {
 	}
 	defer resp.Body.Close()
 
-	type PublicKeys struct {
-		Primary struct {
-			Bundle string
-		}
-	}
-
-	type LThem struct {
-		PublicKeys `json:"public_keys"`
-	}
-
-	type KbResp struct {
-		Status struct {
-			Name string
-		}
-		Them []LThem
-	}
-
-	out := &KbResp{
-		Them: []LThem{},
+	out := &keybaseLookupResponse{
+		Them: []keybaseLookupUser{},
 	}
 
 	if err := jsonutil.DecodeJSONFromReader(resp.Body, out); err != nil {

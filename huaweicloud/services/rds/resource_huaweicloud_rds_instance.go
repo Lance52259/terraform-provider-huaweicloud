@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -609,6 +609,7 @@ func isSQLServerDatabase(d *schema.ResourceData) bool {
 	return strings.ToLower(dbType) == "sqlserver"
 }
 
+// nolint:gocyclo
 func resourceRdsInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -672,7 +673,7 @@ func resourceRdsInstanceCreate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 	// for prePaid charge mode
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{"ACTIVE", "BACKING UP"},
 		Refresh:      rdsInstanceStateRefreshFunc(client, instanceID),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
@@ -1314,6 +1315,7 @@ func flattenAutoScalingResponseBody(resp interface{}) []interface{} {
 	return rst
 }
 
+// nolint:gocyclo
 func resourceRdsInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1509,8 +1511,8 @@ func resourceRdsInstanceDelete(ctx context.Context, d *schema.ResourceData, meta
 		}
 		retryFunc := func() (interface{}, bool, error) {
 			err = common.UnsubscribePrePaidResource(d, cfg, resourceIds)
-			retry, err := handleDeletionError(err)
-			return nil, retry, err
+			shouldRetry, err := handleDeletionError(err)
+			return nil, shouldRetry, err
 		}
 		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -1531,7 +1533,7 @@ func resourceRdsInstanceDelete(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"ACTIVE", "BACKING UP"},
 		Target:       []string{"DELETED"},
 		Refresh:      rdsInstanceStateRefreshFunc(client, id),
@@ -1561,8 +1563,8 @@ func deleteRdsInstance(ctx context.Context, d *schema.ResourceData, client *gola
 
 	retryFunc := func() (interface{}, bool, error) {
 		_, err := client.Request("DELETE", deletePath, &deleteOpt)
-		retry, err := handleDeletionError(err)
-		return nil, retry, err
+		shouldRetry, err := handleDeletionError(err)
+		return nil, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -2170,10 +2172,8 @@ func updateVolumeAutoExpand(ctx context.Context, d *schema.ResourceData, client 
 		if err := enableVolumeAutoExpand(ctx, d, client, limitSize); err != nil {
 			return err
 		}
-	} else {
-		if err := disableVolumeAutoExpand(ctx, schema.TimeoutUpdate, client, d); err != nil {
-			return err
-		}
+	} else if err := disableVolumeAutoExpand(ctx, schema.TimeoutUpdate, client, d); err != nil {
+		return err
 	}
 	return nil
 }
@@ -2372,7 +2372,7 @@ func updatePrivateDNSNamePrefix(ctx context.Context, d *schema.ResourceData, cli
 		return fmt.Errorf("error updating RDS instance (%s) private DNS name prefix: %s", d.Id(), err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      rdsInstancePrivateDNSNameRefreshFunc(client, d.Id(), d.Get("private_dns_name_prefix").(string)),
@@ -2395,7 +2395,7 @@ func buildUpdatePrivateDNSNamePrefixBodyParams(d *schema.ResourceData) map[strin
 }
 
 func rdsInstancePrivateDNSNameRefreshFunc(client *golangsdk.ServiceClient, instanceID,
-	privateDNSNamePrefix string) resource.StateRefreshFunc {
+	privateDNSNamePrefix string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		instance, err := GetRdsInstanceByID(client, instanceID)
 		if err != nil {
@@ -2507,7 +2507,10 @@ func updateDeleteBackupSelection(ctx context.Context, d *schema.ResourceData, cl
 }
 
 func buildDeleteBackupSelectionBodyParams(d *schema.ResourceData) map[string]interface{} {
-	deleteBackupSelection, _ := strconv.ParseBool(d.Get("delete_backup_selection").(string))
+	deleteBackupSelection, err := strconv.ParseBool(d.Get("delete_backup_selection").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'delete_backup_selection' field to Boolean: %s", err)
+	}
 	bodyParams := map[string]interface{}{
 		"selection": deleteBackupSelection,
 	}
@@ -2662,7 +2665,7 @@ func buildUpdateInstanceSSLBodyParams(d *schema.ResourceData) map[string]interfa
 }
 
 func checkRDSInstanceJobFinish(client *golangsdk.ServiceClient, jobID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Running"},
 		Target:       []string{"Completed"},
 		Refresh:      rdsInstanceJobRefreshFunc(client, jobID),
@@ -2670,13 +2673,13 @@ func checkRDSInstanceJobFinish(client *golangsdk.ServiceClient, jobID string, ti
 		Delay:        10 * time.Second,
 		PollInterval: 10 * time.Second,
 	}
-	if _, err := stateConf.WaitForState(); err != nil {
+	if _, err := stateConf.WaitForStateContext(context.Background()); err != nil {
 		return fmt.Errorf("error waiting for RDS instance job (%s) to be completed: %s ", jobID, err)
 	}
 	return nil
 }
 
-func rdsInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobID string) resource.StateRefreshFunc {
+func rdsInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getRespBody, err := getInstanceJob(client, jobID)
 		if err != nil {
@@ -2704,7 +2707,7 @@ func getInstanceJob(client *golangsdk.ServiceClient, jobID string) (interface{},
 	return utils.FlattenResponse(getResp)
 }
 
-func rdsInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func rdsInstanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		instance, err := GetRdsInstanceByID(client, instanceID)
 		if err != nil {

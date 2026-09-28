@@ -301,7 +301,7 @@ func parseDataServiceInternetAccessPort(portStr string) int {
 
 	portNum, err = strconv.Atoi(portStr)
 	if err != nil {
-		log.Printf("[ERROR] error converting internet access port (value: %s) from string to integer: %s", portStr, err)
+		log.Printf("[WARN] error converting internet access port (value: %s) from string to integer: %s", portStr, err)
 	}
 	return portNum
 }
@@ -395,11 +395,11 @@ func dataSourceServiceRead(_ context.Context, d *schema.ResourceData, meta inter
 	if serviceId := utils.PathSearch("id", service, "").(string); serviceId != "" {
 		d.SetId(serviceId)
 	} else {
-		uuid, err := uuid.GenerateUUID()
+		randomUUID, err := uuid.GenerateUUID()
 		if err != nil {
 			return diag.Errorf("unable to generate ID: %s", err)
 		}
-		d.SetId(uuid)
+		d.SetId(randomUUID)
 	}
 
 	mErr := multierror.Append(nil,

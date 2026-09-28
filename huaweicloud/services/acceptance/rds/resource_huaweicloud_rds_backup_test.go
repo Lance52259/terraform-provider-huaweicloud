@@ -15,24 +15,24 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-func getBackupResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getBackupResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	region := acceptance.HW_REGION_NAME
 	// getBackup: Query the RDS manual backup
 	var (
 		getBackupHttpUrl = "v3/{project_id}/backups"
 		getBackupProduct = "rds"
 	)
-	getBackupClient, err := config.NewServiceClient(getBackupProduct, region)
+	getBackupClient, err := cfg.NewServiceClient(getBackupProduct, region)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Backup Client: %s", err)
 	}
 
 	getBackupPath := getBackupClient.Endpoint + getBackupHttpUrl
-	getBackupPath = strings.Replace(getBackupPath, "{project_id}", getBackupClient.ProjectID, -1)
+	getBackupPath = strings.ReplaceAll(getBackupPath, "{project_id}", getBackupClient.ProjectID)
 
 	getBackupqueryParams := fmt.Sprintf("?instance_id=%s&backup_id=%s",
 		state.Primary.Attributes["instance_id"], state.Primary.ID)
-	getBackupPath = getBackupPath + getBackupqueryParams
+	getBackupPath += getBackupqueryParams
 	getBackupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		OkCodes: []int{
@@ -224,7 +224,7 @@ resource "huaweicloud_rds_backup" "test" {
   name        = "%[2]s"
   instance_id = huaweicloud_rds_instance.test.id
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 // disable auto_backup to prevent the instance status from changing to "BACKING UP" before manual backup creation.
@@ -285,7 +285,7 @@ resource "huaweicloud_rds_backup" "test" {
   name        = "%[2]s"
   instance_id = huaweicloud_rds_instance.test.id
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 // disable auto_backup to prevent the instance status from changing to "BACKING UP" before manual backup creation.
@@ -336,7 +336,7 @@ resource "huaweicloud_rds_backup" "test" {
   name        = "%[2]s"
   instance_id = huaweicloud_rds_instance.test.id
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccBackupImportStateFunc(name string) resource.ImportStateIdFunc {

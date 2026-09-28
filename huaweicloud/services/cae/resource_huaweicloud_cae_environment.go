@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -149,7 +149,7 @@ func getJobById(client *golangsdk.ServiceClient, epsId, jobId string) (interface
 	return utils.FlattenResponse(createResp)
 }
 
-func environmentJobRefreshFunc(client *golangsdk.ServiceClient, epsId, jobId string, targets []string) resource.StateRefreshFunc {
+func environmentJobRefreshFunc(client *golangsdk.ServiceClient, epsId, jobId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getJobById(client, epsId, jobId)
 		if err != nil {
@@ -212,7 +212,7 @@ func waitForEnvironmentJobComplete(ctx context.Context, client *golangsdk.Servic
 
 	for {
 		totalTryNum++
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:      []string{"PENDING"},
 			Target:       []string{"COMPLETED"},
 			Refresh:      environmentJobRefreshFunc(client, epsId, jobId, []string{"success"}),
@@ -274,7 +274,7 @@ func getEnvironmentByName(client *golangsdk.ServiceClient, epsId, envName string
 				Method:    "GET",
 				URL:       "/v1/{project_id}/cae/environments",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the environment (%s) does not exist", envName)),
+				Body:      fmt.Appendf(nil, "the environment (%s) does not exist", envName),
 			},
 		}
 	}
@@ -346,7 +346,7 @@ func GetEnvironmentById(client *golangsdk.ServiceClient, epsId, resourceId strin
 				Method:    "GET",
 				URL:       "/v1/{project_id}/cae/environments",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the environment (%s) does not exist", resourceId)),
+				Body:      fmt.Appendf(nil, "the environment (%s) does not exist", resourceId),
 			},
 		}
 	}

@@ -3,6 +3,7 @@ package httphelper
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,6 +101,7 @@ func (c *HttpHelper) MarkerPager(dataPath, nextExp, markerKey string) *HttpHelpe
 	return c
 }
 
+//nolint:unused
 func (c *HttpHelper) CustomPager(dataPath string, nextUrlFunc URLFunc) *HttpHelper {
 	timestamp, _ := uuid.GenerateUUID()
 	c.pager = func(r pagination.PageResult) pagination.Page {
@@ -184,7 +186,7 @@ func (c *HttpHelper) Request() *HttpHelper {
 		return c
 	}
 	if c.method == "" {
-		c.result.Err = fmt.Errorf("`method` is empty, please specify the client through Client(method string)")
+		c.result.Err = errors.New("method is empty, please specify the client through Client(method string)")
 		return c
 	}
 
@@ -206,7 +208,7 @@ func (c *HttpHelper) Send() (*gjson.Result, error) {
 		return nil, c.result.Err
 	}
 	if c.method == "" {
-		return nil, fmt.Errorf("`method` is empty, please specify the client through Client(method string)")
+		return nil, errors.New("`method` is empty, please specify the client through Client(method string)")
 	}
 
 	c.buildURL()
@@ -249,6 +251,7 @@ func (c *HttpHelper) appendQueryParams() {
 	}
 }
 
+//nolint:unused
 func (c *HttpHelper) ErrorOrNil() error {
 	return c.result.Err
 }
@@ -333,8 +336,10 @@ func (c *HttpHelper) parseRspBody() {
 	}
 
 	b, err := bodyToBytes(c.result.Body)
+	if err != nil {
+		c.result.Err = err
+	}
 	c.responseBody = b
-	c.result.Err = err
 }
 
 func (c *HttpHelper) doFilter() {

@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -229,6 +229,7 @@ func ResourceCBHHAInstance() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceHAInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg     = meta.(*config.Config)
@@ -471,7 +472,7 @@ func doHAInstancePowerAction(ctx context.Context, client *golangsdk.ServiceClien
 
 func waitingForHAInstanceUpdateVpcCompleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, masterId string) error {
 	masterExpression := fmt.Sprintf("[?server_id == '%s']|[0]", masterId)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -507,7 +508,7 @@ func waitingForHAInstanceShutoff(ctx context.Context, client *golangsdk.ServiceC
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedStatus := []string{"DELETING", "DELETED", "ERROR", "FROZEN"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -555,7 +556,7 @@ func waitingForHAInstanceActive(ctx context.Context, client *golangsdk.ServiceCl
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedStatus := []string{"SHUTOFF", "DELETING", "DELETED", "ERROR", "FROZEN"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -604,7 +605,7 @@ func waitingForHAInstanceTaskCompleted(ctx context.Context, client *golangsdk.Se
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedTaskStatus := []string{"delete_wait", "frozen", "unfrozen", "updating", "configuring-ha",
 			"data-migrating", "rollback", "traffic-switchover"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -1113,7 +1114,7 @@ func waitingForHAInstanceDeleted(ctx context.Context, client *golangsdk.ServiceC
 	timeout time.Duration) error {
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {

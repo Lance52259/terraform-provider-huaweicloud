@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -93,7 +93,7 @@ func ResourceCluster() *schema.Resource {
 
 		CustomizeDiff: config.MergeDefaultTags(),
 
-		//request and response parameters
+		// request and response parameters
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -136,7 +136,6 @@ func ResourceCluster() *schema.Resource {
 			"description": {
 				Type:     schema.TypeString,
 				Optional: true,
-				Computed: true,
 			},
 			"labels": {
 				Type:        schema.TypeMap,
@@ -207,6 +206,11 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 				Default:  "rbac",
+			},
+			"agency_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"authenticating_proxy_ca": {
 				Type:         schema.TypeString,
@@ -693,22 +697,23 @@ func buildResourceClusterEncryptionConfig(d *schema.ResourceData) *clusters.Encr
 	return &res
 }
 
+// nolint:gocyclo
 func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	cceClient, err := config.CceV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	cceClient, err := cfg.CceV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating CCE v3 client: %s", err)
 	}
-	icAgentClient, err := config.AomV1Client(config.GetRegion(d))
+	icAgentClient, err := cfg.AomV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating AOM v1 client: %s", err)
 	}
 
-	authenticating_proxy := make(map[string]string)
+	authenticatingProxy := make(map[string]string)
 	if common.HasFilledOpt(d, "authenticating_proxy_ca") {
-		authenticating_proxy["ca"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_ca").(string))
-		authenticating_proxy["cert"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_cert").(string))
-		authenticating_proxy["privateKey"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_private_key").(string))
+		authenticatingProxy["ca"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_ca").(string))
+		authenticatingProxy["cert"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_cert").(string))
+		authenticatingProxy["privateKey"] = utils.TryBase64EncodeString(d.Get("authenticating_proxy_private_key").(string))
 	}
 
 	billingMode := 0
@@ -749,15 +754,16 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 			EniNetwork: buildEniNetworkOpts(d.Get("eni_subnet_id").(string)),
 			Authentication: clusters.AuthenticationSpec{
 				Mode:                d.Get("authentication_mode").(string),
-				AuthenticatingProxy: authenticating_proxy,
+				AuthenticatingProxy: authenticatingProxy,
 			},
 			BillingMode:      billingMode,
-			ExtendParam:      buildResourceClusterExtendParams(d, config),
+			ExtendParam:      buildResourceClusterExtendParams(d, cfg),
 			ClusterTags:      resourceClusterTags(d),
 			CustomSan:        utils.ExpandToStringList(d.Get("custom_san").([]interface{})),
 			IPv6Enable:       d.Get("ipv6_enable").(bool),
 			KubeProxyMode:    d.Get("kube_proxy_mode").(string),
 			EncryptionConfig: buildResourceClusterEncryptionConfig(d),
+			AgencyName:       d.Get("agency_name").(string),
 		},
 	}
 
@@ -791,7 +797,7 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if orderId, ok := s.Spec.ExtendParam["orderID"]; ok && orderId != "" {
-		bssClient, err := config.BssV2Client(config.GetRegion(d))
+		bssClient, err := cfg.BssV2Client(cfg.GetRegion(d))
 		if err != nil {
 			return diag.Errorf("error creating BSS v2 client: %s", err)
 		}
@@ -819,7 +825,7 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	log.Printf("[DEBUG] Waiting for CCE cluster (%s) to become available", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase include "Creating".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
@@ -861,12 +867,11 @@ func resourceClusterCreate(ctx context.Context, d *schema.ResourceData, meta int
 	diags = append(diags, resourceClusterRead(ctx, d, meta)...)
 
 	return diags
-
 }
 
 func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	cceClient, err := config.CceV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	cceClient, err := cfg.CceV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating CCE v3 client: %s", err)
 	}
@@ -877,7 +882,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	mErr := multierror.Append(nil,
-		d.Set("region", config.GetRegion(d)),
+		d.Set("region", cfg.GetRegion(d)),
 		d.Set("name", n.Metadata.Name),
 		d.Set("alias", n.Metadata.Alias),
 		d.Set("timezone", n.Metadata.Timezone),
@@ -905,6 +910,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 		d.Set("support_istio", n.Spec.SupportIstio),
 		d.Set("custom_san", n.Spec.CustomSan),
 		d.Set("category", n.Spec.Category),
+		d.Set("agency_name", n.Spec.AgencyName),
 		d.Set("encryption_config", flattenEncrytionConfig(n.Spec.EncryptionConfig)),
 	)
 
@@ -930,7 +936,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 		log.Printf("error retrieving CCE cluster certificate: %s", err)
 	}
 
-	//Set Certificate Clusters
+	// Set Certificate Clusters
 	var clusterList []map[string]interface{}
 	for _, clusterObj := range cert.Clusters {
 		clusterCert := make(map[string]interface{})
@@ -941,7 +947,7 @@ func resourceClusterRead(_ context.Context, d *schema.ResourceData, meta interfa
 	}
 	mErr = multierror.Append(mErr, d.Set("certificate_clusters", clusterList))
 
-	//Set Certificate Users
+	// Set Certificate Users
 	var userList []map[string]interface{}
 	for _, userObj := range cert.Users {
 		userCert := make(map[string]interface{})
@@ -1009,6 +1015,7 @@ func flattenEncrytionConfig(encrytionConfig *clusters.EncryptionConfig) []map[st
 	}
 }
 
+// nolint:gocyclo
 func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1027,7 +1034,8 @@ func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	if d.HasChanges("description") {
-		updateOpts.Spec.Description = d.Get("description").(string)
+		description := d.Get("description").(string)
+		updateOpts.Spec.Description = &description
 	}
 
 	if d.HasChange("container_network_cidr") {
@@ -1059,6 +1067,11 @@ func resourceClusterUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 	if d.HasChange("custom_san") {
 		updateOpts.Spec.CustomSan = utils.ExpandToStringList(d.Get("custom_san").([]interface{}))
+	}
+
+	if d.HasChange("agency_name") {
+		agencyName := d.Get("agency_name").(string)
+		updateOpts.Spec.AgencyName = &agencyName
 	}
 
 	if !reflect.DeepEqual(updateOpts, clusters.UpdateOpts{}) {
@@ -1221,15 +1234,15 @@ func buildConfigurationsPackagesBodyParams(d *schema.ResourceData) ([]map[string
 }
 
 func resourceClusterDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	cceClient, err := config.CceV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	cceClient, err := cfg.CceV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating CCE v3 client: %s", err)
 	}
 
 	// for prePaid mode, we should unsubscribe the resource
 	if d.Get("charging_mode").(string) == "prePaid" || d.Get("billing_mode").(int) == 1 {
-		if err := common.UnsubscribePrePaidResource(d, config, []string{d.Id()}); err != nil {
+		if err := common.UnsubscribePrePaidResource(d, cfg, []string{d.Id()}); err != nil {
 			return diag.Errorf("error unsubscribing CCE cluster: %s", err)
 		}
 	} else {
@@ -1259,7 +1272,7 @@ func resourceClusterDelete(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase includes "Deleting", "Available" and "Unavailable".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
@@ -1280,7 +1293,7 @@ func resourceClusterDelete(ctx context.Context, d *schema.ResourceData, meta int
 }
 
 func clusterStateRefreshFunc(cceClient *golangsdk.ServiceClient, clusterId string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		log.Printf("[DEBUG] Expect the status of CCE cluster to be any one of the status list: %v", targets)
 		resp, err := clusters.Get(cceClient, clusterId).Extract()
@@ -1305,7 +1318,7 @@ func clusterStateRefreshFunc(cceClient *golangsdk.ServiceClient, clusterId strin
 }
 
 func getClusterIDFromJob(ctx context.Context, client *golangsdk.ServiceClient, jobID string, timeout time.Duration) (string, error) {
-	stateJob := &resource.StateChangeConf{
+	stateJob := &retry.StateChangeConf{
 		Pending:      []string{"Initializing", "Running"},
 		Target:       []string{"Success"},
 		Refresh:      waitForJobStatus(client, jobID),
@@ -1322,7 +1335,6 @@ func getClusterIDFromJob(ctx context.Context, client *golangsdk.ServiceClient, j
 		} else {
 			return "", fmt.Errorf("error waiting for job (%s) to become success: %s", jobID, err)
 		}
-
 	}
 
 	job := v.(*nodes.Job)
@@ -1370,7 +1382,7 @@ func resourceClusterResize(ctx context.Context, cfg *config.Config, d *schema.Re
 	}
 
 	log.Printf("[DEBUG] Waiting for CCE cluster (%s) to become available", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      clusterStateRefreshFunc(cceClient, d.Id(), []string{"Available"}),
@@ -1394,7 +1406,7 @@ func resourceClusterHibernate(ctx context.Context, d *schema.ResourceData, cceCl
 	}
 
 	log.Printf("[DEBUG] Waiting for CCE cluster (%s) to become hibernate", clusterID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase includes "Available" and "Hibernating".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
@@ -1419,7 +1431,7 @@ func resourceClusterAwake(ctx context.Context, d *schema.ResourceData, cceClient
 	}
 
 	log.Printf("[DEBUG] Waiting for CCE cluster (%s) to become available", clusterID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// The statuses of pending phase include "Awaking".
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},

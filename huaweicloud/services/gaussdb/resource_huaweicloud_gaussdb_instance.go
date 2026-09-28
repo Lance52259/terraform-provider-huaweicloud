@@ -2,6 +2,7 @@ package gaussdb
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -12,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -40,7 +41,9 @@ var openGaussInstanceNonUpdatableParams = []string{"availability_zone", "vpc_id"
 // @API GaussDB GET /v3/{project_id}/instances
 // @API GaussDB POST /v3/{project_id}/instances
 // @API GaussDB GET /v3/{project_id}/jobs
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/alias
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/configurations
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/auto-enlarge-policy
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/restart
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/mysql-compatibility
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/advance-features
@@ -49,6 +52,7 @@ var openGaussInstanceNonUpdatableParams = []string{"availability_zone", "vpc_id"
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/error-log/switch/{status}
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/tags
 // @API GaussDB GET /v3.1/{project_id}/instances/{instance_id}/configurations
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/auto-enlarge-policy
 // @API GaussDB GET /v3/{project_id}/instances/{instance_id}/balance
 // @API GaussDB GET /v3/{project_id}/instances/{instance_id}/error-log/switch/status
 // @API GaussDB GET /v3/{project_id}/instances/{instance_id}/advance-features
@@ -59,14 +63,19 @@ var openGaussInstanceNonUpdatableParams = []string{"availability_zone", "vpc_id"
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/port
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/security-group
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/action
+// @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/sharding
 // @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/coordinators
-// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/backups/policy
-// @API GaussDB PUT /v3/{project_id}/instance/{instance_id}/flavor
+// @API GaussDB PUT /v3.1/{project_id}/instances/{instance_id}/backups/policy
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/flavor
 // @API GaussDB PUT /v3/{project_id}/configurations/{config_id}/apply
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/mysql-compatibility
 // @API GaussDB PUT /v3/{project_id}/instances/change-charge-mode
 // @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/tag
 // @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/kms-tde/switch
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/switch-replica
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/switch-logger-replica
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/expansion-parameters
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
 // @API BSS POST /v2/orders/suscriptions/resources/query
 // @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
@@ -179,6 +188,10 @@ func ResourceGaussDbInstance() *schema.Resource {
 					},
 				},
 			},
+			"alias": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"sharding_num": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -284,6 +297,49 @@ func ResourceGaussDbInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"auto_scaling": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"switch_option": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"limit_volume_size": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"trigger_available_percent": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"step_size": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"step_percent": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"min_volume_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"max_volume_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"percents": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem:     &schema.Schema{Type: schema.TypeInt},
+						},
+					},
+				},
+				Optional: true,
+				Computed: true,
+			},
 			"mysql_compatibility_port": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -306,6 +362,28 @@ func ResourceGaussDbInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"kms_tde_switch": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"kms_tde_key_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"kms_project_name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"kms_tde_status": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
 			"wdr_snapshot_status": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -325,6 +403,23 @@ func ResourceGaussDbInstance() *schema.Resource {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"dn_node_deploy_mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"primary_standby", "primary_standby_log",
+				}, false),
+			},
+			"expansion_parameters": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringIsJSON,
+				DiffSuppressFunc: func(_, o, n string, _ *schema.ResourceData) bool {
+					equal, _ := utils.CompareJsonTemplateAreEquivalent(o, n)
+					return equal
+				},
 			},
 			"tags": common.TagsSchema(),
 			"force_import": {
@@ -455,6 +550,7 @@ func ResourceGaussDbInstance() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -466,6 +562,10 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating GaussDB client: %s", err)
+	}
+	bssClient, err := cfg.BssV2Client(region)
+	if err != nil {
+		return diag.Errorf("error creating BSS v2 client: %s", err)
 	}
 
 	// If force_import set, try to import it instead of creating
@@ -512,10 +612,6 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		if orderId == nil {
 			return diag.Errorf("error creating GaussDB OpenGauss instance: order_id is not found in API response")
 		}
-		bssClient, err := cfg.BssV2Client(region)
-		if err != nil {
-			return diag.Errorf("error creating BSS v2 client: %s", err)
-		}
 		// wait for order success
 		err = common.WaitOrderComplete(ctx, bssClient, orderId.(string), d.Timeout(schema.TimeoutCreate))
 		if err != nil {
@@ -536,7 +632,7 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"BUILD", "BACKING UP"},
 		Target:       []string{"ACTIVE"},
 		Refresh:      instanceStateRefreshFunc(client, d.Id()),
@@ -547,6 +643,12 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
 		return diag.Errorf("error waiting for instance (%s) to become ready: %s", d.Id(), err)
+	}
+
+	if _, ok := d.GetOk("alias"); ok {
+		if err = updateInstanceAlias(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if parametersRaw := d.Get("parameters").(*schema.Set); parametersRaw.Len() > 0 {
@@ -585,6 +687,25 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
+	if _, ok := d.GetOk("auto_scaling"); ok {
+		if err = updateAutoScaling(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk("kms_tde_switch"); ok {
+		if err = createEnablingTransparentDataEncryption(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// modify expansion parameters
+	if _, ok := d.GetOk("expansion_parameters"); ok {
+		if err = updateExpansionParameters(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// set tags
 	tagRaw := d.Get("tags").(map[string]interface{})
 	if len(tagRaw) > 0 {
@@ -596,6 +717,19 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 
 	// This is a workaround to avoid db connection issue
 	time.Sleep(360 * time.Second) // lintignore:R018
+
+	if v, ok := d.GetOk("dn_node_deploy_mode"); ok {
+		instance, err := getGaussDBOpenGaussInstancesById(client, d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		secondaryNode := utils.PathSearch("instances[0].nodes[?role=='secondary']|[0]", instance, nil)
+		if (secondaryNode == nil && v == "primary_standby_log") || (secondaryNode != nil && v == "primary_standby") {
+			if err = updateDnNodeDeployMode(ctx, client, bssClient, d, schema.TimeoutCreate); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
 
 	return resourceOpenGaussInstanceRead(ctx, d, meta)
 }
@@ -851,6 +985,7 @@ func resourceOpenGaussInstanceRead(ctx context.Context, d *schema.ResourceData, 
 		d.Set("volume", flattenGaussDBOpenGaussResponseBodyVolume(instance, dnNum)),
 		d.Set("mysql_compatibility_port", utils.PathSearch("mysql_compatibility.port", instance, nil)),
 		setOpenGaussPrivateIpsAndEndpoints(d, instance),
+		setDnNodeDeployMode(d, instance),
 		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("tags", instance, make([]interface{}, 0)))),
 	)
 
@@ -859,6 +994,7 @@ func resourceOpenGaussInstanceRead(ctx context.Context, d *schema.ResourceData, 
 	mErr = multierror.Append(mErr, setAdvanceFeatures(d, client))
 	mErr = multierror.Append(mErr, setWdrSnapshotStatus(d, client))
 	mErr = multierror.Append(mErr, setAspStatus(d, client))
+	mErr = multierror.Append(mErr, setAutoScaling(d, client))
 
 	diagErr := setGaussDBMySQLParameters(ctx, d, client)
 	resErr := append(diag.FromErr(mErr.ErrorOrNil()), diagErr...)
@@ -1155,6 +1291,55 @@ func getAspStatus(client *golangsdk.ServiceClient, instanceId string) (string, e
 	return status, nil
 }
 
+func setAutoScaling(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/auto-enlarge-policy",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
+	if err != nil {
+		log.Printf("[WARN] error fetching GaussDB instance(%s) auto scaling: %s", d.Id(), err)
+		return nil
+	}
+	if len(getRespBody.(map[string]interface{})) == 0 {
+		return d.Set("auto_scaling", nil)
+	}
+
+	autoScaling := []interface{}{
+		map[string]interface{}{
+			"switch_option":             utils.PathSearch("switch_option", getRespBody, nil),
+			"limit_volume_size":         utils.PathSearch("limit_volume_size", getRespBody, nil),
+			"trigger_available_percent": utils.PathSearch("trigger_available_percent", getRespBody, nil),
+			"step_size":                 utils.PathSearch("step_size", getRespBody, nil),
+			"step_percent":              utils.PathSearch("step_percent", getRespBody, nil),
+			"min_volume_size":           utils.PathSearch("min_volume_size", getRespBody, nil),
+			"max_volume_size":           utils.PathSearch("max_volume_size", getRespBody, nil),
+			"percents":                  utils.PathSearch("percents", getRespBody, nil),
+		},
+	}
+
+	return d.Set("auto_scaling", autoScaling)
+}
+
+func setDnNodeDeployMode(d *schema.ResourceData, instance interface{}) *multierror.Error {
+	instanceType := utils.PathSearch("type", instance, "").(string)
+	if instanceType != "Enterprise" {
+		return nil
+	}
+
+	secondaryNode := utils.PathSearch("nodes[?role=='secondary']|[0]", instance, nil)
+	if secondaryNode != nil {
+		return multierror.Append(
+			d.Set("dn_node_deploy_mode", "primary_standby_log"),
+		)
+	}
+
+	return multierror.Append(
+		d.Set("dn_node_deploy_mode", "primary_standby"),
+	)
+}
+
+// nolint:gocyclo
 func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1173,6 +1358,12 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 
 	if d.HasChange("name") {
 		if err = updateInstanceName(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("alias") {
+		if err = updateInstanceAlias(ctx, d, client); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1305,6 +1496,26 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
+	if d.HasChange("auto_scaling") {
+		err = updateAutoScaling(ctx, client, d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("dn_node_deploy_mode") {
+		if err = updateDnNodeDeployMode(ctx, client, bssClient, d, schema.TimeoutUpdate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("kms_tde_switch") {
+		err = updateEnablingTransparentDataEncryption(ctx, client, d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("enterprise_project_id") {
 		migrateOpts := config.MigrateResourceOpts{
 			ResourceId:   d.Id(),
@@ -1313,6 +1524,12 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 			ProjectId:    cfg.GetProjectID(region),
 		}
 		if err = cfg.MigrateEnterpriseProject(ctx, d, migrateOpts); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("expansion_parameters") {
+		if err = updateExpansionParameters(ctx, client, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1347,6 +1564,27 @@ func updateInstanceName(ctx context.Context, d *schema.ResourceData, client *gol
 func buildUpdateInstanceNameBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"name": d.Get("name"),
+	}
+	return bodyParams
+}
+
+func updateInstanceAlias(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/alias",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateInstanceAliasBodyParams(d)),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance alias: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateInstanceAliasBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"alias": d.Get("alias"),
 	}
 	return bodyParams
 }
@@ -1608,7 +1846,7 @@ func updateInstanceVolumeAndRelatedHaNumbers(ctx context.Context, client, bssCli
 
 func updateInstanceBackupStrategy(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
-		httpUrl:          "v3/{project_id}/instances/{instance_id}/backups/policy",
+		httpUrl:          "v3.1/{project_id}/instances/{instance_id}/backups/policy",
 		httpMethod:       "PUT",
 		pathParams:       map[string]string{"instance_id": d.Id()},
 		updateBodyParams: utils.RemoveNil(buildUpdateInstanceBackupStrategyBodyParams(d)),
@@ -1637,7 +1875,7 @@ func buildUpdateInstanceBackupStrategyBodyParams(d *schema.ResourceData) map[str
 
 func updateInstanceFlavor(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
 	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
-		httpUrl:              "v3/{project_id}/instance/{instance_id}/flavor",
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/flavor",
 		httpMethod:           "PUT",
 		pathParams:           map[string]string{"instance_id": d.Id()},
 		updateBodyParams:     utils.RemoveNil(buildUpdateInstanceFlavorBodyParams(d)),
@@ -1791,7 +2029,7 @@ func buildUpdateAdvanceFeaturesBodyParams(d *schema.ResourceData) map[string]int
 func checkAdvanceFeaturesJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	timeout string) error {
 	rawAdvanceFeatures := d.Get("advance_features").(*schema.Set).List()
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDBOpenGaussAdvanceFeaturesRefreshFunc(client, d.Id(), rawAdvanceFeatures),
@@ -1806,7 +2044,7 @@ func checkAdvanceFeaturesJobFinish(ctx context.Context, d *schema.ResourceData, 
 }
 
 func gaussDBOpenGaussAdvanceFeaturesRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
-	rawAdvanceFeatures []interface{}) resource.StateRefreshFunc {
+	rawAdvanceFeatures []interface{}) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		features, err := getAdvanceFeatures(client, instanceId)
 		if err != nil {
@@ -1858,7 +2096,7 @@ func buildUpdateWdrSnapshotStatusBodyParams(d *schema.ResourceData) map[string]i
 func checkWdrSnapshotStatusJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	timeout string) error {
 	wdrSnapshotStatus := d.Get("wdr_snapshot_status").(string)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDbWdrSnapshotStatusRefreshFunc(client, d.Id(), wdrSnapshotStatus),
@@ -1873,7 +2111,7 @@ func checkWdrSnapshotStatusJobFinish(ctx context.Context, d *schema.ResourceData
 }
 
 func gaussDbWdrSnapshotStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
-	wdrSnapshotStatus string) resource.StateRefreshFunc {
+	wdrSnapshotStatus string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		rawStatus, err := getWdrSnapshotStatus(client, instanceId)
 		if err != nil {
@@ -1927,10 +2165,115 @@ func updateErrorLogSwitchStatus(ctx context.Context, client *golangsdk.ServiceCl
 	return nil
 }
 
+func updateAutoScaling(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/auto-enlarge-policy",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateAutoScalingBodyParams(d)),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance auto scaling: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateAutoScalingBodyParams(d *schema.ResourceData) map[string]interface{} {
+	rawParams := d.Get("auto_scaling").([]interface{})
+	if len(rawParams) == 0 {
+		return nil
+	}
+	if autoScaling, ok := rawParams[0].(map[string]interface{}); ok {
+		bodyParams := map[string]interface{}{
+			"switch_option":             autoScaling["switch_option"],
+			"limit_volume_size":         utils.ValueIgnoreEmpty(autoScaling["limit_volume_size"]),
+			"trigger_available_percent": utils.ValueIgnoreEmpty(autoScaling["trigger_available_percent"]),
+			"step_size":                 utils.ValueIgnoreEmpty(autoScaling["step_size"]),
+			"step_percent":              utils.ValueIgnoreEmpty(autoScaling["step_percent"]),
+		}
+		return bodyParams
+	}
+	return nil
+}
+
+func updateDnNodeDeployMode(ctx context.Context, client, bssClient *golangsdk.ServiceClient, d *schema.ResourceData,
+	timeout string) error {
+	if d.Get("dn_node_deploy_mode") == "primary_standby" {
+		return updateInstanceToPrimaryStandby(ctx, client, bssClient, d, timeout)
+	}
+
+	instance, err := getGaussDBOpenGaussInstancesById(client, d.Id())
+	if err != nil {
+		return err
+	}
+	slaveNodeAz := utils.PathSearch("instances[0].nodes[?role=='slave']|[0].availability_zone", instance, "").(string)
+
+	return updateInstanceToPrimaryStandbyLog(ctx, client, bssClient, d, slaveNodeAz, timeout)
+}
+
+func updateInstanceToPrimaryStandby(ctx context.Context, client, bssClient *golangsdk.ServiceClient,
+	d *schema.ResourceData, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/switch-replica",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildUpdateInstanceToPrimaryStandbyBodyParams(),
+		isRetry:              true,
+		timeout:              timeout,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance to 1 primary and 2 standby: %s", err)
+	}
+
+	return err
+}
+
+func buildUpdateInstanceToPrimaryStandbyBodyParams() map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"is_auto_pay": true,
+	}
+	return bodyParams
+}
+
+func updateInstanceToPrimaryStandbyLog(ctx context.Context, client, bssClient *golangsdk.ServiceClient,
+	d *schema.ResourceData, az, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/switch-logger-replica",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildUpdateInstanceToPrimaryStandbyLogBodyParams(az),
+		isRetry:              true,
+		timeout:              timeout,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance to 1 primary, 1 standby and 1 log instance: %s", err)
+	}
+
+	return err
+}
+
+func buildUpdateInstanceToPrimaryStandbyLogBodyParams(availabilityZone string) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"availability_zone": availabilityZone,
+	}
+	return bodyParams
+}
+
 func checkAspStatusJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	timeout string) error {
 	aspStatus := d.Get("asp_status").(string)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDbAspStatusRefreshFunc(client, d.Id(), aspStatus),
@@ -1945,7 +2288,7 @@ func checkAspStatusJobFinish(ctx context.Context, d *schema.ResourceData, client
 }
 
 func gaussDbAspStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
-	aspStatus string) resource.StateRefreshFunc {
+	aspStatus string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		rawStatus, err := getAspStatus(client, instanceId)
 		if err != nil {
@@ -1991,6 +2334,111 @@ func buildUpdateBillingModeToPeriodBodyParams(d *schema.ResourceData) map[string
 		bodyParams["is_auto_renew"] = true
 	}
 	return bodyParams
+}
+
+func createEnablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	err := enablingTransparentDataEncryption(ctx, client, d)
+	if err != nil {
+		return fmt.Errorf("error enabling GaussDB instance transparent data encryption: %s", err)
+	}
+
+	err = restartGaussDBOpenGaussInstance(ctx, client, d)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func enablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/kms-tde/switch",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(buildTransparentDataEncryptionBodyParams(d)),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "job_id",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateExpansionParameters(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	bodyParams, err := buildUpdateExpansionParametersBodyParams(d)
+	if err != nil {
+		return err
+	}
+
+	_, err = updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/expansion-parameters",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(bodyParams),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "result",
+	})
+
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance expansion parameters: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateExpansionParametersBodyParams(d *schema.ResourceData) (map[string]interface{}, error) {
+	if d.Get("expansion_parameters").(string) == "" {
+		return nil, nil
+	}
+
+	var expansionParameters map[string]interface{}
+	err := json.Unmarshal([]byte(d.Get("expansion_parameters").(string)), &expansionParameters)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing expansion parameters, please check the format of the `expansion_parameters`: %s", err)
+	}
+
+	bodyParams := map[string]interface{}{
+		"params": expansionParameters,
+	}
+
+	return bodyParams, nil
+}
+
+func buildTransparentDataEncryptionBodyParams(d *schema.ResourceData) map[string]interface{} {
+	kmsTdeSwitchRaw := d.Get("kms_tde_switch").([]interface{})
+	if len(kmsTdeSwitchRaw) == 0 {
+		return nil
+	}
+	kmsTdeSwitch, ok := kmsTdeSwitchRaw[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	bodyParams := map[string]interface{}{
+		"kms_tde_key_id":   kmsTdeSwitch["kms_tde_key_id"],
+		"kms_project_name": kmsTdeSwitch["kms_project_name"],
+		"kms_tde_status":   kmsTdeSwitch["kms_tde_status"],
+	}
+
+	return bodyParams
+}
+
+func updateEnablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	if !d.HasChange("kms_tde_switch") {
+		return nil
+	}
+	err := enablingTransparentDataEncryption(ctx, client, d)
+	if err != nil {
+		return fmt.Errorf("error enabling GaussDB instance transparent data encryption: %s", err)
+	}
+
+	return nil
 }
 
 func addInstanceTags(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, addTags map[string]interface{}) error {
@@ -2118,7 +2566,7 @@ func resourceOpenGaussInstanceDelete(ctx context.Context, d *schema.ResourceData
 
 func checkGaussDBOpenGaussJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string, delay int,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Running"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDBOpenGaussStatusRefreshFunc(client, jobID),
@@ -2132,7 +2580,7 @@ func checkGaussDBOpenGaussJobFinish(ctx context.Context, client *golangsdk.Servi
 	return nil
 }
 
-func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		res, err := getGaussDBOpenGaussInstancesById(client, instanceID)
 		if err != nil {
@@ -2147,7 +2595,7 @@ func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string
 	}
 }
 
-func gaussDBOpenGaussStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func gaussDBOpenGaussStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"

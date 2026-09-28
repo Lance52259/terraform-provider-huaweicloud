@@ -1,6 +1,9 @@
 package deprecated
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -9,9 +12,6 @@ import (
 	"github.com/chnsz/golangsdk/openstack/cts/v1/tracker"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceCTSTrackerV1() *schema.Resource {
@@ -51,10 +51,9 @@ func ResourceCTSTrackerV1() *schema.Resource {
 				Required: true,
 			},
 			"file_prefix_name": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				Computed:     true,
-				ValidateFunc: utils.ValidateName,
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"is_support_smn": {
 				Type:     schema.TypeBool,
@@ -83,19 +82,18 @@ func ResourceCTSTrackerV1() *schema.Resource {
 			},
 		},
 	}
-
 }
 
 func resourceCTSTrackerCreate(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	ctsClient, err := config.CtsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	ctsClient, err := cfg.CtsV1Client(cfg.GetRegion(d))
 
 	if err != nil {
-		return fmtp.Errorf("Error creating cts Client: %s", err)
+		return fmt.Errorf("error creating CTS client: %s", err)
 	}
 
 	if d.Get("is_support_smn").(bool) == true && d.Get("topic_id").(string) == "" {
-		return fmtp.Errorf("Error 'topic_id' is required if 'is_support_smn' is set true")
+		return errors.New("'topic_id' is required if 'is_support_smn' is set true")
 	}
 
 	createOpts := tracker.CreateOptsWithSMN{
@@ -112,20 +110,20 @@ func resourceCTSTrackerCreate(d *schema.ResourceData, meta interface{}) error {
 
 	trackers, err := tracker.Create(ctsClient, createOpts).Extract()
 	if err != nil {
-		return fmtp.Errorf("Error creating CTS tracker : %s", err)
+		return fmt.Errorf("error creating CTS tracker: %s", err)
 	}
 
 	d.SetId(trackers.TrackerName)
-	//lintignore:R018
+	// lintignore:R018
 	time.Sleep(20 * time.Second)
 	return resourceCTSTrackerRead(d, meta)
 }
 
 func resourceCTSTrackerRead(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	ctsClient, err := config.CtsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	ctsClient, err := cfg.CtsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating cts Client: %s", err)
+		return fmt.Errorf("error creating CTS client: %s", err)
 	}
 	listOpts := tracker.ListOpts{
 		TrackerName:    d.Get("tracker_name").(string),
@@ -136,12 +134,12 @@ func resourceCTSTrackerRead(d *schema.ResourceData, meta interface{}) error {
 	trackers, err := tracker.List(ctsClient, listOpts)
 	if err != nil {
 		if _, ok := err.(golangsdk.ErrDefault404); ok {
-			logp.Printf("[WARN] Removing cts tracker %s as it's already gone", d.Id())
+			log.Printf("[WARN] Removing CTS tracker %s as it's already gone", d.Id())
 			d.SetId("")
 			return nil
 		}
 
-		return fmtp.Errorf("Error retrieving cts tracker: %s", err)
+		return fmt.Errorf("error retrieving CTS tracker: %s", err)
 	}
 
 	ctsTracker := trackers[0]
@@ -156,20 +154,20 @@ func resourceCTSTrackerRead(d *schema.ResourceData, meta interface{}) error {
 	d.Set("operations", ctsTracker.SimpleMessageNotification.Operations)
 	d.Set("need_notify_user_list", ctsTracker.SimpleMessageNotification.NeedNotifyUserList)
 
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }
 
 func resourceCTSTrackerUpdate(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	ctsClient, err := config.CtsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	ctsClient, err := cfg.CtsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating cts Client: %s", err)
+		return fmt.Errorf("error creating CTS client: %s", err)
 	}
 	var updateOpts tracker.UpdateOptsWithSMN
 
-	//as bucket_name is mandatory while updating tracker
+	// as bucket_name is mandatory while updating tracker
 	updateOpts.BucketName = d.Get("bucket_name").(string)
 
 	updateOpts.SimpleMessageNotification.TopicID = d.Get("topic_id").(string)
@@ -192,27 +190,27 @@ func resourceCTSTrackerUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	_, err = tracker.Update(ctsClient, updateOpts).Extract()
 	if err != nil {
-		return fmtp.Errorf("Error updating cts tracker: %s", err)
+		return fmt.Errorf("error updating CTS tracker: %s", err)
 	}
-	//lintignore:R018
+	// lintignore:R018
 	time.Sleep(20 * time.Second)
 	return resourceCTSTrackerRead(d, meta)
 }
 
 func resourceCTSTrackerDelete(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	ctsClient, err := config.CtsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	ctsClient, err := cfg.CtsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating cts Client: %s", err)
+		return fmt.Errorf("error creating CTS client: %s", err)
 	}
 
 	result := tracker.Delete(ctsClient)
 	if result.Err != nil {
 		return err
 	}
-	//lintignore:R018
+	// lintignore:R018
 	time.Sleep(20 * time.Second)
-	logp.Printf("[DEBUG] Successfully deleted cts tracker %s", d.Id())
+	log.Printf("[DEBUG] Successfully deleted CTS tracker %s", d.Id())
 
 	return nil
 }

@@ -9,8 +9,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -34,6 +35,7 @@ var (
 // @API DataArtsStudio POST /v1/{project_id}/jobs/{job_name}/stop
 // @API DataArtsStudio POST /v1/{project_id}/jobs/{job_name}/run-immediate
 // @API DataArtsStudio GET /v1/{project_id}/jobs
+// @API DataArtsStudio GET /v1/{project_id}/jobs/{job_name}/instances/{instance_id}
 func ResourceFactoryJobAction() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceFactoryJobActionCreate,
@@ -130,6 +132,19 @@ func ResourceFactoryJobAction() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: `The instance status after starting the job immediately.`,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -312,13 +327,13 @@ func getJobByName(client *golangsdk.ServiceClient, workspaceId, jobName, jobType
 			Method:    "GET",
 			URL:       "/v1/{project_id}/jobs",
 			RequestId: "NONE",
-			Body:      []byte(fmt.Sprintf("the job (%s) is not found", jobName)),
+			Body:      fmt.Appendf(nil, "the job (%s) is not found", jobName),
 		},
 	}
 }
 
 func jobStateRefreshFunc(client *golangsdk.ServiceClient, workspaceId, jobName, jobType string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getJobByName(client, workspaceId, jobName, jobType)
 		if err != nil {
@@ -361,7 +376,7 @@ func getJobInstanceById(client *golangsdk.ServiceClient, workspaceId, jobName, i
 }
 
 func jobInstanceStateRefreshFunc(client *golangsdk.ServiceClient, workspaceId, jobName, jobType string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getJobInstanceById(client, workspaceId, jobName, jobType)
 		if err != nil {
@@ -409,7 +424,7 @@ func doActionJob(ctx context.Context, client *golangsdk.ServiceClient, d *schema
 		// Immediate execution will not affect the current state, but it will generate an execution instance, whose
 		// state needs to be monitored separately.
 		instanceId := strconv.FormatFloat(utils.PathSearch("instanceId", respBody, float64(0)).(float64), 'f', -1, 64)
-		instanceStateConf := &resource.StateChangeConf{
+		instanceStateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			// For the test run, failure is also a final status.
@@ -433,7 +448,7 @@ func doActionJob(ctx context.Context, client *golangsdk.ServiceClient, d *schema
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      jobStateRefreshFunc(client, workspaceId, jobName, processType, targets),

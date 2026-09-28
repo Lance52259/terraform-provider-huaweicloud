@@ -54,7 +54,7 @@ The following arguments are supported:
   It is case-sensitive and can contain only letters, digits, hyphens (-), and underscores (_).
 
 * `flavor` - (Required, String) Specifies the instance specifications. Please use
-  `gaussdb_mysql_flavors` data source to fetch the available flavors.
+  `huaweicloud_taurusdb_flavors` data source to fetch the available flavors.
 
 * `password` - (Required, String) Specifies the database password. The value must be `8` to `32` characters in length,
   including uppercase and lowercase letters, digits, and special characters, such as ~!@#%^*-_=+? You are advised to
@@ -156,6 +156,12 @@ The following arguments are supported:
 
 * `backup_strategy` - (Optional, List) Specifies the advanced backup policy. Structure is documented below.
 
+* `cross_region_backup_policy` - (Optional, List) Specifies the cross-region backup policy.
+  The [cross_region_backup_policy](#cross_region_backup_policy_struct) structure is documented below.
+
+  -> **Note** Encrypted backup (`encryption_status` is set to **ON**) and cross-region backup (`open_auto_backup` is set
+  to **true**) cannot be both enabled. Please set `encryption_status` to **OFF** or set `open_auto_backup` to **false**.
+
 * `parameters` - (Optional, List) Specifies an array of one or more parameters to be set to the instance after launched.
   The [parameters](#parameters_struct) structure is documented below.
 
@@ -195,11 +201,31 @@ The `backup_strategy` block supports:
 
 * `audit_log_enabled` - (Optional, Bool) Specifies whether audit log is enabled. The default value is `false`.
 
+* `audit_log_keep_days` - (Optional, Int) Specifies the number of days for storing audit logs.
+   Value range: **0** to **732**. Defaults to **7**.
+
+   **Note**: When set it to `0`, SQL audit will be disabled and the parameter `audit_types` will not take effect.
+
+* `audit_types` - (Optional, List) Specifies the operation types recorded in audit logs. If this parameter is left blank,
+  all operation types will be recorded by default.
+
+* `reserve_audit_logs` - (Optional, String) Specifies whether to reserve historical audit logs when SQL audit is disabled.
+  + **true**: Historical audit logs will be reserved for some time when SQL audit is disabled.
+  + **false**: Historical audit logs will be deleted immediately when SQL audit is disabled.
+  Defaults to **true**.
+
+* `storage_auto_expand_policy` - (Optional, List) Specifies the storage auto expand policy.
+  The [storage_auto_expand_policy](#storage_auto_expand_policy_struct) structure is documented below.
+
+  -> **Note**: This parameter is only supported for prePaid instances.
+
 * `sql_filter_enabled` - (Optional, Bool) Specifies whether sql filter is enabled. The default value is `false`.
 
 * `encryption_status` - (Optional, String) Specifies whether to enable or disable encrypted backup. Value options:
   + **ON**: enabled
   + **OFF**: disabled
+
+  -> **Note** Encrypted backup and cross-region backup (`open_auto_backup` is set to **true**) cannot be both enabled.
 
 * `encryption_type` - (Optional, String) Specifies the encryption type. Currently, only **kms (case-insensitive)** is
   supported. It is mandatory when `encryption_status` is set to **ON**.
@@ -252,6 +278,25 @@ The `auto_scaling` block supports:
 * `read_only_weight` - (Optional, Int) Specifies the read weights of read replicas. It is mandatory when read replicas
   are automatically added or deleted.
 
+<a name="cross_region_backup_policy_struct"></a>
+The `cross_region_backup_policy` block supports:
+
+* `open_auto_backup` - (Required, Bool) Specifies whether to enable cross-region automated backup.
+  The valid values as follows:
+  + **true**: Cross-region full backup is enabled.
+  + **false**: Cross-region full backup is disabled.
+
+* `open_incremental_backup` - (Required, Bool) Specifies whether to enable cross-region incremental backup.
+  The valid values as follows:
+  + **true**: Cross-region incremental backup is enabled. Only can be enabled when `open_auto_backup` is enabled.
+  + **false**: Cross-region incremental backup is disabled.
+
+* `destination_project_id` - (Required, String) Specifies the project ID of the destination region for cross-region backup.
+
+* `destination_region` - (Required, String) Specifies the destination region for cross-region backup.
+
+* `keep_days` - (Required, Int) Specifies the number of days to retain cross-region backup files. Value range: **1–1,825**.
+
 <a name="scaling_strategy_struct"></a>
 The `scaling_strategy` block supports:
 
@@ -265,6 +310,25 @@ The `scaling_strategy` block supports:
   Value options:
   + **ON**: Yes
   + **OFF**: No
+
+<a name="storage_auto_expand_policy_struct"></a>
+The `storage_auto_expand_policy` block supports:
+
+* `switch_option` - (Optional, Bool) Specifies whether to enable the storage auto expand policy.
+  + **true**: enabled.
+  + **false**: disabled.
+
+  -> **Note**: If `switch_option` is set to **true**, the other parameters (`limit_size`, `trigger_available_percent`,
+  `step_percent`) are required. If `switch_option` is set to **false**, the other parameters are optional and
+  will not take effect even if configured.
+
+* `limit_size` - (Optional, Int) Specifies the upper limit of storage (GB) that can be automatically scaled up to.
+  The value must be a multiple of 10. Value range: **10–Maximum storage**.
+
+* `trigger_available_percent` - (Optional, Int) Specifies the percentage of available storage. The storage will be
+  automatically scaled up if the available storage drops to or below this value. Value options: **10**, **15**, **20**.
+
+* `step_percent` - (Optional, Int) Specifies the scaling step when the storage is scaled by percentage. Value range: **5–50**.
 
 ## Attribute Reference
 
@@ -285,6 +349,8 @@ In addition to all arguments above, the following attributes are exported:
 * `current_version` - Indicates the current database version.
 
 * `current_kernel_version` - Indicates the current database kernel version.
+
+* `all_audit_log_action` - Indicates all operation types that can be recorded in audit logs.
 
 * `created_at` - Indicates the creation time in the **yyyy-mm-ddThh:mm:ssZ** format.
 
@@ -338,11 +404,12 @@ GaussDB instance can be imported using the `id`, e.g.
 $ terraform import huaweicloud_taurusdb_instance.test <id>
 ```
 
-Note that the imported state may not be identical to your resource definition, due to the attribute missing from the
-API response. The missing attribute is: `table_name_case_sensitivity`, `enterprise_project_id`, `password`, `ssl_option`,
-`encryption_type`, `kms_key_id` and `parameters`. It is generally recommended running `terraform plan` after importing
-a TaurusDB instance. You can then decide if changes should be applied to the TaurusDB instance, or the resource
-definition should be updated to align with the TaurusDB instance. Also you can ignore changes as below.
+Note that the imported state may not be identical to your resource definition, due to the attribute missing from the API
+response. The missing attribute is: `table_name_case_sensitivity`, `enterprise_project_id`, `password`,`ssl_option`,
+`encryption_type`, `kms_key_id`, `reserve_audit_logs`, `cross_region_backup_policy`. It is generally recommended
+running `terraform plan` after importing a TaurusDB instance. You can then decide if changes should be applied to
+the TaurusDB instance, or the resource definition should be updated to align with the TaurusDB instance.
+Also, you can ignore changes as below.
 
 ```hcl
 resource "huaweicloud_taurusdb_instance" "test" {
@@ -350,7 +417,8 @@ resource "huaweicloud_taurusdb_instance" "test" {
 
   lifecycle {
     ignore_changes = [
-      new_node_weight, proxy_mode, readonly_nodes_weight, parameters, ssl_option, encryption_type, kms_key_id
+      new_node_weight, proxy_mode, readonly_nodes_weight, parameters, ssl_option, encryption_type, kms_key_id,
+      reserve_audit_logs, cross_region_backup_policy,
     ]
   }
 }

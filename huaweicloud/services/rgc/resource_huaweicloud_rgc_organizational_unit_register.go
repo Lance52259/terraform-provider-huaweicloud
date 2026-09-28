@@ -9,8 +9,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -76,6 +77,19 @@ func ResourceOrganizationalUnitRegister() *schema.Resource {
 			"organizational_unit_type": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -207,7 +221,7 @@ func registerOrganizationalUnit(ctx context.Context, d *schema.ResourceData, met
 
 	operationId := utils.PathSearch("organizational_unit_operation_id", registerOrganizationalUnitRespBody, "").(string)
 
-	stateConf := resource.StateChangeConf{
+	stateConf := retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      organizationalUnitStateRefreshFunc(registerOrganizationalUnitClient, operationId),
@@ -255,7 +269,7 @@ func deRegisterOrganizationalUnit(ctx context.Context, d *schema.ResourceData, m
 
 	operationId := utils.PathSearch("organizational_unit_operation_id", deRegisterOuRespBody, "").(string)
 
-	stateConf := resource.StateChangeConf{
+	stateConf := retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      organizationalUnitStateRefreshFunc(deRegisterOuClient, operationId),
@@ -272,7 +286,7 @@ func deRegisterOrganizationalUnit(ctx context.Context, d *schema.ResourceData, m
 	return nil
 }
 
-func organizationalUnitStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) resource.StateRefreshFunc {
+func organizationalUnitStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getOuStatusHttpUrl := "v1/managed-organization/{operation_id}"
 		getOuStatusPath := client.Endpoint + getOuStatusHttpUrl

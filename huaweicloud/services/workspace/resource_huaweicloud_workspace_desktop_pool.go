@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -562,7 +562,7 @@ func buildDesktopPoolDataVolumesOrder(d *schema.ResourceData) []interface{} {
 
 func waitForWorkspaceResourcePoolJobCompleted(ctx context.Context, client *golangsdk.ServiceClient, desktopPoolId, jobId string,
 	timeout time.Duration) (string, error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"WAITING", "RUNNING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      refreshWorkspaceJobFunc(client, jobId, fmt.Sprintf("&desktop_pool_id=%s", desktopPoolId)),
@@ -581,7 +581,7 @@ func waitForWorkspaceResourcePoolJobCompleted(ctx context.Context, client *golan
 
 func waitForWorkspacePoolStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, desktopPoolName string,
 	timeout time.Duration) (string, error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshWorkspacePoolJobStatus(client, desktopPoolName),
@@ -636,7 +636,7 @@ func getDesktopPoolbyName(client *golangsdk.ServiceClient, desktopPoolName strin
 	return nil, golangsdk.ErrDefault404{}
 }
 
-func refreshWorkspacePoolJobStatus(client *golangsdk.ServiceClient, desktopPoolName string) resource.StateRefreshFunc {
+func refreshWorkspacePoolJobStatus(client *golangsdk.ServiceClient, desktopPoolName string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		desktopPool, err := getDesktopPoolbyName(client, desktopPoolName)
 		if err != nil {
@@ -815,22 +815,24 @@ func orderDataVolumesByDataVolumesOrderOrigin(volumes, volumesOrderOrigin []inte
 		return volumes
 	}
 
-	sortedVolumes := make([]interface{}, 0)
+	sortedVolumes := make([]interface{}, 0, len(volumes))
+	volumesCopy := make([]interface{}, len(volumes))
+	copy(volumesCopy, volumes)
 	for _, volumeOrigin := range volumesOrderOrigin {
-		index := findVolumeBySizeAndType(volumes, int64(utils.PathSearch("size", volumeOrigin, 0).(int)),
+		index := findVolumeBySizeAndType(volumesCopy, int64(utils.PathSearch("size", volumeOrigin, 0).(int)),
 			utils.PathSearch("type", volumeOrigin, "").(string))
 		if index == -1 {
 			continue
 		}
 
 		// Add the found volume configuration to the sorted volumes list.
-		sortedVolumes = append(sortedVolumes, volumes[index])
+		sortedVolumes = append(sortedVolumes, volumesCopy[index])
 		// Remove the processed volume configuration from the remote volumes array.
-		volumes = append(volumes[:index], volumes[index+1:]...)
+		volumesCopy = append(volumesCopy[:index], volumesCopy[index+1:]...)
 	}
 
 	// Add unsorted volumes configurations to the end of the sorted list.
-	sortedVolumes = append(sortedVolumes, volumes...)
+	sortedVolumes = append(sortedVolumes, volumesCopy...)
 	log.Printf("[DEBUG] data_volumes sort result by data_volumes_order: %#v", sortedVolumes)
 	return sortedVolumes
 }
@@ -1030,11 +1032,13 @@ func getDesktopPoolDataVolumesDiff(d *schema.ResourceData, oldDataVolumes []inte
 		return nil, nil
 	}
 
+	configDataVolumesCopy := make([]interface{}, len(configDataVolumes))
+	copy(configDataVolumesCopy, configDataVolumes)
 	// The oldVolumeIndexes records the indices of elements in oldDataVolumes that do not need to be modified.
 	oldVolumeIndexes := make([]int, 0)
 	for i, oldVolume := range oldDataVolumes {
 		configIndex := findVolumeBySizeAndType(
-			configDataVolumes,
+			configDataVolumesCopy,
 			int64(utils.PathSearch("size", oldVolume, 0).(int)),
 			utils.PathSearch("type", oldVolume, "").(string),
 		)
@@ -1042,26 +1046,28 @@ func getDesktopPoolDataVolumesDiff(d *schema.ResourceData, oldDataVolumes []inte
 			continue
 		}
 
-		configDataVolumes = append(configDataVolumes[:configIndex], configDataVolumes[configIndex+1:]...)
+		configDataVolumesCopy = append(configDataVolumesCopy[:configIndex], configDataVolumesCopy[configIndex+1:]...)
 		oldVolumeIndexes = append(oldVolumeIndexes, i)
 	}
 
+	oldDataVolumesCopy := make([]interface{}, len(oldDataVolumes))
+	copy(oldDataVolumesCopy, oldDataVolumes)
 	if len(oldVolumeIndexes) > 0 {
 		// Sort indices in descending order to delete from back to front.
 		// This avoids index shifting when deleting elements.
 		sort.Sort(sort.Reverse(sort.IntSlice(oldVolumeIndexes)))
-		// Delete elements from `oldDataVolumes` at the corresponding indexes.
+		// Delete elements from oldDataVolumesCopy at the corresponding indexes.
 		for _, idx := range oldVolumeIndexes {
-			if idx < 0 || idx >= len(oldDataVolumes) {
+			if idx < 0 || idx >= len(oldDataVolumesCopy) {
 				// Boundary check to avoid panic.
 				continue
 			}
-			oldDataVolumes = append(oldDataVolumes[:idx], oldDataVolumes[idx+1:]...)
+			oldDataVolumesCopy = append(oldDataVolumesCopy[:idx], oldDataVolumesCopy[idx+1:]...)
 		}
 	}
 
-	rmVolumes = oldDataVolumes
-	addVolumes = configDataVolumes
+	rmVolumes = oldDataVolumesCopy
+	addVolumes = configDataVolumesCopy
 	return
 }
 
@@ -1105,7 +1111,7 @@ func addDesktopPoolDataVolumes(ctx context.Context, client *golangsdk.ServiceCli
 
 func waitForDesktopsUnderDesktopPoolStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, desktopPoolId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshDesktopsUnderDesktopPoolStatusFunc(client, desktopPoolId),
@@ -1118,7 +1124,7 @@ func waitForDesktopsUnderDesktopPoolStatusCompleted(ctx context.Context, client 
 	return err
 }
 
-func refreshDesktopsUnderDesktopPoolStatusFunc(client *golangsdk.ServiceClient, desktopPoolId string) resource.StateRefreshFunc {
+func refreshDesktopsUnderDesktopPoolStatusFunc(client *golangsdk.ServiceClient, desktopPoolId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		desktops, err := getDesktopsUnderDesktopPoolById(client, desktopPoolId)
 		if err != nil {
@@ -1180,8 +1186,8 @@ func removeDesktopPoolDataVolumes(ctx context.Context, client *golangsdk.Service
 		Ctx: ctx,
 		RetryFunc: func() (interface{}, bool, error) {
 			res, err := client.Request("POST", updatePath, &opt)
-			retry, err := handleOperationDesktopPoolError409(err)
-			return res, retry, err
+			shouldRetry, err := handleOperationDesktopPoolError409(err)
+			return res, shouldRetry, err
 		},
 		Timeout:      timeout,
 		DelayTimeout: 10 * time.Second,
@@ -1229,8 +1235,8 @@ func updateDesktopPoolProductId(ctx context.Context, client *golangsdk.ServiceCl
 		Ctx: ctx,
 		RetryFunc: func() (interface{}, bool, error) {
 			res, err := client.Request("POST", updatePath, &opt)
-			retry, err := handleOperationDesktopPoolError409(err)
-			return res, retry, err
+			shouldRetry, err := handleOperationDesktopPoolError409(err)
+			return res, shouldRetry, err
 		},
 		Timeout:      timeout,
 		DelayTimeout: 10 * time.Second,
@@ -1281,7 +1287,7 @@ func handleOperationDesktopPoolError409(err error) (bool, error) {
 
 func waitForDesktopPoolJobCompleted(ctx context.Context, client *golangsdk.ServiceClient, jobId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshJobStatusFunc(client, jobId),

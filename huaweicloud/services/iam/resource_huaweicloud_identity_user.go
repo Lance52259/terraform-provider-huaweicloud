@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -32,6 +33,10 @@ func ResourceIdentityUser() *schema.Resource {
 		ReadContext:   resourceUserRead,
 		UpdateContext: resourceUserUpdate,
 		DeleteContext: resourceUserDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
@@ -182,11 +187,20 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		return diag.Errorf("error creating IAM user: %s", err)
 	}
 
-	d.SetId(user.ID)
+	userId := user.ID
+	d.SetId(userId)
+
+	// After creation, the user may not be immediately queryable (usually 2-3s, up to 10s).
+	_, err = PollRequest(ctx, func() (interface{}, error) {
+		return users.Get(iamClient, userId).Extract()
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	// if login_protect_verification_method is not empty, update login protect
 	if val, ok := d.GetOk("login_protect_verification_method"); ok {
-		err := updateLoginProtect(iamClient, user.ID, val.(string))
+		err := updateLoginProtect(iamClient, userId, val.(string))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -211,25 +225,34 @@ func updateLoginProtect(client *golangsdk.ServiceClient, userID, method string) 
 	if err != nil {
 		return fmt.Errorf("error updating IAM user login protect: %s", err)
 	}
+	// sleep 3 seconds to wait for the user to be updated (during each PUT operation, the user with the
+	// expected result cannot be queried immediately).
+	// lintignore:R018
+	time.Sleep(3 * time.Second)
+
 	return nil
 }
 
-func resourceUserRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	iamClient, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	user, err := users.Get(iamClient, d.Id()).Extract()
+	var (
+		method string
+		userId = d.Id()
+	)
+
+	user, err := users.Get(iamClient, userId).Extract()
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "user")
 	}
 
-	method := ""
-	loginProtect, err := users.GetLoginProtect(iamClient, d.Id()).ExtractLoginProtect()
+	loginProtect, err := users.GetLoginProtect(iamClient, userId).ExtractLoginProtect()
 	if err != nil {
-		log.Printf("[WARN] failed to get the login verification method of user (%s): %s", d.Id(), err)
+		log.Printf("[WARN] failed to get the login verification method of user (%s): %s", userId, err)
 	} else if loginProtect.VerificationMethod != "none" {
 		method = loginProtect.VerificationMethod
 	}
@@ -347,6 +370,11 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 			return diag.FromErr(err)
 		}
 	}
+
+	// sleep 3 seconds to wait for the user to be updated (during each PUT operation, the user with the
+	// expected result cannot be queried immediately).
+	// lintignore:R018
+	time.Sleep(3 * time.Second)
 
 	return resourceUserRead(ctx, d, meta)
 }
