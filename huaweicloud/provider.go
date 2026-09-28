@@ -2753,6 +2753,8 @@ func Provider() *schema.Provider {
 			"huaweicloud_tms_quotas":              tms.DataSourceTmsQuotas(),
 			"huaweicloud_tms_tags":                tms.DataSourceTmsTags(),
 
+			"huaweicloud_vod_assets": vod.DataSourceAssets(),
+
 			"huaweicloud_vpc_bandwidth_types":                  eip.DataSourceBandwidthTypes(),
 			"huaweicloud_vpc_bandwidth_limits":                 eip.DataSourceBandwidthLimits(),
 			"huaweicloud_vpc_bandwidth":                        eip.DataSourceBandWidth(),
