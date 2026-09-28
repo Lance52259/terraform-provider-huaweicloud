@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -615,6 +616,7 @@ func flattenPoolQuicCidHashStrategy(resp interface{}) []interface{} {
 	return rst
 }
 
+// nolint:gocyclo
 func buildListPoolsQueryParams(d *schema.ResourceData) string {
 	res := ""
 	if v, ok := d.GetOk("pool_id"); ok {
@@ -627,11 +629,17 @@ func buildListPoolsQueryParams(d *schema.ResourceData) string {
 		res = fmt.Sprintf("%s&description=%v", res, v)
 	}
 	if v, ok := d.GetOk("any_port_enable"); ok {
-		anyPortEnable, _ := strconv.ParseBool(v.(string))
+		anyPortEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'any_port_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&any_port_enable=%v", res, anyPortEnable)
 	}
 	if v, ok := d.GetOk("connection_drain"); ok {
-		connectionDrain, _ := strconv.ParseBool(v.(string))
+		connectionDrain, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'connection_drain' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&connection_drain=%v", res, connectionDrain)
 	}
 	if v, ok := d.GetOk("enterprise_project_id"); ok {
@@ -650,7 +658,10 @@ func buildListPoolsQueryParams(d *schema.ResourceData) string {
 		res = fmt.Sprintf("%s&member_instance_id=%v", res, v)
 	}
 	if v, ok := d.GetOk("member_deletion_protection_enable"); ok {
-		memberDeletionProtectionEnable, _ := strconv.ParseBool(v.(string))
+		memberDeletionProtectionEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'member_deletion_protection_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&member_deletion_protection_enable=%v", res, memberDeletionProtectionEnable)
 	}
 	if v, ok := d.GetOk("pool_health"); ok {

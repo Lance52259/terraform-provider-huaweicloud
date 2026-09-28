@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -25,6 +25,7 @@ var scriptOrderNotFoundErrCodes = []string{
 
 var scriptExecuteNonUpdatableParams = []string{
 	"script_id", "instance_id", "timeout", "execute_user", "parameters", "parameters.*.name", "parameters.*.value", "is_sync",
+	"resource_provider", "type",
 }
 
 // @API COC POST /v1/job/scripts/{script_uuid}
@@ -78,7 +79,7 @@ func ResourceScriptExecute() *schema.Resource {
 						"value": {
 							Type:     schema.TypeString,
 							Required: true,
-							DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+							DiffSuppressFunc: func(_, oldValue, _ string, _ *schema.ResourceData) bool {
 								return oldValue == defaultSensitiveValue
 							},
 						},
@@ -89,6 +90,16 @@ func ResourceScriptExecute() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+			"resource_provider": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "ecs",
+			},
+			"type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "cloudservers",
 			},
 			"enable_force_new": {
 				Type:         schema.TypeString,
@@ -186,17 +197,19 @@ func resourceScriptExecuteCreate(ctx context.Context, d *schema.ResourceData, me
 	}
 
 	instanceID := d.Get("instance_id").(string)
+	resourceProvider := d.Get("resource_provider").(string)
+	resourceType := d.Get("type").(string)
 	// sync the ECS instance to get information about UniAgent
 	if d.Get("is_sync").(bool) {
-		if err = syncResourceInfo(client); err != nil {
+		if err = syncResourceInfo(client, resourceProvider, resourceType); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"pending"},
 		Target:       []string{"online"},
-		Refresh:      doGetResources(client, instanceID),
+		Refresh:      doGetResources(client, resourceProvider, resourceType, instanceID),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        5 * time.Second,
 		PollInterval: 15 * time.Second,
@@ -233,7 +246,7 @@ func resourceScriptExecuteCreate(ctx context.Context, d *schema.ResourceData, me
 	d.SetId(ticketID)
 
 	// waiting the execution status of COC script
-	stateConf = &resource.StateChangeConf{
+	stateConf = &retry.StateChangeConf{
 		Pending:      []string{"pending"},
 		Target:       []string{"exited"},
 		Refresh:      refreshGetExecutionTicketDetail(client, ticketID),
@@ -243,7 +256,7 @@ func resourceScriptExecuteCreate(ctx context.Context, d *schema.ResourceData, me
 	}
 	if _, err = stateConf.WaitForStateContext(ctx); err != nil {
 		// skip the timeout error, and return error when the result is ABNORMAL
-		if _, ok := err.(*resource.UnexpectedStateError); ok {
+		if _, ok := err.(*retry.UnexpectedStateError); ok {
 			return diag.Errorf("error executing COC script: %s", err)
 		}
 	}
@@ -251,9 +264,9 @@ func resourceScriptExecuteCreate(ctx context.Context, d *schema.ResourceData, me
 	return resourceScriptExecuteRead(ctx, d, meta)
 }
 
-func refreshGetExecutionTicketDetail(client *golangsdk.ServiceClient, ticketID string) resource.StateRefreshFunc {
+func refreshGetExecutionTicketDetail(client *golangsdk.ServiceClient, ticketID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		ticketDetail, err := getExecutionTicketDetail(client, ticketID)
+		ticketDetail, err := GetExecutionTicketDetail(client, ticketID)
 		if err != nil {
 			return nil, "error", err
 		}
@@ -270,7 +283,7 @@ func refreshGetExecutionTicketDetail(client *golangsdk.ServiceClient, ticketID s
 	}
 }
 
-func getExecutionTicketDetail(client *golangsdk.ServiceClient, id string) (interface{}, error) {
+func GetExecutionTicketDetail(client *golangsdk.ServiceClient, id string) (interface{}, error) {
 	getExecutionTicketHttpUrl := "v1/job/script/orders/{id}"
 	getExecutionTicketPath := client.Endpoint + getExecutionTicketHttpUrl
 	getExecutionTicketPath = strings.ReplaceAll(getExecutionTicketPath, "{id}", id)
@@ -298,7 +311,7 @@ func resourceScriptExecuteRead(_ context.Context, d *schema.ResourceData, meta i
 	}
 
 	ticketID := d.Id()
-	ticketDetail, err := getExecutionTicketDetail(client, ticketID)
+	ticketDetail, err := GetExecutionTicketDetail(client, ticketID)
 	if err != nil {
 		return common.CheckDeletedDiag(d, common.ConvertExpected400ErrInto404Err(err, "error_code",
 			scriptOrderNotFoundErrCodes...), "COC script execute")
@@ -319,26 +332,6 @@ func resourceScriptExecuteRead(_ context.Context, d *schema.ResourceData, meta i
 	}
 
 	return nil
-}
-
-// now, the value of script_params in API response is the default value, not the value when executing
-// so we donot set `parameters` until COC service fixed this bug.
-// nolint: unused
-func flattenScriptExecuteParams(resp interface{}) []interface{} {
-	if resp == nil {
-		return nil
-	}
-
-	curJson := utils.PathSearch("data.properties.execute_param.script_params", resp, make([]interface{}, 0))
-	curArray := curJson.([]interface{})
-	rst := make([]interface{}, len(curArray))
-	for i, v := range curArray {
-		rst[i] = map[string]interface{}{
-			"name":  utils.PathSearch("param_name", v, nil),
-			"value": utils.PathSearch("param_value", v, nil),
-		}
-	}
-	return rst
 }
 
 func resourceScriptExecuteUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
@@ -379,7 +372,7 @@ func resourceScriptExecuteDelete(_ context.Context, d *schema.ResourceData, meta
 	return nil
 }
 
-func syncResourceInfo(client *golangsdk.ServiceClient) error {
+func syncResourceInfo(client *golangsdk.ServiceClient, resourceProvider, resourceType string) error {
 	syncResourceHttpUrl := "v1/external/resources/sync"
 	syncResourcePath := client.Endpoint + syncResourceHttpUrl
 
@@ -387,8 +380,8 @@ func syncResourceInfo(client *golangsdk.ServiceClient) error {
 		KeepResponseBody: true,
 		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
 		JSONBody: map[string]string{
-			"provider": "ecs",
-			"type":     "cloudservers",
+			"provider": resourceProvider,
+			"type":     resourceType,
 		},
 	}
 
@@ -400,10 +393,10 @@ func syncResourceInfo(client *golangsdk.ServiceClient) error {
 	return nil
 }
 
-func doGetResources(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func doGetResources(client *golangsdk.ServiceClient, resourceProvider, resourceType, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		listResourceInfoHttpUrl := fmt.Sprintf("v1/external/resources?provider=%s&type=%s&limit=10&resource_id_list=%s",
-			"ecs", "cloudservers", instanceID)
+			resourceProvider, resourceType, instanceID)
 		listResourceInfoPath := client.Endpoint + listResourceInfoHttpUrl
 
 		listResourceInfoOpt := golangsdk.RequestOpts{

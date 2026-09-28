@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -63,6 +63,7 @@ var (
 // @API IMS GET /v2/cloudimages
 // @API EVS POST /v2.1/{project_id}/cloudvolumes/{volume_id}/action
 // @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
+// @API VPC GET /v1/{project_id}/ports
 // @API VPC PUT /v1/{project_id}/ports/{port_id}
 // @API VPC GET /v1/{project_id}/security-groups
 // @API VPC GET /v1/{project_id}/subnets/{subnet_id}
@@ -157,11 +158,10 @@ func ResourceComputeInstance() *schema.Resource {
 				Set:           schema.HashString,
 			},
 			"security_group_ids": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
 				Computed: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
-				Set:      schema.HashString,
 			},
 			"network": {
 				Type:     schema.TypeList,
@@ -641,6 +641,7 @@ func getSpotDurationCount(d *schema.ResourceData) int {
 	return count
 }
 
+// nolint:gocyclo
 func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -877,6 +878,82 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 	return resourceComputeInstanceRead(ctx, d, meta)
 }
 
+func listInstancePorts(vpcClient *golangsdk.ServiceClient, instanceId string) ([]interface{}, error) {
+	var (
+		httpUrl = "v1/{project_id}/ports?device_id={instance_id}&limit={limit}"
+		limit   = 100
+		marker  = ""
+		result  = make([]interface{}, 0)
+	)
+
+	listPath := vpcClient.Endpoint + httpUrl
+	listPath = strings.ReplaceAll(listPath, "{project_id}", vpcClient.ProjectID)
+	listPath = strings.ReplaceAll(listPath, "{instance_id}", instanceId)
+	listPath = strings.ReplaceAll(listPath, "{limit}", strconv.Itoa(limit))
+
+	listOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+
+	for {
+		listPathWithMarker := listPath
+		if marker != "" {
+			listPathWithMarker += fmt.Sprintf("&marker=%s", marker)
+		}
+		listResp, err := vpcClient.Request("GET", listPathWithMarker, &listOpt)
+		if err != nil {
+			return nil, err
+		}
+		listRespBody, err := utils.FlattenResponse(listResp)
+		if err != nil {
+			return nil, err
+		}
+		associatedPorts := utils.PathSearch("ports", listRespBody, []interface{}{}).([]interface{})
+		result = append(result, associatedPorts...)
+		if len(associatedPorts) < limit {
+			break
+		}
+		marker = utils.PathSearch("[-1].id", associatedPorts, "").(string)
+		if marker == "" {
+			break
+		}
+	}
+
+	return result, nil
+}
+
+func getInstancePrimaryNicAssociatedSecurityGroups(cfg *config.Config, region, serverId, primaryPortId string) ([]interface{}, error) {
+	vpcClient, err := cfg.NewServiceClient("vpc", region)
+	if err != nil {
+		return nil, fmt.Errorf("error creating VPC client: %s", err)
+	}
+	associatedPorts, err := listInstancePorts(vpcClient, serverId)
+	if err != nil {
+		return nil, fmt.Errorf("error listing instance ports: %s", err)
+	}
+
+	result := utils.PathSearch(fmt.Sprintf("[?id=='%s']|[0].security_groups", primaryPortId), associatedPorts,
+		make([]interface{}, 0)).([]interface{})
+	if len(result) < 1 {
+		return nil, fmt.Errorf("no security groups found for instance (%s), the ports are: %+v", serverId, associatedPorts)
+	}
+	return result, nil
+}
+
+func getInstancePrimaryPortId(vpcId string, allAddresses map[string][]cloudservers.Address) string {
+	addresses, ok := allAddresses[vpcId]
+	if ok {
+		for _, address := range addresses {
+			if address.Primary {
+				return address.PortID
+			}
+		}
+	}
+	return ""
+}
+
+// nolint:gocyclo
 func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -971,17 +1048,24 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 		})
 	}
 
-	secGrpNames := []string{}
+	primaryPortId := getInstancePrimaryPortId(server.Metadata.VpcID, server.Addresses)
+	primaryNicSecGroupIds, err := getInstancePrimaryNicAssociatedSecurityGroups(cfg, region, serverID, primaryPortId)
+	secGrpIDs := make([]interface{}, 0)
+	if err != nil {
+		log.Printf("[WARN] failed to get primary nic associated security groups using '/v1/{project_id}/ports': %s", err)
+		for _, sg := range server.SecurityGroups {
+			secGrpIDs = append(secGrpIDs, sg.ID)
+		}
+	} else {
+		secGrpIDs = primaryNicSecGroupIds
+	}
+	d.Set("security_group_ids", secGrpIDs)
+
+	secGrpNames := make([]interface{}, 0)
 	for _, sg := range server.SecurityGroups {
 		secGrpNames = append(secGrpNames, sg.Name)
 	}
 	d.Set("security_groups", secGrpNames)
-
-	secGrpIDs := make([]string, len(server.SecurityGroups))
-	for i, sg := range server.SecurityGroups {
-		secGrpIDs[i] = sg.ID
-	}
-	d.Set("security_group_ids", secGrpIDs)
 
 	// Set volume attached
 	if len(server.VolumeAttached) > 0 {
@@ -1115,6 +1199,42 @@ func flattenEnclaveOptions(enclaveOptions *cloudservers.EnclaveOptions) []map[st
 	return res
 }
 
+func updatePortSecurityGroups(client *golangsdk.ServiceClient, portId string, newSecGroupIds []interface{}) error {
+	httpUrl := "v1/{project_id}/ports/{port_id}"
+	path := client.Endpoint + httpUrl
+	path = strings.ReplaceAll(path, "{project_id}", client.ProjectID)
+	path = strings.ReplaceAll(path, "{port_id}", portId)
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+		JSONBody: map[string]interface{}{
+			"port": map[string]interface{}{
+				"security_groups": newSecGroupIds,
+			},
+		},
+	}
+
+	_, err := client.Request("PUT", path, &updateOpt)
+	return err
+}
+
+func updateInstancePrimaryNicSecurityGroups(vpcClient, ecsClient *golangsdk.ServiceClient, serverID string,
+	newSecGroupIds []interface{}) error {
+	instance, err := cloudservers.Get(ecsClient, serverID).Extract()
+	if err != nil {
+		return err
+	}
+	primaryPortId := getInstancePrimaryPortId(instance.Metadata.VpcID, instance.Addresses)
+	if primaryPortId == "" {
+		return fmt.Errorf("unable to find primary port ID for instance (%s), the addresses are: %+v",
+			serverID, instance.Addresses)
+	}
+
+	return updatePortSecurityGroups(vpcClient, primaryPortId, newSecGroupIds)
+}
+
+// nolint:gocyclo
 func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1137,6 +1257,10 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	bssClient, err := cfg.BssV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating BSS v2 client: %s", err)
+	}
+	vpcClient, err := cfg.NewServiceClient("vpc", region)
+	if err != nil {
+		return diag.Errorf("error creating VPC client: %s", err)
 	}
 
 	serverID := d.Id()
@@ -1222,14 +1346,16 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
-	if d.HasChanges("security_group_ids", "security_groups") {
-		var oldSGRaw interface{}
-		var newSGRaw interface{}
-		if d.HasChange("security_group_ids") {
-			oldSGRaw, newSGRaw = d.GetChange("security_group_ids")
-		} else {
-			oldSGRaw, newSGRaw = d.GetChange("security_groups")
+	if d.HasChanges("security_group_ids") {
+		if err := updateInstancePrimaryNicSecurityGroups(vpcClient, ecsClient, serverID,
+			d.Get("security_group_ids").([]interface{})); err != nil {
+			return diag.FromErr(err)
 		}
+	}
+
+	// Deprecated
+	if d.HasChanges("security_groups") {
+		oldSGRaw, newSGRaw := d.GetChange("security_groups")
 		oldSGSet := oldSGRaw.(*schema.Set)
 		newSGSet := newSGRaw.(*schema.Set)
 		secgroupsToAdd := newSGSet.Difference(oldSGSet)
@@ -1350,7 +1476,7 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 			}
 		}
 
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:    []string{"extending"},
 			Target:     []string{"available", "in-use"},
 			Refresh:    cloudVolumeRefreshFunc(evsV2Client, systemDiskID),
@@ -1403,7 +1529,7 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	return resourceComputeInstanceRead(ctx, d, meta)
 }
 
-func cloudVolumeRefreshFunc(c *golangsdk.ServiceClient, volumeId string) resource.StateRefreshFunc {
+func cloudVolumeRefreshFunc(c *golangsdk.ServiceClient, volumeId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		response, err := cloudvolumes.Get(c, volumeId).Extract()
 		if err != nil {
@@ -1577,7 +1703,7 @@ func updateInstanceNetwork(ctx context.Context, d *schema.ResourceData, client, 
 	}
 
 	// Wait for job status become `SUCCESS`.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      getJobRefreshFunc(client, jobID),
@@ -1615,7 +1741,7 @@ func buildUpdateInstanceNetworkOpts(d *schema.ResourceData, vpcID string) map[st
 }
 
 func buildUpdateInstanceNetworkSecgroupOpts(d *schema.ResourceData) []map[string]interface{} {
-	secgroupIDs := d.Get("security_group_ids").(*schema.Set).List()
+	secgroupIDs := d.Get("security_group_ids").([]interface{})
 	bodyParams := make([]map[string]interface{}, len(secgroupIDs))
 
 	for i, v := range secgroupIDs {
@@ -1700,7 +1826,7 @@ func updateInstanceDehId(ctx context.Context, d *schema.ResourceData, client *go
 	}
 
 	// Wait for job status become `SUCCESS`.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      getJobRefreshFunc(client, jobID),
@@ -1837,8 +1963,8 @@ func resourceComputeInstanceImportState(_ context.Context, d *schema.ResourceDat
 	return []*schema.ResourceData{d}, nil
 }
 
-// ServerV1StateRefreshFunc returns a resource.StateRefreshFunc that is used to watch an HuaweiCloud instance.
-func ServerV1StateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+// ServerV1StateRefreshFunc returns a retry.StateRefreshFunc that is used to watch an HuaweiCloud instance.
+func ServerV1StateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		s, err := cloudservers.Get(client, instanceID).Extract()
 		if err != nil {
@@ -1859,7 +1985,7 @@ func ServerV1StateRefreshFunc(client *golangsdk.ServiceClient, instanceID string
 
 func buildInstanceSecGroupIds(d *schema.ResourceData, client *golangsdk.ServiceClient) ([]cloudservers.SecurityGroup, error) {
 	if v, ok := d.GetOk("security_group_ids"); ok {
-		rawSecGroups := v.(*schema.Set).List()
+		rawSecGroups := v.([]interface{})
 		secGroups := make([]cloudservers.SecurityGroup, len(rawSecGroups))
 		for i, raw := range rawSecGroups {
 			secGroups[i] = cloudservers.SecurityGroup{
@@ -2110,7 +2236,7 @@ func getVpcID(d *schema.ResourceData, client *golangsdk.ServiceClient) (string, 
 
 func waitForServerTargetState(ctx context.Context, client *golangsdk.ServiceClient, instanceID string, pending, target []string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      pending,
 		Target:       target,
 		Refresh:      ServerV1StateRefreshFunc(client, instanceID),
@@ -2301,7 +2427,10 @@ func buildInstanceRootVolume(d *schema.ResourceData) cloudservers.RootVolume {
 	}
 
 	if v, ok := d.GetOk("system_pass_through"); ok {
-		systemPassThrough, _ := strconv.ParseBool(v.(string))
+		systemPassThrough, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'system_pass_through' field to Boolean: %s", err)
+		}
 		volRequest.PassThrough = &systemPassThrough
 	}
 
@@ -2341,7 +2470,10 @@ func buildInstanceDataVolumes(d *schema.ResourceData) []cloudservers.DataVolume 
 		}
 
 		if vol["delete_on_termination"] != "" {
-			deleteOnTermination, _ := strconv.ParseBool(vol["delete_on_termination"].(string))
+			deleteOnTermination, err := strconv.ParseBool(vol["delete_on_termination"].(string))
+			if err != nil {
+				log.Printf("[WARN] error parsing 'delete_on_termination' field to Boolean: %s", err)
+			}
 			volRequest.DeleteOnTermination = &deleteOnTermination
 		}
 
@@ -2351,7 +2483,10 @@ func buildInstanceDataVolumes(d *schema.ResourceData) []cloudservers.DataVolume 
 		}
 
 		if vol["pass_through"] != "" {
-			passThrough, _ := strconv.ParseBool(vol["pass_through"].(string))
+			passThrough, err := strconv.ParseBool(vol["pass_through"].(string))
+			if err != nil {
+				log.Printf("[WARN] error parsing 'pass_through' field to Boolean: %s", err)
+			}
 			volRequest.PassThrough = &passThrough
 		}
 
@@ -2361,7 +2496,7 @@ func buildInstanceDataVolumes(d *schema.ResourceData) []cloudservers.DataVolume 
 }
 
 func waitForJobComplete(ctx context.Context, client *golangsdk.ServiceClient, jobId string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      ecsJobRefreshFunc(client, jobId),
@@ -2375,7 +2510,7 @@ func waitForJobComplete(ctx context.Context, client *golangsdk.ServiceClient, jo
 	return nil
 }
 
-func ecsJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func ecsJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl = "v1/{project_id}/jobs/{job_id}"

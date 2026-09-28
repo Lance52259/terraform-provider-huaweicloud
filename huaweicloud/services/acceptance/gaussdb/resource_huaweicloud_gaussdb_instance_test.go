@@ -102,6 +102,10 @@ func TestAccGaussDbInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "backup_strategy.0.keep_days", "6"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.name", "dn:check_disconnect_query"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.value", "off"),
+					resource.TestCheckResourceAttrPair(resourceName, "kms_tde_switch.0.kms_tde_key_id",
+						"huaweicloud_kms_key.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "kms_tde_switch.0.kms_project_name", "cn-north-4"),
+					resource.TestCheckResourceAttr(resourceName, "kms_tde_switch.0.kms_tde_status", "on"),
 					resource.TestCheckResourceAttr(resourceName, "advance_features.0.name", "ilm"),
 					resource.TestCheckResourceAttr(resourceName, "advance_features.0.value", "on"),
 					resource.TestCheckResourceAttr(resourceName, "wdr_snapshot_status", "OFF"),
@@ -134,6 +138,10 @@ func TestAccGaussDbInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "backup_strategy.0.keep_days", "8"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.name", "cn:auto_increment_increment"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.value", "1000"),
+					resource.TestCheckResourceAttrPair(resourceName, "kms_tde_switch.0.kms_tde_key_id",
+						"huaweicloud_kms_key.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "kms_tde_switch.0.kms_project_name", "cn-north-4"),
+					resource.TestCheckResourceAttr(resourceName, "kms_tde_switch.0.kms_tde_status", "on"),
 					resource.TestCheckResourceAttr(resourceName, "advance_features.0.name", "ilm"),
 					resource.TestCheckResourceAttr(resourceName, "advance_features.0.value", "off"),
 					resource.TestCheckResourceAttr(resourceName, "wdr_snapshot_status", "ON"),
@@ -158,6 +166,9 @@ func TestAccGaussDbInstance_basic(t *testing.T) {
 					"availability_zone",
 					"configuration_id",
 					"parameters",
+					"kms_tde_switch",
+					"alias",
+					"expansion_parameters",
 				},
 			},
 		},
@@ -302,8 +313,6 @@ func TestAccGaussDbInstance_flavor(t *testing.T) {
 				Config: testAccGaussDbInstance_flavor_update(rName, password),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(resourceName, "flavor",
-						"data.huaweicloud_gaussdb_flavors.test", "flavors.1.spec_code"),
 					resource.TestCheckResourceAttr(resourceName, "mysql_compatibility_port", "12346"),
 				),
 			},
@@ -371,6 +380,94 @@ func TestAccGaussDbInstance_haModeCentralized(t *testing.T) {
 	})
 }
 
+func TestAccGaussDbInstance_auto_scaling(t *testing.T) {
+	var (
+		instance     instances.GaussDBInstance
+		resourceName = "huaweicloud_gaussdb_instance.test"
+		rName        = acceptance.RandomAccResourceNameWithDash()
+		password     = fmt.Sprintf("%s@123", acctest.RandString(5))
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&instance,
+		getGaussDbInstanceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckHighCostAllow(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccGaussDbInstance_auto_scaling(rName, password),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.switch_option", "true"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.limit_volume_size", "400"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.trigger_available_percent", "25"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.step_percent", "50"),
+				),
+			},
+			{
+				Config: testAccGaussDbInstance_auto_scaling_update(rName, password),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.switch_option", "false"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.limit_volume_size", "600"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.trigger_available_percent", "50"),
+					resource.TestCheckResourceAttr(resourceName, "auto_scaling.0.step_size", "40"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccGaussDbInstance_dn_node_deploy_mode(t *testing.T) {
+	var (
+		instance     instances.GaussDBInstance
+		resourceName = "huaweicloud_gaussdb_instance.test"
+		rName        = acceptance.RandomAccResourceNameWithDash()
+		password     = fmt.Sprintf("%s@123", acctest.RandString(5))
+	)
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&instance,
+		getGaussDbInstanceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckHighCostAllow(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccGaussDbInstance_dn_node_deploy_mode(rName, password),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "dn_node_deploy_mode", "primary_standby_log"),
+				),
+			},
+			{
+				Config: testAccGaussDbInstance_dn_node_deploy_mode_update(rName, password),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "dn_node_deploy_mode", "primary_standby"),
+				),
+			},
+		},
+	})
+}
+
 func testAccGaussDbInstance_base(rName string) string {
 	return fmt.Sprintf(`
 %s
@@ -389,6 +486,21 @@ func testAccGaussDbInstance_basic(rName, password string) string {
 	return fmt.Sprintf(`
 %[1]s
 
+resource "huaweicloud_kms_key" "test" {
+  key_alias             = "%[2]s"
+  key_algorithm         = "AES_256"
+  key_usage             = "ENCRYPT_DECRYPT"
+  origin                = "kms"
+  key_description       = "test acc"
+  enterprise_project_id = "%[4]s"
+  pending_days          = "7"
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+
 resource "huaweicloud_gaussdb_instance" "test" {
   vpc_id            = huaweicloud_vpc.test.id
   subnet_id         = huaweicloud_vpc_subnet.test.id
@@ -396,6 +508,7 @@ resource "huaweicloud_gaussdb_instance" "test" {
 
   flavor            = "gaussdb.opengauss.ee.dn.m6.2xlarge.8.in"
   name              = "%[2]s"
+  alias             = "%[2]s_alias"
   password          = "%[3]s"
   port              = "9000"
   sharding_num      = 1
@@ -440,6 +553,17 @@ resource "huaweicloud_gaussdb_instance" "test" {
     foo = "bar"
     key = "value"
   }
+
+ kms_tde_switch {
+    kms_tde_key_id   = huaweicloud_kms_key.test.id
+    kms_project_name = "cn-north-4"
+    kms_tde_status   = "on"
+  }
+
+  expansion_parameters = jsonencode({
+    lockwait_timeout  = 1000000
+    lockwait_interval = 80
+  })
 }
 `, testAccGaussDbInstance_base(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }
@@ -447,6 +571,21 @@ resource "huaweicloud_gaussdb_instance" "test" {
 func testAccGaussDbInstance_update(rName, password string) string {
 	return fmt.Sprintf(`
 %[1]s
+
+resource "huaweicloud_kms_key" "test" {
+  key_alias             = "%[2]s"
+  key_algorithm         = "AES_256"
+  key_usage             = "ENCRYPT_DECRYPT"
+  origin                = "kms"
+  key_description       = "test acc"
+  enterprise_project_id = "%[4]s"
+  pending_days          = "7"
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
 
 resource "huaweicloud_gaussdb_parameter_template" "test" {
   name           = "%[2]s"
@@ -471,6 +610,7 @@ resource "huaweicloud_gaussdb_instance" "test" {
 
   flavor            = "gaussdb.opengauss.ee.dn.m6.2xlarge.8.in"
   name              = "%[2]s-update"
+  alias             = "%[2]s_alias_update"
   password          = "%[3]s"
   port              = "8000"
   sharding_num      = 1
@@ -516,6 +656,17 @@ resource "huaweicloud_gaussdb_instance" "test" {
     foo_update = "bar"
     key        = "value_update"
   }
+
+  kms_tde_switch {
+    kms_tde_key_id   = huaweicloud_kms_key.test.id
+    kms_project_name = "cn-north-4"
+    kms_tde_status   = "on"
+  }
+
+  expansion_parameters = jsonencode({
+    lockwait_timeout  = 1100000
+    catchup_query_dop = 5
+  })
 
   charging_mode = "prePaid"
   period_unit   = "month"
@@ -610,15 +761,9 @@ data "huaweicloud_gaussdb_flavors" "test" {
 }
 
 resource "huaweicloud_gaussdb_instance" "test" {
-  depends_on = [
-    huaweicloud_networking_secgroup_rule.in_v4_tcp_opengauss,
-    huaweicloud_networking_secgroup_rule.in_v4_tcp_opengauss_egress
-  ]
-
   vpc_id            = huaweicloud_vpc.test.id
   subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-
+  security_group_id = huaweicloud_networking_secgroup.test[0].id
   flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[0].spec_code
   name              = "%[2]s"
   password          = "%[3]s"
@@ -654,17 +799,15 @@ data "huaweicloud_gaussdb_flavors" "test" {
   ha_mode = "centralization_standard"
 }
 
-resource "huaweicloud_gaussdb_instance" "test" {
-  depends_on = [
-    huaweicloud_networking_secgroup_rule.in_v4_tcp_opengauss,
-    huaweicloud_networking_secgroup_rule.in_v4_tcp_opengauss_egress
-  ]
+locals {
+  spec_code = try([for v in flatten(data.huaweicloud_gaussdb_flavors.test.flavors) : v if  v.group_type == "general"][1].spec_code, "")
+}
 
+resource "huaweicloud_gaussdb_instance" "test" {
   vpc_id            = huaweicloud_vpc.test.id
   subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-
-  flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[1].spec_code
+  security_group_id = huaweicloud_networking_secgroup.test[0].id
+  flavor            = local.spec_code
   name              = "%[2]s"
   password          = "%[3]s"
   replica_num       = 3
@@ -790,4 +933,206 @@ resource "huaweicloud_gaussdb_instance" "test" {
   auto_renew    = "true"
 }
 `, testAccGaussDbInstance_base(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccGaussDbInstance_auto_scaling(rName, password string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_gaussdb_flavors" "test" {
+  version = "8.201"
+  ha_mode = "centralization_standard"
+}
+
+resource "huaweicloud_networking_secgroup" "test" {
+  name = "%s"
+}
+
+resource "huaweicloud_gaussdb_instance" "test" {
+  vpc_id            = huaweicloud_vpc.test.id
+  subnet_id         = huaweicloud_vpc_subnet.test.id
+  security_group_id = huaweicloud_networking_secgroup.test.id
+
+  flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[0].spec_code
+  name              = "%[2]s"
+  password          = "%[3]s"
+  replica_num       = 3
+  availability_zone = join(",", [data.huaweicloud_availability_zones.test.names[0], 
+                      data.huaweicloud_availability_zones.test.names[1], 
+                      data.huaweicloud_availability_zones.test.names[2]])
+
+  enterprise_project_id = "%[4]s"
+
+  auto_scaling {
+    switch_option             = true
+    limit_volume_size         = 400
+    trigger_available_percent = 25
+    step_percent              = 50
+  }
+
+  ha {
+    mode             = "centralization_standard"
+    replication_mode = "sync"
+    consistency      = "eventual"
+    instance_mode    = "basic"
+  }
+
+  volume {
+    type = "ULTRAHIGH"
+    size = 40
+  }
+}
+`, common.TestVpc(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccGaussDbInstance_auto_scaling_update(rName, password string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_gaussdb_flavors" "test" {
+  version = "8.201"
+  ha_mode = "centralization_standard"
+}
+
+resource "huaweicloud_networking_secgroup" "test" {
+  name = "%s"
+}
+
+resource "huaweicloud_gaussdb_instance" "test" {
+  vpc_id            = huaweicloud_vpc.test.id
+  subnet_id         = huaweicloud_vpc_subnet.test.id
+  security_group_id = huaweicloud_networking_secgroup.test.id
+
+  flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[0].spec_code
+  name              = "%[2]s"
+  password          = "%[3]s"
+  replica_num       = 3
+  availability_zone = join(",", [data.huaweicloud_availability_zones.test.names[0], 
+                      data.huaweicloud_availability_zones.test.names[1], 
+                      data.huaweicloud_availability_zones.test.names[2]])
+
+  enterprise_project_id = "%[4]s"
+
+  auto_scaling {
+    switch_option             = false
+    limit_volume_size         = 600
+    trigger_available_percent = 50
+    step_size                 = 40
+  }
+
+  ha {
+    mode             = "centralization_standard"
+    replication_mode = "sync"
+    consistency      = "eventual"
+    instance_mode    = "basic"
+  }
+
+  volume {
+    type = "ULTRAHIGH"
+    size = 40
+  }
+}
+`, common.TestVpc(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccGaussDbInstance_dn_node_deploy_mode(rName, password string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_gaussdb_flavors" "test" {
+  version = "8.201"
+  ha_mode = "enterprise"
+}
+
+resource "huaweicloud_networking_secgroup" "test" {
+  name = "%s"
+}
+
+resource "huaweicloud_gaussdb_instance" "test" {
+  vpc_id            = huaweicloud_vpc.test.id
+  subnet_id         = huaweicloud_vpc_subnet.test.id
+  security_group_id = huaweicloud_networking_secgroup.test.id
+
+  flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[0].spec_code
+  name              = "%[2]s"
+  password          = "%[3]s"
+  sharding_num      = 1
+  coordinator_num   = 1
+  replica_num       = 3
+  availability_zone = join(",", [data.huaweicloud_availability_zones.test.names[0], 
+                      data.huaweicloud_availability_zones.test.names[1], 
+                      data.huaweicloud_availability_zones.test.names[2]])
+
+  dn_node_deploy_mode = "primary_standby_log"
+
+  enterprise_project_id = "%[4]s"
+
+  ha {
+    mode             = "enterprise"
+    replication_mode = "sync"
+    consistency      = "strong"
+    instance_mode    = "enterprise"
+  }
+
+  volume {
+    type = "ULTRAHIGH"
+    size = 40
+  }
+}
+`, common.TestVpc(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccGaussDbInstance_dn_node_deploy_mode_update(rName, password string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_gaussdb_flavors" "test" {
+  version = "8.201"
+  ha_mode = "enterprise"
+}
+
+resource "huaweicloud_networking_secgroup" "test" {
+  name = "%s"
+}
+
+resource "huaweicloud_gaussdb_instance" "test" {
+  vpc_id            = huaweicloud_vpc.test.id
+  subnet_id         = huaweicloud_vpc_subnet.test.id
+  security_group_id = huaweicloud_networking_secgroup.test.id
+
+  flavor            = data.huaweicloud_gaussdb_flavors.test.flavors[0].spec_code
+  name              = "%[2]s"
+  password          = "%[3]s"
+  sharding_num      = 1
+  coordinator_num   = 1
+  replica_num       = 3
+  availability_zone = join(",", [data.huaweicloud_availability_zones.test.names[0], 
+                      data.huaweicloud_availability_zones.test.names[1], 
+                      data.huaweicloud_availability_zones.test.names[2]])
+
+  dn_node_deploy_mode = "primary_standby"
+
+  enterprise_project_id = "%[4]s"
+
+  ha {
+    mode             = "enterprise"
+    replication_mode = "sync"
+    consistency      = "strong"
+    instance_mode    = "enterprise"
+  }
+
+  volume {
+    type = "ULTRAHIGH"
+    size = 40
+  }
+}
+`, common.TestVpc(rName), rName, password, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }

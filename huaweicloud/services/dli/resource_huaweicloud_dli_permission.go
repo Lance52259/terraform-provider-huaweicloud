@@ -70,8 +70,8 @@ func ResourceDliPermission() *schema.Resource {
 }
 
 func resourceDliPermissionCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.DliV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.DliV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client: %s", err)
 	}
@@ -97,7 +97,6 @@ func resourceDliPermissionCreate(ctx context.Context, d *schema.ResourceData, me
 		if rst != nil && !rst.IsSuccess {
 			return diag.Errorf("error granting permission in DLI: %s", rst.Message)
 		}
-
 	} else {
 		opts := auth.GrantDataPermissionOpts{
 			UserName: userName,
@@ -126,9 +125,9 @@ func resourceDliPermissionCreate(ctx context.Context, d *schema.ResourceData, me
 }
 
 func resourceDliPermissionRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.DliV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.DliV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client: %s", err)
 	}
@@ -254,8 +253,8 @@ func queryQueuePermission(client *golangsdk.ServiceClient, obj, userName string)
 }
 
 func resourceDliPermissionDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.DliV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.DliV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client: %s", err)
 	}

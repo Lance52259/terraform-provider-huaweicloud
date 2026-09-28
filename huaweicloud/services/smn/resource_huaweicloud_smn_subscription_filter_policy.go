@@ -147,26 +147,28 @@ func resourceSubscriptionFilterPolicyUpdate(ctx context.Context, d *schema.Resou
 		return diag.Errorf("error creating SMN client: %s", err)
 	}
 
-	// updateFilterPolicy: create SMN subscription filter policy
-	updateFilterPolicyHttpUrl := "v2/{project_id}/notifications/subscriptions/filter_polices"
-	updateFilterPolicyPath := client.Endpoint + updateFilterPolicyHttpUrl
-	updateFilterPolicyPath = strings.ReplaceAll(updateFilterPolicyPath, "{project_id}", client.ProjectID)
+	if d.HasChangeExcept("enable_force_new") {
+		// updateFilterPolicy: create SMN subscription filter policy
+		updateFilterPolicyHttpUrl := "v2/{project_id}/notifications/subscriptions/filter_polices"
+		updateFilterPolicyPath := client.Endpoint + updateFilterPolicyHttpUrl
+		updateFilterPolicyPath = strings.ReplaceAll(updateFilterPolicyPath, "{project_id}", client.ProjectID)
 
-	updateFilterPolicyOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateFilterPolicyOpt.JSONBody = map[string]interface{}{
-		"polices": []map[string]interface{}{
-			{
-				"subscription_urn": d.Id(),
-				"filter_polices":   buildFilterPolicies(d.Get("filter_policies").(*schema.Set).List()),
+		updateFilterPolicyOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+		}
+		updateFilterPolicyOpt.JSONBody = map[string]interface{}{
+			"polices": []map[string]interface{}{
+				{
+					"subscription_urn": d.Id(),
+					"filter_polices":   buildFilterPolicies(d.Get("filter_policies").(*schema.Set).List()),
+				},
 			},
-		},
-	}
+		}
 
-	_, err = client.Request("PUT", updateFilterPolicyPath, &updateFilterPolicyOpt)
-	if err != nil {
-		return diag.Errorf("error updating SMN subscription filter policy: %s", err)
+		_, err = client.Request("PUT", updateFilterPolicyPath, &updateFilterPolicyOpt)
+		if err != nil {
+			return diag.Errorf("error updating SMN subscription filter policy: %s", err)
+		}
 	}
 
 	return resourceSubscriptionFilterPolicyRead(ctx, d, meta)
@@ -217,7 +219,7 @@ func GetSubscriptionFilterPolicies(client *golangsdk.ServiceClient, subscription
 	if index == -1 {
 		return nil, golangsdk.ErrDefault400{
 			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-				Body: []byte(fmt.Sprintf("the format of the subscription URN (%s) is incorrect", subscriptionUrn)),
+				Body: fmt.Appendf(nil, "the format of the subscription URN (%s) is incorrect", subscriptionUrn),
 			},
 		}
 	}
@@ -266,7 +268,7 @@ func GetSubscriptionFilterPolicies(client *golangsdk.ServiceClient, subscription
 				Method:    "GET",
 				URL:       "/v2/{project_id}/notifications/topics/{topicUrn}/subscriptions",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the subscription filter policy (%s) does not exist", subscriptionUrn)),
+				Body:      fmt.Appendf(nil, "the subscription filter policy (%s) does not exist", subscriptionUrn),
 			},
 		}
 	}
@@ -279,7 +281,7 @@ func buildFilterPolicies(filterPolicies []interface{}) []map[string]interface{} 
 	for i, v := range filterPolicies {
 		opts[i] = map[string]interface{}{
 			"name":          utils.PathSearch("name", v, nil),
-			"string_equals": utils.PathSearch("string_equals", v, nil).(*schema.Set).List(),
+			"string_equals": utils.PathSearch("string_equals", v, schema.NewSet(schema.HashString, nil)).(*schema.Set).List(),
 		}
 	}
 	return opts

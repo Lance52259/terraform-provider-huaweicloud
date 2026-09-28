@@ -17,7 +17,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API ServiceStage GET /v2/{project_id}/pools
+// @API ModelArts GET /v2/{project_id}/pools
 func DataSourceV2ResourcePools() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceV2ResourcePoolsRead,
@@ -1385,11 +1385,11 @@ func dataSourceV2ResourcePoolsRead(_ context.Context, d *schema.ResourceData, me
 		return diag.Errorf("error getting resource pools: %s", err)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	mErr := multierror.Append(nil,
 		d.Set("region", region),

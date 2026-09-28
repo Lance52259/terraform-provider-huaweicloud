@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -265,7 +265,7 @@ func ReadPublicGateway(client *golangsdk.ServiceClient, gatewayID string) (inter
 
 func waitingForPublicGatewayStatusActive(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -524,7 +524,10 @@ func buildUpdatePublicGatewayChargingModeBodyParams(d *schema.ResourceData) map[
 		"is_auto_pay":   true,
 	}
 	if v, ok := d.GetOk("auto_renew"); ok {
-		autoRenew, _ := strconv.ParseBool(v.(string))
+		autoRenew, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'auto_renew' field to Boolean: %s", err)
+		}
 		bodyParams["is_auto_renew"] = autoRenew
 	}
 
@@ -594,7 +597,7 @@ func buildUpdatePublicGatewayBodyParams(d *schema.ResourceData) map[string]inter
 
 func waitingForPublicGatewayDelete(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

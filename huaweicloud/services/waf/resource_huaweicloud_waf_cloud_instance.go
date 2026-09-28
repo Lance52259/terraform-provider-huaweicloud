@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -178,7 +178,10 @@ func getAutoRenewValue(autoRenew string) bool {
 	if autoRenew == "" {
 		return false
 	}
-	result, _ := strconv.ParseBool(autoRenew)
+	result, err := strconv.ParseBool(autoRenew)
+	if err != nil {
+		log.Printf("[WARN] error parsing auto_renew to Boolean: %s", err)
+	}
 	return result
 }
 
@@ -310,7 +313,7 @@ func QueryCloudInstance(client *golangsdk.ServiceClient, instanceId, epsId strin
 	ChargingMode, error) {
 	default404Err := golangsdk.ErrDefault404{
 		ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-			Body: []byte(fmt.Sprintf("the cloud WAF (%s) does not exist", instanceId)),
+			Body: fmt.Appendf(nil, "the cloud WAF (%s) does not exist", instanceId),
 		},
 	}
 	resp, err := clouds.GetWithEpsID(client, epsId)
@@ -545,7 +548,7 @@ func resourceCloudInstanceUpdate(ctx context.Context, d *schema.ResourceData, me
 	return resourceCloudInstanceRead(ctx, d, meta)
 }
 
-func cloudInstanceDeleteRefreshFunc(client *golangsdk.ServiceClient, instanceId, epsId string) resource.StateRefreshFunc {
+func cloudInstanceDeleteRefreshFunc(client *golangsdk.ServiceClient, instanceId, epsId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, _, err := QueryCloudInstance(client, instanceId, epsId)
 		var errDefault404 golangsdk.ErrDefault404
@@ -589,7 +592,7 @@ func resourceCloudInstanceDelete(ctx context.Context, d *schema.ResourceData, me
 			"error unsubscribing WAF cloud instance")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"DELETED"},
 		Refresh:      cloudInstanceDeleteRefreshFunc(wafClient, instanceId, epsId),

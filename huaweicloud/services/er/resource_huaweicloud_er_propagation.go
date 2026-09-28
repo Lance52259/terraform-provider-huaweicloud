@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -232,7 +232,7 @@ func GetPropagationById(client *golangsdk.ServiceClient, instanceId, routeTableI
 	if propagation == nil {
 		return nil, golangsdk.ErrDefault404{
 			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-				Body: []byte(fmt.Sprintf("the propagation (%s) does not exist", propagationId)),
+				Body: fmt.Appendf(nil, "the propagation (%s) does not exist", propagationId),
 			},
 		}
 	}
@@ -241,7 +241,7 @@ func GetPropagationById(client *golangsdk.ServiceClient, instanceId, routeTableI
 }
 
 func propagationStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId, routeTableId, propagationId string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetPropagationById(client, instanceId, routeTableId, propagationId)
 		if err != nil {
@@ -290,7 +290,7 @@ func resourcePropagationCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	d.SetId(propagationId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: propagationStatusRefreshFunc(client, instanceId, routeTableId, d.Id(), []string{"available"}),
@@ -407,22 +407,24 @@ func resourcePropagationUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error creating ER client: %s", err)
 	}
 
-	_, err = changePropagationRoutePolicy(client, instanceId, routeTableId, propagationId, routePolicies)
-	if err != nil {
-		return diag.Errorf("error updating the route policy of propagation (%s): %s", propagationId, err)
-	}
+	if d.HasChanges("route_policy") {
+		_, err = changePropagationRoutePolicy(client, instanceId, routeTableId, propagationId, routePolicies)
+		if err != nil {
+			return diag.Errorf("error updating the route policy of propagation (%s): %s", propagationId, err)
+		}
 
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"PENDING"},
-		Target:       []string{"COMPLETED"},
-		Refresh:      propagationStatusRefreshFunc(client, instanceId, routeTableId, propagationId, []string{"available"}),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		Delay:        10 * time.Second,
-		PollInterval: 10 * time.Second,
-	}
-	_, err = stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return diag.Errorf("error waiting for the propagation (%s) route policy update to complete: %s", propagationId, err)
+		stateConf := &retry.StateChangeConf{
+			Pending:      []string{"PENDING"},
+			Target:       []string{"COMPLETED"},
+			Refresh:      propagationStatusRefreshFunc(client, instanceId, routeTableId, propagationId, []string{"available"}),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        10 * time.Second,
+			PollInterval: 10 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return diag.Errorf("error waiting for the propagation (%s) route policy update to complete: %s", propagationId, err)
+		}
 	}
 
 	return resourcePropagationRead(ctx, d, meta)
@@ -469,7 +471,7 @@ func resourcePropagationDelete(ctx context.Context, d *schema.ResourceData, meta
 		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting propagation (%s)", propagationId))
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: propagationStatusRefreshFunc(client, instanceId, routeTableId, propagationId, nil),

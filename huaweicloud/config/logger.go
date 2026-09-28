@@ -61,7 +61,10 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 					log.Printf("[WARN] [%s] failed to log API Request Body: %s", logId, logErr)
 				}
 
-				request.Body.Close()
+				err = request.Body.Close()
+				if err != nil {
+					log.Printf("[WARN] [%s] failed to close API Request Body: %s", logId, err)
+				}
 			}
 		}
 
@@ -105,7 +108,7 @@ func (lrt *LogRoundTripper) RoundTrip(request *http.Request) (*http.Response, er
 
 		log.Printf("[DEBUG] [%s] connection error, retry number %d: %s", logId, retry, err)
 
-		//lintignore:R018
+		// lintignore:R018
 		time.Sleep(retryTimeout(retry))
 		response, err = lrt.Rt.RoundTrip(request)
 		retry++
@@ -245,11 +248,11 @@ func RedactHeaders(headers http.Header) (processedHeaders []string) {
 }
 
 // FormatHeaders processes a headers object plus a deliminator, returning a string
-func FormatHeaders(headers http.Header, seperator string) string {
+func FormatHeaders(headers http.Header, separator string) string {
 	redactedHeaders := RedactHeaders(headers)
 	sort.Strings(redactedHeaders)
 
-	return strings.Join(redactedHeaders, seperator)
+	return strings.Join(redactedHeaders, separator)
 }
 
 func maskSecurityFields(data map[string]interface{}) {

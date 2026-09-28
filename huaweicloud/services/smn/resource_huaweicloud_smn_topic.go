@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -131,7 +131,7 @@ func resourceTopicCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	// set policies
 	err = updatePolicies(client, d, d.Id())
 	if err != nil {
-		diag.Errorf("error updating the policies of topic: %s", err)
+		return diag.Errorf("error updating the policies of topic: %s", err)
 	}
 
 	// set tags
@@ -267,7 +267,7 @@ func resourceTopicUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 	if d.HasChanges("access_policy", "users_publish_allowed", "services_publish_allowed", "introduction") {
 		err := updatePolicies(client, d, id)
 		if err != nil {
-			diag.Errorf("error updating the policies of topic: %s", err)
+			return diag.Errorf("error updating the policies of topic: %s", err)
 		}
 	}
 
@@ -394,7 +394,7 @@ func resourceTopicDelete(ctx context.Context, d *schema.ResourceData, meta inter
 		return common.CheckDeletedDiag(d, err, "error deleting SMN topic")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"ACTIVE"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForTopicDelete(client, d.Id()),
@@ -411,7 +411,7 @@ func resourceTopicDelete(ctx context.Context, d *schema.ResourceData, meta inter
 	return nil
 }
 
-func waitForTopicDelete(client *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForTopicDelete(client *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		r, err := topics.Get(client, id).ExtractGet()
 		if err != nil {

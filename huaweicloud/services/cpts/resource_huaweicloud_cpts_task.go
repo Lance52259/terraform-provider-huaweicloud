@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -304,7 +304,7 @@ func GetTaskDetail(client *golangsdk.ServiceClient, taskID string) (interface{},
 
 func waitingForTaskFinished(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -313,7 +313,7 @@ func waitingForTaskFinished(ctx context.Context, client *golangsdk.ServiceClient
 				return nil, "ERROR", err
 			}
 
-			runStatus := utils.PathSearch("taskInfo.run_status", respBody, "").(int)
+			runStatus := utils.PathSearch("taskInfo.run_status", respBody, 0).(int)
 			if runStatus == runStatusFinished {
 				return respBody, "COMPLETED", nil
 			}

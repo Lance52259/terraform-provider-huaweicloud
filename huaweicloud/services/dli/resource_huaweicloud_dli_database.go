@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -74,7 +74,7 @@ func ResourceDliSqlDatabaseV1() *schema.Resource {
 	}
 }
 
-func databaseCreateRefreshFunc(client *golangsdk.ServiceClient, dbName string) resource.StateRefreshFunc {
+func databaseCreateRefreshFunc(client *golangsdk.ServiceClient, dbName string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		detail, queryErr := GetDliSQLDatabaseByName(client, dbName)
 		if queryErr != nil {
@@ -111,7 +111,7 @@ func resourceDliSQLDatabaseCreate(ctx context.Context, d *schema.ResourceData, m
 
 		// Return synchronization job result times out.
 		// At this time, the job has entered the creation phase.
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:      []string{"PENDING"},
 			Target:       []string{"COMPLETED"},
 			Refresh:      databaseCreateRefreshFunc(client, dbName),
@@ -146,7 +146,7 @@ func GetDliSQLDatabaseByName(c *golangsdk.ServiceClient, dbName string) (databas
 				Method:    "GET",
 				URL:       "/v1.0/{project_id}/databases",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("unable to query the database: %s", resp.Message)),
+				Body:      fmt.Appendf(nil, "unable to query the database: %s", resp.Message),
 			},
 		}
 	}
@@ -157,7 +157,7 @@ func GetDliSQLDatabaseByName(c *golangsdk.ServiceClient, dbName string) (databas
 				Method:    "GET",
 				URL:       "/v1.0/{project_id}/databases",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("no database matched the keyword: %s", dbName)),
+				Body:      fmt.Appendf(nil, "no database matched the keyword: %s", dbName),
 			},
 		}
 	}
@@ -172,7 +172,7 @@ func GetDliSQLDatabaseByName(c *golangsdk.ServiceClient, dbName string) (databas
 			Method:    "GET",
 			URL:       "/v1.0/{project_id}/databases",
 			RequestId: "NONE",
-			Body:      []byte(fmt.Sprintf("the database (%s) does not exist", dbName)),
+			Body:      fmt.Appendf(nil, "the database (%s) does not exist", dbName),
 		},
 	}
 }
@@ -232,7 +232,7 @@ func resourceDliSQLDatabaseUpdate(ctx context.Context, d *schema.ResourceData, m
 	return resourceDliSQLDatabaseRead(ctx, d, meta)
 }
 
-func databaseDeleteRefreshFunc(client *golangsdk.ServiceClient, dbName string) resource.StateRefreshFunc {
+func databaseDeleteRefreshFunc(client *golangsdk.ServiceClient, dbName string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		detail, queryErr := GetDliSQLDatabaseByName(client, dbName)
 		if queryErr != nil {
@@ -262,7 +262,7 @@ func resourceDliSQLDatabaseDelete(ctx context.Context, d *schema.ResourceData, m
 
 		// Return synchronization job result times out.
 		// At this time, the job has entered the delete phase.
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:      []string{"PENDING"},
 			Target:       []string{"COMPLETED"},
 			Refresh:      databaseDeleteRefreshFunc(client, dbName),

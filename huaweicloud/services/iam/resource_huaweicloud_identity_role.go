@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -27,6 +28,11 @@ func ResourceV3Role() *schema.Resource {
 		ReadContext:   resourceV3IdentityRoleRead,
 		UpdateContext: resourceV3IdentityRoleUpdate,
 		DeleteContext: resourceV3IdentityRoleDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+		},
+
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
@@ -52,8 +58,8 @@ func ResourceV3Role() *schema.Resource {
 				Required:     true,
 				Description:  `The content of the custom policy, in JSON format.`,
 				ValidateFunc: validation.StringIsJSON,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					equal, _ := utils.CompareJsonTemplateAreEquivalent(old, new)
+				DiffSuppressFunc: func(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+					equal, _ := utils.CompareJsonTemplateAreEquivalent(oldVal, newVal)
 					return equal
 				},
 			},
@@ -99,17 +105,29 @@ func resourceV3IdentityRoleCreate(ctx context.Context, d *schema.ResourceData, m
 	return resourceV3IdentityRoleRead(ctx, d, meta)
 }
 
-func resourceV3IdentityRoleRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceV3IdentityRoleRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	client, err := cfg.IAMV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating IAM client: %s", err)
 	}
 
-	role, err := policies.Get(client, d.Id()).Extract()
+	var (
+		resp   interface{}
+		roleId = d.Id()
+	)
+	// After creation, the role may not be immediately queryable (usually 2-3s, up to 10s).
+	if d.IsNewResource() {
+		resp, err = PollRequest(ctx, func() (interface{}, error) {
+			return policies.Get(client, roleId).Extract()
+		})
+	} else {
+		resp, err = policies.Get(client, roleId).Extract()
+	}
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "IAM custom policy")
 	}
+	role := resp.(*policies.Role)
 
 	log.Printf("[DEBUG] Retrieved IAM custom policy: %#v", role)
 	policy, err := json.Marshal(role.Policy)

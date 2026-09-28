@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -432,6 +433,7 @@ func dataSourceElbListenersRead(_ context.Context, d *schema.ResourceData, meta 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
+// nolint:gocyclo
 func buildListListenersQueryParams(d *schema.ResourceData, enterpriseProjectId string) string {
 	res := ""
 	if v, ok := d.GetOk("loadbalancer_id"); ok {
@@ -456,15 +458,24 @@ func buildListListenersQueryParams(d *schema.ResourceData, enterpriseProjectId s
 		res = fmt.Sprintf("%s&default_tls_container_ref=%v", res, v)
 	}
 	if v, ok := d.GetOk("enable_member_retry"); ok {
-		enableMemberRetry, _ := strconv.ParseBool(v.(string))
+		enableMemberRetry, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'enable_member_retry' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&enable_member_retry=%v", res, enableMemberRetry)
 	}
 	if v, ok := d.GetOk("advanced_forwarding_enabled"); ok {
-		enableMemberRetry, _ := strconv.ParseBool(v.(string))
-		res = fmt.Sprintf("%s&enhance_l7policy_enable=%v", res, enableMemberRetry)
+		advancedForwardingEnabled, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'advanced_forwarding_enabled' field to Boolean: %s", err)
+		}
+		res = fmt.Sprintf("%s&enhance_l7policy_enable=%v", res, advancedForwardingEnabled)
 	}
 	if v, ok := d.GetOk("http2_enable"); ok {
-		http2Enable, _ := strconv.ParseBool(v.(string))
+		http2Enable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'http2_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&http2_enable=%v", res, http2Enable)
 	}
 	if v, ok := d.GetOk("idle_timeout"); ok {
@@ -486,11 +497,17 @@ func buildListListenersQueryParams(d *schema.ResourceData, enterpriseProjectId s
 		res = fmt.Sprintf("%s&protection_status=%v", res, v)
 	}
 	if v, ok := d.GetOk("proxy_protocol_enable"); ok {
-		proxyProtocolEnable, _ := strconv.ParseBool(v.(string))
+		proxyProtocolEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'proxy_protocol_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&proxy_protocol_enable=%v", res, proxyProtocolEnable)
 	}
 	if v, ok := d.GetOk("ssl_early_data_enable"); ok {
-		sslEarlyDataEnable, _ := strconv.ParseBool(v.(string))
+		sslEarlyDataEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'ssl_early_data_enable' field to Boolean: %s", err)
+		}
 		res = fmt.Sprintf("%s&ssl_early_data_enable=%v", res, sslEarlyDataEnable)
 	}
 	if v, ok := d.GetOk("tls_ciphers_policy"); ok {

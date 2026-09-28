@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -181,6 +181,19 @@ func ResourceDliSparkJobV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"updated_at": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"app_ids": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"kind": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"owner": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -282,10 +295,17 @@ func resourceDliSparkJobRead(_ context.Context, d *schema.ResourceData, meta int
 		return common.CheckDeletedDiag(d, err, "DLI spark job")
 	}
 
+	// Convert millisecond timestamps to RFC3339 format
+	createdAt := utils.FormatTimeStampRFC3339(int64(resp.CreateTime)/1000, false, "2006-01-02 15:04:05")
+	updatedAt := utils.FormatTimeStampRFC3339(int64(resp.UpdateTime)/1000, false, "2006-01-02 15:04:05")
+
 	mErr := multierror.Append(nil,
 		d.Set("queue_name", resp.Queue),
 		d.Set("name", resp.Name),
-		d.Set("created_at", time.Unix(int64(resp.CreateTime)/1000, 0).Format("2006-01-02 15:04:05")),
+		d.Set("created_at", createdAt),
+		d.Set("updated_at", updatedAt),
+		d.Set("app_ids", resp.AppId),
+		d.Set("kind", resp.Kind),
 		d.Set("owner", resp.Owner),
 	)
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -323,7 +343,7 @@ func resourceDliSparkJobDelete(ctx context.Context, d *schema.ResourceData, meta
 
 func checkDliSparkJobCancelResult(ctx context.Context, client *golangsdk.ServiceClient, jobId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"Pending"},
 		Target:  []string{"Success"},
 		Refresh: func() (interface{}, string, error) {

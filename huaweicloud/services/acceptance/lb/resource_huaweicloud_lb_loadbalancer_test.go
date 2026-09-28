@@ -3,6 +3,7 @@ package lb
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -266,7 +267,7 @@ func TestAccLBV2LoadBalancer_changeToPrePaid(t *testing.T) {
 
 func testAccCheckLBV2LoadBalancerHasSecGroup(
 	lb *loadbalancers.LoadBalancer, sg *groups.SecurityGroup) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
+	return func(_ *terraform.State) error {
 		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
 		networkingClient, err := cfg.NetworkingV2Client(acceptance.HW_REGION_NAME)
 		if err != nil {
@@ -278,10 +279,8 @@ func testAccCheckLBV2LoadBalancerHasSecGroup(
 			return err
 		}
 
-		for _, p := range port.SecurityGroups {
-			if p == sg.ID {
-				return nil
-			}
+		if slices.Contains(port.SecurityGroups, sg.ID) {
+			return nil
 		}
 
 		return fmt.Errorf("LoadBalancer does not have the security group")

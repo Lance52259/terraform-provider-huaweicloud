@@ -9,8 +9,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/throttles"
@@ -19,6 +20,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var throttlingPolicyAssociateNonUpdatableParams = []string{
+	"instance_id",
+	"policy_id",
+}
 
 // @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/throttle-bindings
 // @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/throttle-bindings/unbinded-apis
@@ -41,6 +47,8 @@ func ResourceThrottlingPolicyAssociate() *schema.Resource {
 			Delete: schema.DefaultTimeout(3 * time.Minute),
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(throttlingPolicyAssociateNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:        schema.TypeString,
@@ -52,13 +60,11 @@ func ResourceThrottlingPolicyAssociate() *schema.Resource {
 			"instance_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the dedicated instance to which the APIs and the throttling policy belongs.",
 			},
 			"policy_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the throttling policy.",
 			},
 			"publish_ids": {
@@ -67,12 +73,24 @@ func ResourceThrottlingPolicyAssociate() *schema.Resource {
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "The publish IDs corresponding to the APIs bound by the throttling policy.",
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
+					}),
+			},
 		},
 	}
 }
 
 func throttlingPolicyBindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, policyId string,
-	publishIds []string) resource.StateRefreshFunc {
+	publishIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl  = "v2/{project_id}/apigw/instances/{instance_id}/throttle-bindings/unbinded-apis"
@@ -129,7 +147,7 @@ func bindThrottlingPolicyToApis(ctx context.Context, client *golangsdk.ServiceCl
 		return fmt.Errorf("error binding throttling policy to one or more APIs: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: throttlingPolicyBindingRefreshFunc(client, instanceId, policyId, publishIds),
@@ -224,7 +242,7 @@ func resourceThrottlingPolicyAssociateRead(_ context.Context, d *schema.Resource
 }
 
 func throttlingPolicyUnbindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, policyId string,
-	publishIds []string) resource.StateRefreshFunc {
+	publishIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl  = "v2/{project_id}/apigw/instances/{instance_id}/throttle-bindings/binded-apis"
@@ -308,7 +326,7 @@ func unbindPolicy(ctx context.Context, client *golangsdk.ServiceClient, opt thro
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: throttlingPolicyUnbindingRefreshFunc(client, instanceId, policyId, publishIds),
@@ -332,31 +350,33 @@ func resourceThrottlingPolicyAssociateUpdate(ctx context.Context, d *schema.Reso
 		return diag.Errorf("error creating APIG v2 client: %s", err)
 	}
 
-	var (
-		instanceId     = d.Get("instance_id").(string)
-		policyId       = d.Get("policy_id").(string)
-		oldRaw, newRaw = d.GetChange("publish_ids")
+	if d.HasChange("publish_ids") {
+		var (
+			instanceId     = d.Get("instance_id").(string)
+			policyId       = d.Get("policy_id").(string)
+			oldRaw, newRaw = d.GetChange("publish_ids")
 
-		addSet = newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
-		rmSet  = oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
-	)
+			addSet = newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
+			rmSet  = oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
+		)
 
-	if rmSet.Len() > 0 {
-		opt := buildListOpts(instanceId, policyId)
-		err = unbindPolicy(ctx, client, opt, rmSet, d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return diag.FromErr(err)
+		if rmSet.Len() > 0 {
+			opt := buildListOpts(instanceId, policyId)
+			err = unbindPolicy(ctx, client, opt, rmSet, d.Timeout(schema.TimeoutUpdate))
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
-	}
-	if addSet.Len() > 0 {
-		opt := throttles.BindOpts{
-			InstanceId: instanceId,
-			ThrottleId: policyId,
-			PublishIds: utils.ExpandToStringListBySet(addSet),
-		}
-		err = bindThrottlingPolicyToApis(ctx, client, opt, d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return diag.FromErr(err)
+		if addSet.Len() > 0 {
+			opt := throttles.BindOpts{
+				InstanceId: instanceId,
+				ThrottleId: policyId,
+				PublishIds: utils.ExpandToStringListBySet(addSet),
+			}
+			err = bindThrottlingPolicyToApis(ctx, client, opt, d.Timeout(schema.TimeoutUpdate))
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
 	}
 

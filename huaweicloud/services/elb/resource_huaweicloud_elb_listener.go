@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -312,6 +312,7 @@ func ResourceListenerV3() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceListenerV3Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	elbClient, err := cfg.ElbV3Client(cfg.GetRegion(d))
@@ -374,7 +375,10 @@ func resourceListenerV3Create(ctx context.Context, d *schema.ResourceData, meta 
 			IpGroupId: d.Get("ip_group").(string),
 		}
 		if rawIpGroupEnable, ok := d.GetOk("ip_group_enable"); ok {
-			ipGroupEnable, _ := strconv.ParseBool(rawIpGroupEnable.(string))
+			ipGroupEnable, err := strconv.ParseBool(rawIpGroupEnable.(string))
+			if err != nil {
+				log.Printf("[WARN] error parsing 'ip_group_enable' field to Boolean: %s", err)
+			}
 			ipGroup.Enable = &ipGroupEnable
 		}
 		createOpts.IpGroup = ipGroup
@@ -435,18 +439,27 @@ func resourceListenerV3Create(ctx context.Context, d *schema.ResourceData, meta 
 		createOpts.SslEarlyDataEnable = &sslEarlyDataEnable
 	}
 	if v, ok := d.GetOk("quic_listener_id"); ok {
-		enableQuicUpgrade, _ := strconv.ParseBool(d.Get("enable_quic_upgrade").(string))
+		enableQuicUpgrade, err := strconv.ParseBool(d.Get("enable_quic_upgrade").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'enable_quic_upgrade' field to Boolean: %s", err)
+		}
 		createOpts.QuicConfig = &listeners.QuicConfig{
 			QuicListenerId:    v.(string),
 			EnableQuicUpgrade: &enableQuicUpgrade,
 		}
 	}
 	if v, ok := d.GetOk("transparent_client_ip_enable"); ok {
-		transparentClientIpEnable, _ := strconv.ParseBool(v.(string))
+		transparentClientIpEnable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'transparent_client_ip_enable' field to Boolean: %s", err)
+		}
 		createOpts.TransparentClientIP = &transparentClientIpEnable
 	}
 	if v, ok := d.GetOk("nat64_enable"); ok {
-		nat64Enable, _ := strconv.ParseBool(v.(string))
+		nat64Enable, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'nat64_enable' field to Boolean: %s", err)
+		}
 		createOpts.Nat64Enable = &nat64Enable
 	}
 
@@ -634,6 +647,7 @@ func resourceListenerV3Update(ctx context.Context, d *schema.ResourceData, meta 
 	return resourceListenerV3Read(ctx, d, meta)
 }
 
+// nolint:gocyclo
 func updateListener(ctx context.Context, d *schema.ResourceData, elbClient *golangsdk.ServiceClient) diag.Diagnostics {
 	var updateOpts listeners.UpdateOpts
 	if d.HasChange("name") {
@@ -667,7 +681,10 @@ func updateListener(ctx context.Context, d *schema.ResourceData, elbClient *gola
 		updateOpts.DefaultPoolID = d.Get("default_pool_id").(string)
 	}
 	if d.HasChanges("access_policy", "ip_group") {
-		ipGroupEnable, _ := strconv.ParseBool(d.Get("ip_group_enable").(string))
+		ipGroupEnable, err := strconv.ParseBool(d.Get("ip_group_enable").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'ip_group_enable' field to Boolean: %s", err)
+		}
 		updateOpts.IpGroup = &listeners.IpGroupUpdate{
 			Type:      d.Get("access_policy").(string),
 			IpGroupId: d.Get("ip_group").(string),
@@ -764,11 +781,17 @@ func updateListener(ctx context.Context, d *schema.ResourceData, elbClient *gola
 		updateOpts.SslEarlyDataEnable = &sslEarlyDataEnable
 	}
 	if d.HasChange("nat64_enable") {
-		nat64Enable, _ := strconv.ParseBool(d.Get("nat64_enable").(string))
+		nat64Enable, err := strconv.ParseBool(d.Get("nat64_enable").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'nat64_enable' field to Boolean: %s", err)
+		}
 		updateOpts.Nat64Enable = &nat64Enable
 	}
 	if d.HasChange("transparent_client_ip_enable") {
-		transparentClientIpEnable, _ := strconv.ParseBool(d.Get("transparent_client_ip_enable").(string))
+		transparentClientIpEnable, err := strconv.ParseBool(d.Get("transparent_client_ip_enable").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'transparent_client_ip_enable' field to Boolean: %s", err)
+		}
 		updateOpts.TransparentClientIP = &transparentClientIpEnable
 	}
 
@@ -781,7 +804,10 @@ func updateListener(ctx context.Context, d *schema.ResourceData, elbClient *gola
 	// if disable upgrading to QUIC listener, the quic_config must be null
 	var quicConfig listeners.QuicConfig
 	if v, ok := d.GetOk("quic_listener_id"); ok {
-		enableQuicUpgrade, _ := strconv.ParseBool(d.Get("enable_quic_upgrade").(string))
+		enableQuicUpgrade, err := strconv.ParseBool(d.Get("enable_quic_upgrade").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'enable_quic_upgrade' field to Boolean: %s", err)
+		}
 		quicConfig.QuicListenerId = v.(string)
 		quicConfig.EnableQuicUpgrade = &enableQuicUpgrade
 		updateOpts.QuicConfig = &quicConfig
@@ -854,7 +880,7 @@ func waitForELBV3Listener(ctx context.Context, elbClient *golangsdk.ServiceClien
 	pending []string, timeout time.Duration) error {
 	log.Printf("[DEBUG] Waiting for listener %s to become %s.", id, target)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:     []string{target},
 		Pending:    pending,
 		Refresh:    resourceELBV3ListenerRefreshFunc(elbClient, id),
@@ -879,7 +905,7 @@ func waitForELBV3Listener(ctx context.Context, elbClient *golangsdk.ServiceClien
 	return nil
 }
 
-func resourceELBV3ListenerRefreshFunc(elbClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func resourceELBV3ListenerRefreshFunc(elbClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		listener, err := listeners.Get(elbClient, id).Extract()
 		if err != nil {

@@ -124,6 +124,7 @@ type AssumeRole struct {
 	RoleDuration int
 }
 
+// nolint:gocyclo
 func (c *Config) LoadAndValidate() error {
 	if c.MaxRetries < 0 {
 		return fmt.Errorf("max_retries should be a positive value")
@@ -278,7 +279,7 @@ func (c *Config) SetServiceEndpoint(service, endpoint string) {
 	}
 }
 
-func retryBackoffFunc(ctx context.Context, respErr *golangsdk.ErrUnexpectedResponseCode, e error, retries uint) error {
+func retryBackoffFunc(ctx context.Context, _ *golangsdk.ErrUnexpectedResponseCode, e error, retries uint) error {
 	minutes := int(math.Pow(2, float64(retries)))
 	if minutes > 30 { // won't wait more than 30 minutes
 		minutes = 30
@@ -294,7 +295,7 @@ func retryBackoffFunc(ctx context.Context, respErr *golangsdk.ErrUnexpectedRespo
 			return e
 		}
 	} else {
-		//lintignore:R018
+		// lintignore:R018
 		time.Sleep(sleep)
 	}
 
@@ -442,7 +443,8 @@ func (c *Config) newServiceClientByName(client *golangsdk.ProviderClient, catalo
 	// Custom Resource-level region only supports AK/SK authentication.
 	// If set it when using non AK/SK authentication, then it must be the same as Provider-level region.
 	if region != c.Region && (c.AccessKey == "" || c.SecretKey == "") {
-		return nil, fmt.Errorf("Resource-level region must be the same as Provider-level region when using non AK/SK authentication if Resource-level region set")
+		return nil, fmt.Errorf("Resource-level region must be the same as Provider-level region when using non AK/SK authentication" +
+			" if Resource-level region set")
 	}
 
 	c.RPLock.Lock()
@@ -579,7 +581,6 @@ func (c *Config) getUserIDbyName(name string) (string, error) {
 
 // loadUserProjects will query the region-projectId pair and store it into RegionProjectIDMap
 func (c *Config) loadUserProjects(client *golangsdk.ProviderClient, region string) error {
-
 	log.Printf("[DEBUG] Load project ID for region: %s", region)
 	domainID := client.DomainID
 	opts := projects.ListOpts{
@@ -789,16 +790,8 @@ func (c *Config) BmsV1Client(region string) (*golangsdk.ServiceClient, error) {
 }
 
 // ********** client for Storage **********
-func (c *Config) BlockStorageV1Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("evsv1", region)
-}
-
 func (c *Config) BlockStorageV21Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("evsv21", region)
-}
-
-func (c *Config) BlockStorageV5Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("evsv5", region)
 }
 
 func (c *Config) BlockStorageV2Client(region string) (*golangsdk.ServiceClient, error) {
@@ -878,11 +871,11 @@ func (c *Config) FwV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("networkv2", region)
 }
 
-func (c *Config) DnsV2Client(region string) (*golangsdk.ServiceClient, error) {
+func (c *Config) DNSV2Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dns", region)
 }
 
-func (c *Config) DnsWithRegionClient(region string) (*golangsdk.ServiceClient, error) {
+func (c *Config) DNSWithRegionClient(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("dns_region", region)
 }
 
@@ -952,7 +945,7 @@ func (c *Config) KmsV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("kmsv3", region)
 }
 
-// WafV1Client is not avaliable in HuaweiCloud, will be imported by other clouds
+// WafV1Client is not available in HuaweiCloud, will be imported by other clouds
 func (c *Config) WafV1Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("waf", region)
 }
@@ -1090,10 +1083,6 @@ func (c *Config) RdsV1Client(region string) (*golangsdk.ServiceClient, error) {
 
 func (c *Config) RdsV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("rds", region)
-}
-
-func (c *Config) RdsV31Client(region string) (*golangsdk.ServiceClient, error) {
-	return c.NewServiceClient("rdsv31", region)
 }
 
 func (c *Config) DdsV3Client(region string) (*golangsdk.ServiceClient, error) {

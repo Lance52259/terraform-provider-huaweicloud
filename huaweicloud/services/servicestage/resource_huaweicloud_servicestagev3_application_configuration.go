@@ -202,8 +202,8 @@ func GetV3ApplicationConfiguration(client *golangsdk.ServiceClient, environmentI
 				Method:    "GET",
 				URL:       "/v3/{project_id}/cas/applications/{application_id}/configuration",
 				RequestId: "NONE",
-				Body: []byte(fmt.Sprintf("the configurations is empty in the application (%s) for the environment (%s)",
-					applicationId, environmentId)),
+				Body: fmt.Appendf(nil, "the configurations is empty in the application (%s) for the environment (%s)",
+					applicationId, environmentId),
 			},
 		}
 	}
@@ -279,9 +279,11 @@ func resourceV3ApplicationConfigurationUpdate(ctx context.Context, d *schema.Res
 		return diag.Errorf("error creating ServiceStage client: %s", err)
 	}
 
-	_, err = updateV3ApplicationConfiguration(client, d)
-	if err != nil {
-		return diag.FromErr(err)
+	if d.HasChangeExcept("enable_force_new") {
+		_, err = updateV3ApplicationConfiguration(client, d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	return resourceV3ApplicationConfigurationRead(ctx, d, meta)

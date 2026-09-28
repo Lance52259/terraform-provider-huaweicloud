@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -257,7 +257,7 @@ func resourcePersistentVolumeClaimV1Delete(ctx context.Context, d *schema.Resour
 
 func waitForPersistentVolumeClaimStateRefresh(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	ns string, s StateRefresh) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      s.Pending,
 		Target:       s.Target,
 		Refresh:      pvcStateRefreshFunc(d, client, ns),
@@ -273,7 +273,7 @@ func waitForPersistentVolumeClaimStateRefresh(ctx context.Context, d *schema.Res
 }
 
 func pvcStateRefreshFunc(d *schema.ResourceData, client *golangsdk.ServiceClient,
-	ns string) resource.StateRefreshFunc {
+	ns string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		volumeType := d.Get("volume_type").(string)
 		response, err := GetPvcInfoById(client, ns, volumeType, d.Id())
@@ -297,7 +297,7 @@ func GetPvcInfoById(client *golangsdk.ServiceClient, ns, volumeType,
 	if !ok {
 		return nil, golangsdk.ErrDefault400{
 			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-				Body: []byte(fmt.Sprintf("the volume type (%s) is not available", volumeType)),
+				Body: fmt.Appendf(nil, "the volume type (%s) is not available", volumeType),
 			},
 		}
 	}
@@ -323,7 +323,7 @@ func GetPvcInfoById(client *golangsdk.ServiceClient, ns, volumeType,
 			Method:    "GET",
 			URL:       "/api/v1/namespaces/{ns}/extended-persistentvolumeclaims",
 			RequestId: "NONE",
-			Body:      []byte(fmt.Sprintf("the PVC (%s) does not exist", id)),
+			Body:      fmt.Appendf(nil, "the PVC (%s) does not exist", id),
 		},
 	}
 }

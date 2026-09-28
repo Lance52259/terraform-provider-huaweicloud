@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/entity"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient_go"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient-go"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -275,6 +275,6 @@ func resourceAomMappingRuleUpdate(_ context.Context, d *schema.ResourceData, met
 	return diag.Errorf("error update AomMappingRule %s:  %s", opts.RuleName, string(body))
 }
 
-func SuppressCaseDiffs(_, old, new string, _ *schema.ResourceData) bool {
-	return strings.Split(old, "_")[0] == strings.Split(new, "_")[0]
+func SuppressCaseDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	return strings.Split(oldVal, "_")[0] == strings.Split(newVal, "_")[0]
 }

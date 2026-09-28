@@ -1,9 +1,12 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -12,8 +15,6 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 // @API MRS DELETE /v1.1/{project_id}/job-executions/{id}
@@ -104,7 +105,7 @@ func ResourceMRSJobV1() *schema.Resource {
 	}
 }
 
-func JobStateRefreshFunc(client *golangsdk.ServiceClient, jobID string) resource.StateRefreshFunc {
+func JobStateRefreshFunc(client *golangsdk.ServiceClient, jobID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		jobGet, err := job.Get(client, jobID).Extract()
 		if err != nil {
@@ -113,7 +114,7 @@ func JobStateRefreshFunc(client *golangsdk.ServiceClient, jobID string) resource
 			}
 			return nil, "", err
 		}
-		logp.Printf("[DEBUG] JobStateRefreshFunc: %#v", jobGet)
+		log.Printf("[DEBUG] JobStateRefreshFunc: %#v", jobGet)
 		jobState := "Starting"
 		if jobGet.JobState == -1 {
 			jobState = "Terminated"
@@ -133,10 +134,10 @@ func JobStateRefreshFunc(client *golangsdk.ServiceClient, jobID string) resource
 }
 
 func resourceMRSJobV1Create(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	client, err := config.MrsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.MrsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud MRS client: %s", err)
+		return fmt.Errorf("error creating MRS client: %s", err)
 	}
 
 	createOpts := &job.CreateOpts{
@@ -153,15 +154,15 @@ func resourceMRSJobV1Create(d *schema.ResourceData, meta interface{}) error {
 		IsPublic:       d.Get("is_public").(bool),
 	}
 
-	logp.Printf("[DEBUG] Create Options: %#v", createOpts)
+	log.Printf("[DEBUG] Create Options: %#v", createOpts)
 
 	jobCreate, err := job.Create(client, createOpts).Extract()
 	if err != nil {
-		return fmtp.Errorf("Error creating Job: %s", err)
+		return fmt.Errorf("error creating Job: %s", err)
 	}
 
 	d.SetId(jobCreate.ID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"Starting", "Running"},
 		Target:     []string{"Completed"},
 		Refresh:    JobStateRefreshFunc(client, jobCreate.ID),
@@ -170,29 +171,27 @@ func resourceMRSJobV1Create(d *schema.ResourceData, meta interface{}) error {
 		MinTimeout: 3 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 	if err != nil {
-		return fmtp.Errorf(
-			"Error waiting for job (%s) to become ready: %s ",
-			jobCreate.ID, err)
+		return fmt.Errorf("error waiting for job (%s) to become ready: %s ", jobCreate.ID, err)
 	}
 
 	return resourceMRSJobV1Read(d, meta)
 }
 
 func resourceMRSJobV1Read(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.MrsV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.MrsV1Client(region)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud  MRS client: %s", err)
+		return fmt.Errorf("error creating MRS client: %s", err)
 	}
 
 	jobGet, err := job.Get(client, d.Id()).Extract()
 	if err != nil {
 		return common.CheckDeleted(d, err, "MRS Job")
 	}
-	logp.Printf("[DEBUG] Retrieved MRS Job %s: %#v", d.Id(), jobGet)
+	log.Printf("[DEBUG] Retrieved MRS Job %s: %#v", d.Id(), jobGet)
 
 	d.Set("region", region)
 	d.SetId(jobGet.ID)
@@ -225,18 +224,18 @@ func resourceMRSJobV1Read(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceMRSJobV1Delete(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	client, err := config.MrsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.MrsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud client: %s", err)
+		return fmt.Errorf("error creating client: %s", err)
 	}
 
 	rId := d.Id()
-	logp.Printf("[DEBUG] Deleting MRS Job %s", rId)
+	log.Printf("[DEBUG] Deleting MRS Job %s", rId)
 
 	timeout := d.Timeout(schema.TimeoutDelete)
-	//lintignore:R006
-	err = resource.Retry(timeout, func() *resource.RetryError {
+	// lintignore:R006
+	err = retry.Retry(timeout, func() *retry.RetryError {
 		err := job.Delete(client, rId).ExtractErr()
 		if err != nil {
 			return checkForRetryableError(err)
@@ -245,26 +244,26 @@ func resourceMRSJobV1Delete(d *schema.ResourceData, meta interface{}) error {
 	})
 	if err != nil {
 		if utils.IsResourceNotFound(err) {
-			logp.Printf("[INFO] deleting an unavailable MRS Job: %s", rId)
+			log.Printf("[INFO] deleting an unavailable MRS Job: %s", rId)
 			return nil
 		}
-		return fmtp.Errorf("Error deleting MRS Job %s: %s", rId, err)
+		return fmt.Errorf("error deleting MRS Job %s: %s", rId, err)
 	}
 	return nil
 }
 
-func checkForRetryableError(err error) *resource.RetryError {
+func checkForRetryableError(err error) *retry.RetryError {
 	switch errCode := err.(type) {
 	case golangsdk.ErrDefault500:
-		return resource.RetryableError(err)
+		return retry.RetryableError(err)
 	case golangsdk.ErrUnexpectedResponseCode:
 		switch errCode.Actual {
 		case 409, 503:
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		default:
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 	default:
-		return resource.NonRetryableError(err)
+		return retry.NonRetryableError(err)
 	}
 }

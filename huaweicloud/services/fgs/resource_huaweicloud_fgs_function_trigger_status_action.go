@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -121,7 +121,7 @@ func resourceFunctionTriggerStatusActionCreate(ctx context.Context, d *schema.Re
 
 	d.SetId(triggerId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      functionTriggerStatusRefreshFunc(client, functionUrn, triggerTypeCode, triggerId, []string{"ACTIVE", "DISABLED"}),
@@ -131,7 +131,7 @@ func resourceFunctionTriggerStatusActionCreate(ctx context.Context, d *schema.Re
 	}
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
-		diag.Errorf("error waiting for the function trigger (%s) status to become expected value (%s): %s",
+		return diag.Errorf("error waiting for the function trigger (%s) status to become expected value (%s): %s",
 			triggerId, triggerStatus, err)
 	}
 

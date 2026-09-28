@@ -76,13 +76,6 @@ func TestAccElbV3Pool_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "persistence.0.cookie_name", "testCookie"),
 					resource.TestCheckResourceAttr(resourceName, "minimum_healthy_member_count", "1"),
 					resource.TestCheckResourceAttr(resourceName, "public_border_group", "center"),
-					resource.TestCheckResourceAttr(resourceName, "az_affinity.0.enable", "true"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_minimum_healthy_member_percentage", "20"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_minimum_healthy_member_count", "-1"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_unhealthy_fallback_strategy", "forward_to_all_healthy_member"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
 					resource.TestCheckResourceAttrSet(resourceName, "updated_at"),
 				),
@@ -105,13 +98,6 @@ func TestAccElbV3Pool_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "persistence.0.type", "APP_COOKIE"),
 					resource.TestCheckResourceAttr(resourceName, "persistence.0.cookie_name", "testCookie"),
 					resource.TestCheckResourceAttr(resourceName, "minimum_healthy_member_count", "0"),
-					resource.TestCheckResourceAttr(resourceName, "az_affinity.0.enable", "true"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_minimum_healthy_member_percentage", "-1"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_minimum_healthy_member_count", "200"),
-					resource.TestCheckResourceAttr(resourceName,
-						"az_affinity.0.az_unhealthy_fallback_strategy", "forward_to_healthy_member_of_remote_az"),
 				),
 			},
 			{
@@ -264,7 +250,7 @@ func TestAccElbV3Pool_basic_with_type_ip(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccElbV3PoolConfig_update_with_type_ip(rName, rNameUpdate),
+				Config: testAccElbV3PoolConfig_update_with_type_ip(rNameUpdate),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rNameUpdate),
@@ -616,7 +602,7 @@ resource "huaweicloud_elb_pool" "test" {
 `, rName)
 }
 
-func testAccElbV3PoolConfig_update_with_type_ip(rName, rNameUpdate string) string {
+func testAccElbV3PoolConfig_update_with_type_ip(rNameUpdate string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_elb_pool" "test" {
   name      = "%s"

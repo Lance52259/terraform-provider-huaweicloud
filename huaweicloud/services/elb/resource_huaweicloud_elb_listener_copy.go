@@ -2,6 +2,7 @@ package elb
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -318,6 +319,19 @@ func ResourceListenerCopy() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
+			},
 		},
 	}
 }
@@ -390,7 +404,10 @@ func buildCreateListenerCopyBodyParams(d *schema.ResourceData) map[string]interf
 		"port_ranges":     buildCreateListenerCopyPortRangesBodyParams(d),
 	}
 	if v, ok := d.GetOk("reuse_pool"); ok {
-		reusePool, _ := strconv.ParseBool(v.(string))
+		reusePool, err := strconv.ParseBool(v.(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'reuse_pool' field to Boolean: %s", err)
+		}
 		bodyParams["reuse_pool"] = reusePool
 	}
 	return map[string]interface{}{

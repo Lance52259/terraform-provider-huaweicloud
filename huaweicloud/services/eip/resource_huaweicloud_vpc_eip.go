@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -364,7 +364,7 @@ func createPostPaidEip(ctx context.Context, cfg *config.Config, client *golangsd
 	d.SetId(resp.ID)
 
 	log.Printf("[DEBUG] Waiting for EIP (%s) to become available", resp.ID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      eipStatusRefreshFunc(client, resp.ID, []string{"DOWN", "ACTIVE"}),
@@ -452,7 +452,7 @@ func NormalizeEipStatus(status string) string {
 	return status
 }
 
-func eipStatusRefreshFunc(networkingClient *golangsdk.ServiceClient, eipId string, targets []string) resource.StateRefreshFunc {
+func eipStatusRefreshFunc(networkingClient *golangsdk.ServiceClient, eipId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := eips.Get(networkingClient, eipId).Extract()
 		if err != nil {
@@ -606,9 +606,9 @@ func updateEipConfig(vpcV1Client *golangsdk.ServiceClient, d *schema.ResourceDat
 func updateEipPortId(vpcV1Client *golangsdk.ServiceClient, d *schema.ResourceData) error {
 	resourceId := d.Id()
 	timeout := d.Timeout(schema.TimeoutUpdate)
-	old, new := d.GetChange("publicip.0.port_id")
-	oldPort := old.(string)
-	newPort := new.(string)
+	oldVal, newVal := d.GetChange("publicip.0.port_id")
+	oldPort := oldVal.(string)
+	newPort := newVal.(string)
 
 	if oldPort != "" {
 		err := unbindPort(vpcV1Client, resourceId, oldPort, timeout)
@@ -657,9 +657,9 @@ func buildUpdatePublicipBodyParams(d *schema.ResourceData) map[string]interface{
 }
 
 func updateEipBandwidth(vpcV1Client *golangsdk.ServiceClient, cfg *config.Config, d *schema.ResourceData) error {
-	old, new := d.GetChange("bandwidth")
-	oldRaw := old.([]interface{})
-	newRaw := new.([]interface{})
+	oldVal, newVal := d.GetChange("bandwidth")
+	oldRaw := oldVal.([]interface{})
+	newRaw := newVal.([]interface{})
 	// Bandwidth blocks are required and must be present.
 	oldMap := oldRaw[0].(map[string]interface{})
 	newMap := newRaw[0].(map[string]interface{})
@@ -716,6 +716,7 @@ func updateEipBandwidth(vpcV1Client *golangsdk.ServiceClient, cfg *config.Config
 	return nil
 }
 
+// nolint:gocyclo
 func resourceVpcEipUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -857,7 +858,7 @@ func resourceVpcEipDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"PENDING"},
 		Target:     []string{"COMPLETED"},
 		Refresh:    eipStatusRefreshFunc(networkingClient, resourceId, nil),

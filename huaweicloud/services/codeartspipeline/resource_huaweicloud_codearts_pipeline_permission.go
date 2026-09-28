@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -105,6 +106,19 @@ func ResourceCodeArtsPipelinePermission() *schema.Resource {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: `Indicates the user name.`,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -249,7 +263,7 @@ func GetPipelineUesrPermissions(client *golangsdk.ServiceClient, projectId, pipe
 					Method:    "GET",
 					URL:       "/v5/{project_id}/api/pipeline-permissions/{pipeline_id}/user-permission",
 					RequestId: "NONE",
-					Body:      []byte(fmt.Sprintf("the user permission (user_id: %s) does not exist", userId)),
+					Body:      fmt.Appendf(nil, "the user permission (user_id: %s) does not exist", userId),
 				},
 			}
 		}
@@ -287,7 +301,7 @@ func GetPipelineRolePermissions(client *golangsdk.ServiceClient, projectId, pipe
 				Method:    "GET",
 				URL:       "/v5/{project_id}/api/pipeline-permissions/{pipeline_id}/role-permission",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the role permission (role_id: %s) does not exist", roleId)),
+				Body:      fmt.Appendf(nil, "the role permission (role_id: %s) does not exist", roleId),
 			},
 		}
 	}

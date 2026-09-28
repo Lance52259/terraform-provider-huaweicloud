@@ -2,12 +2,13 @@ package cce
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -16,7 +17,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 type StateRefresh struct {
@@ -141,7 +141,7 @@ func resourcePvcAccessMode(d *schema.ResourceData) []string {
 }
 
 func buildCcePersistentVolumeClaimCreateOpts(d *schema.ResourceData,
-	config *config.Config) (persistentvolumeclaims.CreateOpts, error) {
+	_ *config.Config) (persistentvolumeclaims.CreateOpts, error) {
 	createOpts := persistentvolumeclaims.CreateOpts{
 		ApiVersion: "v1",                    // The value is fixed at v1.
 		Kind:       "PersistentVolumeClaim", // The value is fixed at PersistentVolumeClaim.
@@ -168,21 +168,21 @@ func buildCcePersistentVolumeClaimCreateOpts(d *schema.ResourceData,
 
 func resourceCcePersistentVolumeClaimV1Create(ctx context.Context, d *schema.ResourceData,
 	meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	c, err := config.CceV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	c, err := cfg.CceV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE client: %s", err)
+		return diag.Errorf("error creating CCE client: %s", err)
 	}
 
 	clusterId := d.Get("cluster_id").(string)
 	ns := d.Get("namespace").(string)
-	opts, err := buildCcePersistentVolumeClaimCreateOpts(d, config)
+	opts, err := buildCcePersistentVolumeClaimCreateOpts(d, cfg)
 	if err != nil {
-		return fmtp.DiagErrorf("Unable to build createOpts: %s", err)
+		return diag.Errorf("unable to build createOpts: %s", err)
 	}
 	namespace, err := persistentvolumeclaims.Create(c, clusterId, ns, opts).Extract()
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE PVC: %s", err)
+		return diag.Errorf("error creating CCE PVC: %s", err)
 	}
 
 	d.SetId(namespace.Metadata.UID)
@@ -203,12 +203,12 @@ func resourceCcePersistentVolumeClaimV1Create(ctx context.Context, d *schema.Res
 	return resourceCcePersistentVolumeClaimV1Read(ctx, d, meta)
 }
 
-func saveCcePersistentVolumeClaimState(d *schema.ResourceData, config *config.Config,
+func saveCcePersistentVolumeClaimState(d *schema.ResourceData, cfg *config.Config,
 	resp *persistentvolumeclaims.PersistentVolumeClaim) error {
 	metadata := &resp.Metadata
 
 	mErr := multierror.Append(nil,
-		d.Set("region", config.GetRegion(d)),
+		d.Set("region", cfg.GetRegion(d)),
 		d.Set("name", metadata.Name),
 		d.Set("namespace", metadata.Namespace),
 		d.Set("access_modes", resp.Spec.AccessModes),
@@ -243,10 +243,10 @@ func GetCcePvcInfoById(c *golangsdk.ServiceClient, clusterId, namespace,
 }
 
 func resourceCcePersistentVolumeClaimV1Read(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.CceV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.CceV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE client: %s", err)
+		return diag.Errorf("error creating CCE client: %s", err)
 	}
 
 	clusterId := d.Get("cluster_id").(string)
@@ -256,8 +256,8 @@ func resourceCcePersistentVolumeClaimV1Read(_ context.Context, d *schema.Resourc
 		return common.CheckDeletedDiag(d, err, "pvc")
 	}
 	if resp != nil {
-		if err := saveCcePersistentVolumeClaimState(d, config, resp); err != nil {
-			return fmtp.DiagErrorf("Error saving the specifies CCE PVC (%s) to state: %s", d.Id(), err)
+		if err := saveCcePersistentVolumeClaimState(d, cfg, resp); err != nil {
+			return diag.Errorf("error saving the specifies CCE PVC (%s) to state: %s", d.Id(), err)
 		}
 	}
 
@@ -265,10 +265,10 @@ func resourceCcePersistentVolumeClaimV1Read(_ context.Context, d *schema.Resourc
 }
 
 func resourceCcePersistentVolumeClaimV1Delete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	c, err := config.CceV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	c, err := cfg.CceV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("Error creating HuaweiCloud CCE Client: %s", err)
+		return diag.Errorf("error creating CCE Client: %s", err)
 	}
 
 	clusterId := d.Get("cluster_id").(string)
@@ -276,7 +276,7 @@ func resourceCcePersistentVolumeClaimV1Delete(ctx context.Context, d *schema.Res
 	name := d.Get("name").(string)
 	_, err = persistentvolumeclaims.Delete(c, clusterId, ns, name).Extract()
 	if err != nil {
-		return fmtp.DiagErrorf("Error deleting the specifies CCE PVC (%s): %s", d.Id(), err)
+		return diag.Errorf("error deleting the specifies CCE PVC (%s): %s", d.Id(), err)
 	}
 
 	stateRef := StateRefresh{
@@ -296,8 +296,8 @@ func resourceCcePersistentVolumeClaimV1Delete(ctx context.Context, d *schema.Res
 }
 
 func buildCcePvcStateRefreshStruct(c *golangsdk.ServiceClient, clusterId, namespace, pvcId string,
-	s StateRefresh) *resource.StateChangeConf {
-	return &resource.StateChangeConf{
+	s StateRefresh) *retry.StateChangeConf {
+	return &retry.StateChangeConf{
 		Pending:      s.Pending,
 		Target:       s.Target,
 		Refresh:      pvcStateRefreshFunc(c, clusterId, namespace, pvcId),
@@ -307,15 +307,15 @@ func buildCcePvcStateRefreshStruct(c *golangsdk.ServiceClient, clusterId, namesp
 	}
 }
 
-func waitForCcePersistentVolumeClaimtateRefresh(ctx context.Context, conf *resource.StateChangeConf) diag.Diagnostics {
+func waitForCcePersistentVolumeClaimtateRefresh(ctx context.Context, conf *retry.StateChangeConf) diag.Diagnostics {
 	_, err := conf.WaitForStateContext(ctx)
 	if err != nil {
-		return fmtp.DiagErrorf("Timeout for waiting PVC status become ready: %s", err)
+		return diag.Errorf("timeout for waiting PVC status become ready: %s", err)
 	}
 	return nil
 }
 
-func pvcStateRefreshFunc(c *golangsdk.ServiceClient, clusterId, namespace, id string) resource.StateRefreshFunc {
+func pvcStateRefreshFunc(c *golangsdk.ServiceClient, clusterId, namespace, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := GetCcePvcInfoById(c, clusterId, namespace, id)
 		if err != nil {
@@ -330,11 +330,11 @@ func pvcStateRefreshFunc(c *golangsdk.ServiceClient, clusterId, namespace, id st
 	}
 }
 
-func resourceCcePvcResourceImportState(context context.Context, d *schema.ResourceData,
-	meta interface{}) ([]*schema.ResourceData, error) {
-	parts := strings.SplitN(d.Id(), "/", 3)
+func resourceCcePvcResourceImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
+	importedId := d.Id()
+	parts := strings.SplitN(importedId, "/", 3)
 	if len(parts) != 3 {
-		return nil, fmtp.Errorf("Invalid format specified for import id, must be <cluster_id>/<namespace>/<id>")
+		return nil, fmt.Errorf("invalid format specified for import ID, want '<cluster_id>/<namespace>/<id>', but got '%s'", importedId)
 	}
 
 	clsuterId := parts[0]

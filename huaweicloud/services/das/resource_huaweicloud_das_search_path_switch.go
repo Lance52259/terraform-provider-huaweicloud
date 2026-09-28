@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -118,7 +118,7 @@ func buildSearchPathSwitchGetRequest(client *golangsdk.ServiceClient, d *schema.
 	return getPath, &getOpt
 }
 
-func searchPathSwitchRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData) resource.StateRefreshFunc {
+func searchPathSwitchRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getPath, getOpt := buildSearchPathSwitchGetRequest(client, d)
 		requestResp, err := client.Request("GET", getPath, getOpt)
@@ -147,7 +147,7 @@ func searchPathSwitchRefreshFunc(client *golangsdk.ServiceClient, d *schema.Reso
 }
 
 func waitForSearchPathSwitchComplete(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      searchPathSwitchRefreshFunc(client, d),
@@ -228,14 +228,16 @@ func resourceSearchPathSwitchUpdate(ctx context.Context, d *schema.ResourceData,
 		return diag.Errorf("error creating DAS client: %s", err)
 	}
 
-	updatePath, updateOpt := buildSearchPathSwitchRequest(client, d)
-	_, err = client.Request("POST", updatePath, updateOpt)
-	if err != nil {
-		return diag.Errorf("error switching DAS search path switch: %s", err)
-	}
+	if d.HasChangeExcept("enable_force_new") {
+		updatePath, updateOpt := buildSearchPathSwitchRequest(client, d)
+		_, err = client.Request("POST", updatePath, updateOpt)
+		if err != nil {
+			return diag.Errorf("error switching DAS search path switch: %s", err)
+		}
 
-	if err = waitForSearchPathSwitchComplete(ctx, client, d); err != nil {
-		return diag.Errorf("error waiting for the DAS search path switch to complete: %s", err)
+		if err = waitForSearchPathSwitchComplete(ctx, client, d); err != nil {
+			return diag.Errorf("error waiting for the DAS search path switch to complete: %s", err)
+		}
 	}
 
 	return resourceSearchPathSwitchRead(ctx, d, meta)

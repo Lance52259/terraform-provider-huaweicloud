@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -75,7 +75,7 @@ func buildSubnetDNSList(d *schema.ResourceData, cfg *config.Config, region strin
 	// public DNS: 8.8.8.8(google-public-dns-a.google.com) and 114.114.114.114(China)
 	publicDNSList := []string{"8.8.8.8", "114.114.114.114"}
 
-	dnsClient, err := cfg.DnsWithRegionClient(region)
+	dnsClient, err := cfg.DNSWithRegionClient(region)
 	if err != nil {
 		log.Printf("[WARN] cannot generate DNS client, use %v as the DNS list", publicDNSList)
 		return publicDNSList
@@ -113,7 +113,7 @@ func ResourceVpcSubnetV1() *schema.Resource {
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(5 * time.Minute),
-			Delete: schema.DefaultTimeout(10 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
 		},
 
 		CustomizeDiff: config.MergeDefaultTags(),
@@ -283,9 +283,9 @@ func buildDhcpOpts(d *schema.ResourceData, update bool) []subnets.ExtraDhcpOpt {
 }
 
 func resourceVpcSubnetCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	subnetClient, err := config.NetworkingV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	subnetClient, err := cfg.NetworkingV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -302,7 +302,7 @@ func resourceVpcSubnetCreate(ctx context.Context, d *schema.ResourceData, meta i
 		VPC_ID:           d.Get("vpc_id").(string),
 		PRIMARY_DNS:      d.Get("primary_dns").(string),
 		SECONDARY_DNS:    d.Get("secondary_dns").(string),
-		DnsList:          buildSubnetDNSList(d, config, region),
+		DnsList:          buildSubnetDNSList(d, cfg, region),
 		ExtraDhcpOpts:    buildDhcpOpts(d, false),
 	}
 	log.Printf("[DEBUG] Create VPC subnet options: %#v", createOpts)
@@ -315,7 +315,7 @@ func resourceVpcSubnetCreate(ctx context.Context, d *schema.ResourceData, meta i
 	d.SetId(n.ID)
 	log.Printf("[INFO] Vpc Subnet ID: %s", n.ID)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"UNKNOWN"},
 		Target:       []string{"ACTIVE"},
 		Refresh:      waitForVpcSubnetActive(subnetClient, n.ID),
@@ -334,7 +334,7 @@ func resourceVpcSubnetCreate(ctx context.Context, d *schema.ResourceData, meta i
 	// set tags
 	tagRaw := d.Get("tags").(map[string]interface{})
 	if len(tagRaw) > 0 {
-		vpcSubnetV2Client, err := config.NetworkingV2Client(config.GetRegion(d))
+		vpcSubnetV2Client, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 		if err != nil {
 			return diag.Errorf("error creating VpcSubnet client: %s", err)
 		}
@@ -344,13 +344,12 @@ func resourceVpcSubnetCreate(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
-	return resourceVpcSubnetRead(ctx, d, config)
-
+	return resourceVpcSubnetRead(ctx, d, cfg)
 }
 
 // GetVpcSubnetById is a method to obtain subnet informations from special region through subnet ID.
-func GetVpcSubnetById(config *config.Config, region, networkId string) (*subnets.Subnet, error) {
-	subnetClient, err := config.NetworkingV1Client(region)
+func GetVpcSubnetById(cfg *config.Config, region, networkId string) (*subnets.Subnet, error) {
+	subnetClient, err := cfg.NetworkingV1Client(region)
 	if err != nil {
 		return nil, err
 	}
@@ -359,10 +358,10 @@ func GetVpcSubnetById(config *config.Config, region, networkId string) (*subnets
 }
 
 func resourceVpcSubnetRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
-	n, err := GetVpcSubnetById(config, region, d.Id())
+	n, err := GetVpcSubnetById(cfg, region, d.Id())
 	if err != nil {
 		return common.CheckDeletedDiag(d, err, "Error obtain Subnet information")
 	}
@@ -388,15 +387,15 @@ func resourceVpcSubnetRead(_ context.Context, d *schema.ResourceData, meta inter
 	)
 
 	// save VpcSubnet tags
-	if vpcSubnetV2Client, err := config.NetworkingV2Client(region); err == nil {
-		if resourceTags, err := tags.Get(vpcSubnetV2Client, "subnets", d.Id()).Extract(); err == nil {
-			tagmap := utils.TagsToMap(resourceTags.Tags)
-			mErr = multierror.Append(mErr, d.Set("tags", tagmap))
-		} else {
-			log.Printf("[WARN] Error fetching tags of Subnet (%s): %s", d.Id(), err)
-		}
-	} else {
+	vpcSubnetV2Client, err := cfg.NetworkingV2Client(region)
+	if err != nil {
 		return diag.Errorf("error creating VpcSubnet client: %s", err)
+	}
+	if resourceTags, err := tags.Get(vpcSubnetV2Client, "subnets", d.Id()).Extract(); err == nil {
+		tagmap := utils.TagsToMap(resourceTags.Tags)
+		mErr = multierror.Append(mErr, d.Set("tags", tagmap))
+	} else {
+		log.Printf("[WARN] Error fetching tags of Subnet (%s): %s", d.Id(), err)
 	}
 
 	// set dhcp extra opts ntp, addresstime, ipv6_addresstime, domainname
@@ -421,8 +420,8 @@ func resourceVpcSubnetRead(_ context.Context, d *schema.ResourceData, meta inter
 }
 
 func resourceVpcSubnetUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	subnetClient, err := config.NetworkingV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	subnetClient, err := cfg.NetworkingV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -472,7 +471,7 @@ func resourceVpcSubnetUpdate(ctx context.Context, d *schema.ResourceData, meta i
 
 	// update tags
 	if d.HasChange("tags") {
-		vpcSubnetV2Client, err := config.NetworkingV2Client(config.GetRegion(d))
+		vpcSubnetV2Client, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 		if err != nil {
 			return diag.Errorf("error creating VpcSubnet client: %s", err)
 		}
@@ -487,15 +486,14 @@ func resourceVpcSubnetUpdate(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourceVpcSubnetDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
-	config := meta.(*config.Config)
-	subnetClient, err := config.NetworkingV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	subnetClient, err := cfg.NetworkingV1Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
 
 	vpcID := d.Get("vpc_id").(string)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"ACTIVE"},
 		Target:       []string{"DELETED"},
 		Refresh:      waitForVpcSubnetDelete(subnetClient, vpcID, d.Id()),
@@ -513,7 +511,7 @@ func resourceVpcSubnetDelete(ctx context.Context, d *schema.ResourceData, meta i
 	return nil
 }
 
-func waitForVpcSubnetActive(subnetClient *golangsdk.ServiceClient, vpcId string) resource.StateRefreshFunc {
+func waitForVpcSubnetActive(subnetClient *golangsdk.ServiceClient, vpcId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		n, err := subnets.Get(subnetClient, vpcId).Extract()
 		if err != nil {
@@ -533,9 +531,8 @@ func waitForVpcSubnetActive(subnetClient *golangsdk.ServiceClient, vpcId string)
 	}
 }
 
-func waitForVpcSubnetDelete(subnetClient *golangsdk.ServiceClient, vpcId string, subnetId string) resource.StateRefreshFunc {
+func waitForVpcSubnetDelete(subnetClient *golangsdk.ServiceClient, vpcId string, subnetId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-
 		r, err := subnets.Get(subnetClient, subnetId).Extract()
 
 		if err != nil {

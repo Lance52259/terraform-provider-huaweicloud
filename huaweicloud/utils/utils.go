@@ -22,6 +22,8 @@ import (
 	"github.com/chnsz/golangsdk"
 )
 
+var structJSONKeyRegexp = regexp.MustCompile(`"[a-z0-9A-Z_]+":`)
+
 // ConvertStructToMap converts an instance of struct to a map object, and
 // changes each key of fileds to the value of 'nameMap' if the key in it
 // or to its corresponding lowercase.
@@ -31,11 +33,7 @@ func ConvertStructToMap(obj interface{}, nameMap map[string]string) (map[string]
 		return nil, fmt.Errorf("Error converting struct to map, marshal failed:%v", err)
 	}
 
-	m, err := regexp.Compile(`"[a-z0-9A-Z_]+":`)
-	if err != nil {
-		return nil, fmt.Errorf("Error converting struct to map, compile regular express failed")
-	}
-	nb := m.ReplaceAllFunc(
+	nb := structJSONKeyRegexp.ReplaceAllFunc(
 		b,
 		func(src []byte) []byte {
 			k := string(src[1 : len(src)-2])
@@ -82,13 +80,6 @@ func ExpandToStringMap(v map[string]interface{}) map[string]string {
 	return s
 }
 
-// ExpandToStringListPointer takes the result for an array of strings and returns a pointer of the array
-func ExpandToStringListPointer(v []interface{}) *[]string {
-	s := ExpandToStringList(v)
-
-	return &s
-}
-
 // ExpandToIntList takes the result for an array of intgers and returns a []int
 func ExpandToIntList(v []interface{}) []int {
 	s := make([]int, 0, len(v))
@@ -111,13 +102,6 @@ func ExpandToInt32List(v []interface{}) []int32 {
 	return s
 }
 
-// ExpandToInt32ListPointer takes the result for an array of in32 and returns a pointer of the array
-func ExpandToInt32ListPointer(v []interface{}) *[]int32 {
-	s := ExpandToInt32List(v)
-
-	return &s
-}
-
 // ExpandToStringListBySet takes the result for a set of strings and returns a []string
 func ExpandToStringListBySet(v *schema.Set) []string {
 	s := make([]string, 0, v.Len())
@@ -128,24 +112,6 @@ func ExpandToStringListBySet(v *schema.Set) []string {
 	}
 
 	return s
-}
-
-// Takes list of pointers to strings. Expand to an array
-// of raw strings and returns a []interface{}
-func flattenToStringList(list []*string) []interface{} {
-	vs := make([]interface{}, 0, len(list))
-	for _, v := range list {
-		vs = append(vs, *v)
-	}
-	return vs
-}
-
-func pointersMapToStringList(pointers map[string]*string) map[string]interface{} {
-	list := make(map[string]interface{}, len(pointers))
-	for i, v := range pointers {
-		list[i] = *v
-	}
-	return list
 }
 
 // Takes a value containing JSON string and passes it through
@@ -167,9 +133,12 @@ func NormalizeJsonString(jsonString interface{}) (string, error) {
 
 	// The error is intentionally ignored here to allow empty policies to passthrough validation.
 	// This covers any interpolated values
-	bytes, _ := json.Marshal(j)
+	result, err := json.Marshal(j)
+	if err != nil {
+		return s, err
+	}
 
-	return string(bytes[:]), nil
+	return string(result), nil
 }
 
 // FindSliceExtraElems returns a list containing the extra keys in source compared to target.
@@ -370,7 +339,10 @@ func IsResourceNotFound(err error) bool {
 // IsIPv4Address is used to check whether the addr string is IPv4 format
 func IsIPv4Address(addr string) bool {
 	pattern := "^((25[0-5]|2[0-4]\\d|(1\\d{2}|[1-9]?\\d))\\.){3}(25[0-5]|2[0-4]\\d|(1\\d{2}|[1-9]?\\d))$"
-	matched, _ := regexp.MatchString(pattern, addr)
+	matched, err := regexp.MatchString(pattern, addr)
+	if err != nil {
+		log.Printf("[ERROR] failed to match ipv4 address: %s", err)
+	}
 	return matched
 }
 
@@ -468,42 +440,15 @@ func RandomString(n int, allowedChars ...[]rune) (result string) {
 	}()
 	b := make([]rune, n)
 	for i := range b {
-		n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		if err != nil {
+			log.Printf("[ERROR] failed to generate random string: %s", err)
+		}
 		b[i] = letters[n.Int64()]
 	}
 
 	result = string(b)
 	return
-}
-
-// IsDebugOrHigher returns a bool type parameter, which specifies whether to print log
-var validLevels = []string{"TRACE", "DEBUG", "INFO", "WARN", "ERROR"}
-
-func IsDebugOrHigher() bool {
-	logLevel := os.Getenv("TF_LOG_PROVIDER")
-	if logLevel == "" {
-		logLevel = os.Getenv("TF_LOG")
-	}
-
-	if logLevel != "" {
-		if isValidLogLevel(logLevel) {
-			logLevel = strings.ToUpper(logLevel)
-			return logLevel == "DEBUG" || logLevel == "TRACE"
-		} else {
-			log.Printf("[WARN] Invalid log level: %q. Valid levels are: %+v", logLevel, validLevels)
-		}
-	}
-	return false
-}
-
-func isValidLogLevel(level string) bool {
-	for _, l := range validLevels {
-		if strings.ToUpper(level) == string(l) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // PathSearch evaluates a JMESPath expression against input data and returns the result.
@@ -613,11 +558,11 @@ func ConvertMemoryUnit(memory interface{}, diffLevel int) int {
 		var err error
 		memoryInt, err = strconv.Atoi(memory)
 		if err != nil {
-			log.Printf("convert string value (%v) to int fail: %s", memory, err)
+			log.Printf("[WARN] convert string value (%v) to int fail: %s", memory, err)
 			return -1
 		}
 	default:
-		log.Printf("unsupported memory unit type, want 'int' or 'string', but got '%T'", memory)
+		log.Printf("[WARN] unsupported memory unit type, want 'int' or 'string', but got '%T'", memory)
 		return -1
 	}
 
@@ -631,7 +576,10 @@ func ConvertMemoryUnit(memory interface{}, diffLevel int) int {
 func IsUUID(uuid string) bool {
 	// Using regular expressions to match UUID formats, with or without hyphens.
 	pattern := "[0-9a-fA-F]{8}(-?[0-9a-fA-F]{4}){3}-?[0-9a-fA-F]{12}"
-	match, _ := regexp.MatchString(pattern, uuid)
+	match, err := regexp.MatchString(pattern, uuid)
+	if err != nil {
+		log.Printf("[ERROR] failed to match UUID: %s", err)
+	}
 	return match
 }
 
@@ -639,7 +587,10 @@ func IsUUID(uuid string) bool {
 func IsUUIDWithHyphens(uuid string) bool {
 	// Use regular expression to match UUID format with hyphens.
 	pattern := "[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
-	match, _ := regexp.MatchString(pattern, uuid)
+	match, err := regexp.MatchString(pattern, uuid)
+	if err != nil {
+		log.Printf("[ERROR] failed to match UUID with hyphens: %s", err)
+	}
 	return match
 }
 

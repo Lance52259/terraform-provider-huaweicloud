@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -30,6 +31,8 @@ var geminiDbInstanceNonUpdatableParams = []string{"datastore", "datastore.*.type
 	"product_type", "dedicated_resource_id", "availability_zone_detail", "availability_zone_detail.*.primary_availability_zone",
 	"availability_zone_detail.*.secondary_availability_zone", "charging_mode", "period_unit", "period",
 }
+
+type ctxType string
 
 // @API GeminiDB POST /v3/{project_id}/instances
 // @API GeminiDB GET /v3/{project_id}/jobs
@@ -54,8 +57,17 @@ var geminiDbInstanceNonUpdatableParams = []string{"datastore", "datastore.*.type
 // @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/passwordless-config
 // @API GeminiDB GET /v3/{project_id}/instances/{instance_id}/passwordless-config
 // @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/lb
+// @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/data-dump
+// @API GeminiDB POST /v3/{project_id}/instances/{instance_id}/cold-volume
+// @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/cold-volume
+// @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/maintenance-window
+// @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/node-auto-expansion-policy
+// @API GeminiDB GET /v3/{project_id}/instances/{instance_id}/node-auto-expansion-policy
 // @API GeminiDB PUT /v3/{project_id}/instances/{instance_id}/lb/access-control
 // @API GeminiDB GET /v3/{project_id}/instances/{instance_id}/lb/access-control
+// @API GeminiDB PUT /v3.1/{project_id}/instances/{instance_id}/configurations
+// @API GeminiDB GET /v3/{project_id}/instances/{instance_id}/configurations
+// @API GeminiDB POST /v3/{project_id}/instances/{instance_id}/restart
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
 // @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
 // @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{instance_id}
@@ -204,6 +216,59 @@ func ResourceGeminiDbInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"bucket_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"data_export_switch": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"cold_storage_size": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"maintenance_start_time": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				Computed:     true,
+				RequiredWith: []string{"maintenance_end_time"},
+			},
+			"maintenance_end_time": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"node_switch_option": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Computed: true,
+			},
+			"overload_node_threshold": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"cpu_threshold": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"mem_threshold": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"step": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"node_limit": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
 			"delete_node_list": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -240,6 +305,13 @@ func ResourceGeminiDbInstance() *schema.Resource {
 			},
 			"auto_renew": common.SchemaAutoRenewUpdatable(nil),
 			"tags":       common.TagsSchema(),
+			"parameters": {
+				Type:     schema.TypeSet,
+				Elem:     geminiDbInstanceParameterSchema(),
+				Set:      parameterToHash,
+				Optional: true,
+				Computed: true,
+			},
 			"enable_force_new": {
 				Type:         schema.TypeString,
 				Optional:     true,
@@ -287,6 +359,22 @@ func ResourceGeminiDbInstance() *schema.Resource {
 			},
 		},
 	}
+}
+
+func geminiDbInstanceParameterSchema() *schema.Resource {
+	sc := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+			"value": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+		},
+	}
+	return &sc
 }
 
 func geminiDbAccessControlSchema() *schema.Resource {
@@ -545,6 +633,7 @@ func geminiDbInstanceAutomaticScalePolicSchema() *schema.Resource {
 	return &sc
 }
 
+// nolint:gocyclo
 func resourceGeminiDbInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -652,7 +741,79 @@ func resourceGeminiDbInstanceCreate(ctx context.Context, d *schema.ResourceData,
 		}
 	}
 
+	// Enable data export
+	if v, ok := d.GetOk("data_export_switch"); ok && v.(string) == "open" {
+		err = updateDataExport(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Create cold storage
+	if _, ok := d.GetOk("cold_storage_size"); ok {
+		bssClient, err := cfg.BssV2Client(cfg.GetRegion(d))
+		if err != nil {
+			return diag.Errorf("error creating BSS v2 client: %s", err)
+		}
+
+		err = creatColdStorage(ctx, d, client, bssClient)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Setting maintenance window
+	if _, ok := d.GetOk("maintenance_start_time"); ok {
+		err = updateMaintenanceWindow(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Setting node auto expansion policy
+	if v := utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "node_switch_option"); v != nil && v.(bool) {
+		err = updateNodeAutoExpansionPolicy(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Set Parameters
+	if parameters := d.Get("parameters").(*schema.Set); parameters.Len() > 0 {
+		if err = initializeParameters(ctx, d, client, parameters); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	return resourceGeminiDbInstanceRead(ctx, d, meta)
+}
+
+func creatColdStorage(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/cold-volume",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildCreateOrUpdateColdStorageBodyParams(d),
+		isRetry:              true,
+		timeout:              schema.TimeoutCreate,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error creating GeminiDB instance cold storage: %s", err)
+	}
+	return nil
+}
+
+func buildCreateOrUpdateColdStorageBodyParams(d *schema.ResourceData) map[string]interface{} {
+	params := map[string]interface{}{
+		"size":        d.Get("cold_storage_size"),
+		"is_auto_pay": "true",
+	}
+
+	return params
 }
 
 func modifyLoadbalancerIpAddress(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
@@ -834,14 +995,88 @@ func buildCreateGeminiDbInstanceChargeInfoBody(d *schema.ResourceData) map[strin
 	return rst
 }
 
+func buildUpdateInstanceParametersBodyParams(params *schema.Set) map[string]interface{} {
+	values := make(map[string]string)
+	for _, v := range params.List() {
+		key := v.(map[string]interface{})["name"].(string)
+		value := v.(map[string]interface{})["value"].(string)
+		values[key] = value
+	}
+	bodyParams := map[string]interface{}{
+		"values": values,
+	}
+	return bodyParams
+}
+
+func initializeParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
+	parametersRaw *schema.Set) error {
+	bodyParams := buildUpdateInstanceParametersBodyParams(parametersRaw)
+	res, err := modifyParameters(ctx, d, client, bodyParams)
+	if err != nil {
+		return err
+	}
+
+	restart := utils.PathSearch("restart_required", res, false).(bool)
+	if restart {
+		if err = rebootInstance(ctx, d, client); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func modifyParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
+	bodyParams interface{}) (interface{}, error) {
+	res, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3.1/{project_id}/instances/{instance_id}/configurations",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   bodyParams,
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		checkJobExpression: "job_id",
+	})
+	if err != nil && !handleTimeoutError(err) {
+		return nil, fmt.Errorf("error modifying parameters for GeminiDB instance (%s): %s", d.Id(), err)
+	}
+
+	return res, nil
+}
+
+func rebootInstance(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/restart",
+		httpMethod:         "POST",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   buildRebootInstanceBodyParams(),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		checkJobExpression: "job_id",
+	})
+	if err != nil {
+		return fmt.Errorf("error rebooting instance (%s): %s", d.Id(), err)
+	}
+	return nil
+}
+
+func buildRebootInstanceBodyParams() map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"restart": make(map[string]interface{}),
+	}
+	return bodyParams
+}
+
 func updateSecondLevelMonitor(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	if !d.HasChange("second_level_monitoring_enabled") {
 		return nil
 	}
 
-	switchMonitor, _ := strconv.ParseBool(d.Get("second_level_monitoring_enabled").(string))
+	switchMonitor, err := strconv.ParseBool(d.Get("second_level_monitoring_enabled").(string))
+	if err != nil {
+		log.Printf("error parsing 'second_level_monitoring_enabled' field to Boolean: %s", err)
+	}
 
-	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+	_, err = updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
 		httpUrl:          "v3/{project_id}/instances/{instance_id}/monitoring-by-seconds/switch",
 		httpMethod:       "PUT",
 		pathParams:       map[string]string{"instance_id": d.Id()},
@@ -882,7 +1117,7 @@ func buildUpdatePasswordFreeConfigurationBodyParams(d *schema.ResourceData) map[
 	return bodyParams
 }
 
-func resourceGeminiDbInstanceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceGeminiDbInstanceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -924,12 +1159,25 @@ func resourceGeminiDbInstanceRead(_ context.Context, d *schema.ResourceData, met
 		d.Set("updated", utils.PathSearch("updated", instance, nil)),
 	)
 
-	port, _ := strconv.Atoi(utils.PathSearch("port", instance, "0").(string))
+	port, err := strconv.Atoi(utils.PathSearch("port", instance, "0").(string))
+	if err != nil {
+		log.Printf("[WARN] failed to parse port: %s", err)
+	}
 	mErr = multierror.Append(mErr, d.Set("port", port))
 
 	payMode := utils.PathSearch("pay_mode", instance, "").(string)
 	if payMode == "1" {
 		mErr = multierror.Append(mErr, d.Set("charging_mode", "prePaid"))
+	}
+
+	// Set maintenance window
+	maintenanceTime := utils.PathSearch("maintenance_window", instance, "").(string)
+	maintenanceWindow := strings.Split(maintenanceTime, "-")
+	if len(maintenanceWindow) == 2 {
+		mErr = multierror.Append(mErr,
+			d.Set("maintenance_start_time", maintenanceWindow[0]),
+			d.Set("maintenance_end_time", maintenanceWindow[1]),
+		)
 	}
 
 	if err = utils.SetResourceTagsToState(d, client, "instances", d.Id()); err != nil {
@@ -960,6 +1208,21 @@ func resourceGeminiDbInstanceRead(_ context.Context, d *schema.ResourceData, met
 	// Set password-free configuration
 	mErr = multierror.Append(mErr, getPasswordFreeConfigurationInfo(d, client))
 
+	// Set node auto expansion policy
+	nodePolicy, err := getNodeAutoExpansionPolicyInfo(client, d.Id())
+	if err != nil {
+		log.Printf("[Warn] error retrieving GeminiDB instance node auto expansion policy information")
+	} else {
+		mErr = multierror.Append(
+			d.Set("node_switch_option", utils.PathSearch("resultMsg.switch_option", nodePolicy, false).(bool)),
+			d.Set("overload_node_threshold", utils.PathSearch("resultMsg.overload_node_threshold", nodePolicy, nil)),
+			d.Set("cpu_threshold", utils.PathSearch("resultMsg.cpu_threshold", nodePolicy, nil)),
+			d.Set("mem_threshold", utils.PathSearch("resultMsg.mem_threshold", nodePolicy, nil)),
+			d.Set("step", utils.PathSearch("resultMsg.step", nodePolicy, nil)),
+			d.Set("node_limit", utils.PathSearch("resultMsg.node_limit", nodePolicy, nil)),
+		)
+	}
+
 	// Querying the Blacklist or Whitelist of Load Balancer IP Addresses
 	accessControlRespBody, err := getLBAccessControlInfo(client, d.Id())
 	if err != nil {
@@ -970,7 +1233,73 @@ func resourceGeminiDbInstanceRead(_ context.Context, d *schema.ResourceData, met
 		)
 	}
 
-	return diag.FromErr(mErr.ErrorOrNil())
+	diagErr := setGeminiDBInstanceParameters(ctx, d, client)
+	resErr := append(diag.FromErr(mErr.ErrorOrNil()), diagErr...)
+
+	return resErr
+}
+
+func setGeminiDBInstanceParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) diag.Diagnostics {
+	// Set Parameters
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/configurations",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
+	if err != nil {
+		log.Printf("[WARN] error fetching parameters of instance (%s): %s", d.Id(), err)
+		return nil
+	}
+
+	configParameters := utils.PathSearch("configuration_parameters", getRespBody, make([]interface{}, 0)).([]interface{})
+	var configurationRestart bool
+	var paramRestart []string
+	var params []map[string]interface{}
+	rawParameterList := d.Get("parameters").(*schema.Set).List()
+	for _, v := range configParameters {
+		if utils.PathSearch("restart_required", v, false).(bool) {
+			configurationRestart = true
+		}
+		for _, parameter := range rawParameterList {
+			name := parameter.(map[string]interface{})["name"]
+			if utils.PathSearch("name", v, "").(string) == name {
+				p := map[string]interface{}{
+					"name":  utils.PathSearch("name", v, nil),
+					"value": utils.PathSearch("value", v, nil),
+				}
+				params = append(params, p)
+				if utils.PathSearch("restart_required", v, false).(bool) {
+					paramRestart = append(paramRestart, utils.PathSearch("name", v, "").(string))
+				}
+				break
+			}
+		}
+	}
+
+	var diagnostics diag.Diagnostics
+	if len(params) > 0 {
+		if err = d.Set("parameters", params); err != nil {
+			log.Printf("error saving parameters to GeminiDB instance (%s): %s", d.Id(), err)
+		}
+		if len(paramRestart) > 0 && ctx.Value(ctxType("parametersChanged")) == "true" {
+			diagnostics = append(diagnostics, diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Parameters Changed",
+				Detail:   fmt.Sprintf("Parameters %s changed which needs reboot.", paramRestart),
+			})
+		}
+	}
+	if configurationRestart && ctx.Value(ctxType("configurationChanged")) == "true" {
+		diagnostics = append(diagnostics, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Configuration Changed",
+			Detail:   "Configuration changed which needs reboot.",
+		})
+	}
+	if len(diagnostics) > 0 {
+		return diagnostics
+	}
+	return nil
 }
 
 func getLBAccessControlInfo(client *golangsdk.ServiceClient, instanceId string) (interface{}, error) {
@@ -1080,7 +1409,10 @@ func flattenGeminiDbInstanceResponseBodyFlavor(d *schema.ResourceData, instance 
 	specCode := utils.PathSearch("groups[0].nodes[0].spec_code", instance, nil)
 	nodes := utils.PathSearch("groups[0].nodes", instance, make([]interface{}, 0)).([]interface{})
 	sizeRaw := utils.PathSearch("groups[0].volume.size", instance, "0").(string)
-	size, _ := strconv.Atoi(sizeRaw)
+	size, err := strconv.Atoi(sizeRaw)
+	if err != nil {
+		log.Printf("[WARN] failed to parse volume size: %s", err)
+	}
 
 	flavorRaw := d.Get("flavor").([]interface{})
 	var storage string
@@ -1232,12 +1564,34 @@ func getPasswordFreeConfigurationInfo(d *schema.ResourceData, client *golangsdk.
 
 	if err != nil {
 		log.Printf("[WARN] error retrieving GeminiDB instance password-free configuration: %s", err)
-		return nil
+		return d.Set("config_ips", make([]interface{}, 0))
 	}
 
 	return d.Set("config_ips", utils.PathSearch("config_ips", getRespBody, make([]interface{}, 0)).([]interface{}))
 }
 
+func getNodeAutoExpansionPolicyInfo(client *golangsdk.ServiceClient, instanceId string) (interface{}, error) {
+	httpUrl := "v3/{project_id}/instances/{instance_id}/node-auto-expansion-policy"
+	getPath := client.Endpoint + httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
+	getOpts := golangsdk.RequestOpts{
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+			"X-Language":   "en-us",
+		},
+		KeepResponseBody: true,
+	}
+
+	resp, err := client.Request("GET", getPath, &getOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.FlattenResponse(resp)
+}
+
+// nolint:gocyclo
 func resourceGeminiDbInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1274,8 +1628,11 @@ func resourceGeminiDbInstanceUpdate(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
-	err = updateGeminiDbInstanceConfigurationId(ctx, d, client)
-	if err != nil {
+	if ctx, err = updateGeminiDbInstanceConfigurationId(ctx, d, client); err != nil {
+		return diag.FromErr(err)
+	}
+
+	if ctx, err = updateGeminiDbParameters(ctx, d, client); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -1355,9 +1712,43 @@ func resourceGeminiDbInstanceUpdate(ctx context.Context, d *schema.ResourceData,
 		return diag.FromErr(err)
 	}
 
+	// Update data export
+	err = updateDataExport(ctx, d, client)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	if d.HasChange("cold_storage_size") {
+		oldSize, newSize := d.GetChange("cold_storage_size")
+		if newSize.(int) < oldSize.(int) {
+			return diag.Errorf("error updating GeminiDB instance cold storage: the cold storage only supports enlarge")
+		}
+
+		err = updateColdStorage(ctx, d, client, bssClient)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// Configuring the Blacklist or Whitelist of Load Balancer IP Addresses
 	if d.HasChange("access_control") {
 		err = updateLBAccessControl(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Update maintenance window
+	if d.HasChanges("maintenance_start_time", "maintenance_end_time") {
+		err = updateMaintenanceWindow(ctx, d, client)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// Update node auto expansion policy
+	if d.HasChanges("node_switch_option", "overload_node_threshold", "cpu_threshold", "mem_threshold", "step", "node_limit") {
+		err = updateNodeAutoExpansionPolicy(ctx, d, client)
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -1470,9 +1861,9 @@ func buildUpdateGeminiDbInstancePortBodyParams(d *schema.ResourceData) map[strin
 	return bodyParams
 }
 
-func updateGeminiDbInstanceConfigurationId(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+func updateGeminiDbInstanceConfigurationId(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) (context.Context, error) {
 	if !d.HasChange("configuration_id") {
-		return nil
+		return ctx, nil
 	}
 
 	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
@@ -1486,9 +1877,21 @@ func updateGeminiDbInstanceConfigurationId(ctx context.Context, d *schema.Resour
 		isWaitInstanceReady: true,
 	})
 	if err != nil {
-		return fmt.Errorf("error updating GeminiDB instance(%s) configuration ID: %s", d.Id(), err)
+		return ctx, fmt.Errorf("error updating GeminiDB instance(%s) configuration ID: %s", d.Id(), err)
 	}
-	return nil
+
+	// if parameters is set, it should be modified
+	if parameters, ok := d.GetOk("parameters"); ok {
+		bodyParams := buildUpdateInstanceParametersBodyParams(parameters.(*schema.Set))
+		_, err = modifyParameters(ctx, d, client, bodyParams)
+		if err != nil {
+			return ctx, err
+		}
+	}
+
+	// Sending configurationChanged to Read to warn users the instance needs a reboot.
+	ctx = context.WithValue(ctx, ctxType("configurationChanged"), "true")
+	return ctx, nil
 }
 
 func buildUpdateGeminiDbInstanceConfigurationIdBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -1496,6 +1899,30 @@ func buildUpdateGeminiDbInstanceConfigurationIdBodyParams(d *schema.ResourceData
 		"instance_ids": []string{d.Id()},
 	}
 	return bodyParams
+}
+
+func updateGeminiDbParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) (context.Context, error) {
+	if !d.HasChange("parameters") {
+		return ctx, nil
+	}
+
+	o, n := d.GetChange("parameters")
+	os, ns := o.(*schema.Set), n.(*schema.Set)
+	change := ns.Difference(os)
+	if change.Len() > 0 {
+		bodyParams := buildUpdateInstanceParametersBodyParams(change)
+		res, err := modifyParameters(ctx, d, client, bodyParams)
+		if err != nil {
+			return ctx, nil
+		}
+
+		if utils.PathSearch("restart_required", res, false).(bool) {
+			// Sending parametersChanged to Read to warn users the instance needs a reboot.
+			ctx = context.WithValue(ctx, ctxType("parametersChanged"), "true")
+		}
+	}
+
+	return ctx, nil
 }
 
 func updateGeminiDbInstanceVolumeSize(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
@@ -1764,6 +2191,100 @@ func buildUpdateLoadbalancerIpAddressBodyParams(d *schema.ResourceData) map[stri
 	return bodyParams
 }
 
+func updateDataExport(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	if !d.HasChanges("bucket_name", "data_export_switch") {
+		return nil
+	}
+
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/data-dump",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildUpdateDataExportBodyParams(d),
+	})
+	if err != nil {
+		return fmt.Errorf("error enabling or disabling GeminiDB instance data export: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateDataExportBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"bucket_name": d.Get("bucket_name"),
+		"action":      d.Get("data_export_switch"),
+	}
+
+	return bodyParams
+}
+
+func updateMaintenanceWindow(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/maintenance-window",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildUpdateMaintenanceWindowBodyParams(d),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating the GeminiDB instance maintenance period: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateMaintenanceWindowBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"start_time": d.Get("maintenance_start_time"),
+		"end_time":   d.Get("maintenance_end_time"),
+	}
+
+	return bodyParams
+}
+
+func updateColdStorage(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/cold-volume",
+		httpMethod:           "PUT",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildCreateOrUpdateColdStorageBodyParams(d),
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GeminiDB instance cold storage: %s", err)
+	}
+	return nil
+}
+
+func updateNodeAutoExpansionPolicy(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:             "v3/{project_id}/instances/{instance_id}/node-auto-expansion-policy",
+		httpMethod:          "PUT",
+		pathParams:          map[string]string{"instance_id": d.Id()},
+		updateBodyParams:    utils.RemoveNil(buildUpdateNodeAutoExpansionPolicyBodyParams(d)),
+		isWaitInstanceReady: true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating the GeminiDB instance node auto expansion policy: %s", err)
+	}
+	return nil
+}
+
+func buildUpdateNodeAutoExpansionPolicyBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"switch_option":           utils.ValueIgnoreEmpty(utils.GetNestedObjectFromRawConfig(d.GetRawConfig(), "node_switch_option")),
+		"overload_node_threshold": utils.ValueIgnoreEmpty(d.Get("overload_node_threshold")),
+		"cpu_threshold":           utils.ValueIgnoreEmpty(d.Get("cpu_threshold")),
+		"mem_threshold":           utils.ValueIgnoreEmpty(d.Get("mem_threshold")),
+		"step":                    utils.ValueIgnoreEmpty(d.Get("step")),
+		"node_limit":              utils.ValueIgnoreEmpty(d.Get("node_limit")),
+	}
+
+	return bodyParams
+}
+
 func updateLBAccessControl(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	_, err := updateGeminiDbInstanceField(ctx, d, client, updateInstanceFieldParams{
 		httpUrl:          "v3/{project_id}/instances/{instance_id}/lb/access-control",
@@ -1827,8 +2348,8 @@ func resourceGeminiDbInstanceDelete(ctx context.Context, d *schema.ResourceData,
 	if v, ok := d.GetOk("charging_mode"); ok && v == "prePaid" {
 		retryFunc := func() (interface{}, bool, error) {
 			err = common.UnsubscribePrePaidResource(d, cfg, []string{d.Id()})
-			retry, err := handleDeletionError(err)
-			return nil, retry, err
+			shouldRetry, err := handleDeletionError(err)
+			return nil, shouldRetry, err
 		}
 		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -1864,8 +2385,8 @@ func deleteRdsInstance(ctx context.Context, d *schema.ResourceData, client *gola
 
 	retryFunc := func() (interface{}, bool, error) {
 		res, err := client.Request("DELETE", deletePath, &deleteOpt)
-		retry, err := handleDeletionError(err)
-		return res, retry, err
+		shouldRetry, err := handleDeletionError(err)
+		return res, shouldRetry, err
 	}
 	res, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,
@@ -1896,7 +2417,7 @@ func deleteRdsInstance(ctx context.Context, d *schema.ResourceData, client *gola
 
 func checkGeminiDbInstanceJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      geminiDbInstanceJobRefreshFunc(client, jobID),
@@ -1910,7 +2431,7 @@ func checkGeminiDbInstanceJobFinish(ctx context.Context, client *golangsdk.Servi
 	return nil
 }
 
-func geminiDbInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func geminiDbInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"
@@ -1951,7 +2472,7 @@ func geminiDbInstanceJobRefreshFunc(client *golangsdk.ServiceClient, jobId strin
 	}
 }
 
-func geminiDbInstanceStatusRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func geminiDbInstanceStatusRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		instance, err := getGeminiDbInstance(client, instanceID)
 		if err != nil {
@@ -2001,4 +2522,9 @@ func getGeminiDbInstance(client *golangsdk.ServiceClient, instanceId string) (in
 	}
 
 	return instance, nil
+}
+
+func parameterToHash(v interface{}) int {
+	m := v.(map[string]interface{})
+	return hashcode.String(m["name"].(string) + m["value"].(string))
 }

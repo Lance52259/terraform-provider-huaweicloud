@@ -128,8 +128,8 @@ func updateNetworkingVIPAssociate(client *golangsdk.ServiceClient, vipID string,
 }
 
 func resourceNetworkingVIPAssociateV2Create(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -142,8 +142,8 @@ func resourceNetworkingVIPAssociateV2Create(ctx context.Context, d *schema.Resou
 	}
 
 	portids := resourceNetworkingPortIDs(d)
-	if diag := updateNetworkingVIPAssociate(networkingClient, vipID, portids); diag != nil {
-		return diag
+	if diags := updateNetworkingVIPAssociate(networkingClient, vipID, portids); diags != nil {
+		return diags
 	}
 
 	// set id
@@ -152,8 +152,8 @@ func resourceNetworkingVIPAssociateV2Create(ctx context.Context, d *schema.Resou
 }
 
 func resourceNetworkingVIPAssociateV2Update(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -166,16 +166,16 @@ func resourceNetworkingVIPAssociateV2Update(ctx context.Context, d *schema.Resou
 	}
 
 	portids := resourceNetworkingPortIDs(d)
-	if diag := updateNetworkingVIPAssociate(networkingClient, vipID, portids); diag != nil {
-		return diag
+	if diags := updateNetworkingVIPAssociate(networkingClient, vipID, portids); diags != nil {
+		return diags
 	}
 
 	return resourceNetworkingVIPAssociateV2Read(ctx, d, meta)
 }
 
-func resourceNetworkingVIPAssociateV2Read(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+func resourceNetworkingVIPAssociateV2Read(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -227,8 +227,8 @@ func resourceNetworkingVIPAssociateV2Read(ctx context.Context, d *schema.Resourc
 }
 
 func resourceNetworkingVIPAssociateV2Delete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating networking client: %s", err)
 	}
@@ -255,7 +255,7 @@ func resourceNetworkingVIPAssociateV2Delete(_ context.Context, d *schema.Resourc
 	return nil
 }
 
-func resourceNetworkingVIPAssociateV2Import(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+func resourceNetworkingVIPAssociateV2Import(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("invalid format specified for import id, must be <vip_id>/<port_id>," +

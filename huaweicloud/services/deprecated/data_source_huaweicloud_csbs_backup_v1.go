@@ -1,13 +1,15 @@
 package deprecated
 
 import (
+	"errors"
+	"fmt"
+	"log"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk/openstack/csbs/v1/backup"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func DataSourceCSBSBackupV1() *schema.Resource {
@@ -184,10 +186,10 @@ func DataSourceCSBSBackupV1() *schema.Resource {
 }
 
 func dataSourceCSBSBackupV1Read(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	backupClient, err := config.CsbsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	backupClient, err := cfg.CsbsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating csbs client: %s", err)
+		return fmt.Errorf("error creating csbs client: %s", err)
 	}
 
 	listOpts := backup.ListOpts{
@@ -204,21 +206,19 @@ func dataSourceCSBSBackupV1Read(d *schema.ResourceData, meta interface{}) error 
 
 	refinedbackups, err := backup.List(backupClient, listOpts)
 	if err != nil {
-		return fmtp.Errorf("Unable to retrieve backup: %s", err)
+		return fmt.Errorf("unable to retrieve backup: %s", err)
 	}
 
 	if len(refinedbackups) < 1 {
-		return fmtp.Errorf("Your query returned no results. " +
-			"Please change your search criteria and try again.")
+		return errors.New("your query returned no results, please change your search criteria and try again")
 	}
 
 	if len(refinedbackups) > 1 {
-		return fmtp.Errorf("Your query returned more than one result." +
-			" Please try a more specific search criteria")
+		return errors.New("your query returned more than one result, please try a more specific search criteria")
 	}
 
 	backupObject := refinedbackups[0]
-	logp.Printf("[INFO] Retrieved backup %s using given filter", backupObject.Id)
+	log.Printf("[INFO] Retrieved backup %s using given filter", backupObject.Id)
 
 	d.SetId(backupObject.Id)
 
@@ -235,7 +235,7 @@ func dataSourceCSBSBackupV1Read(d *schema.ResourceData, meta interface{}) error 
 	d.Set("volume_backups", flattenCSBSVolumeBackups(&backupObject))
 	d.Set("vm_metadata", flattenCSBSVMMetadata(&backupObject))
 
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }

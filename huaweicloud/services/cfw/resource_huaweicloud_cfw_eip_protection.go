@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -203,10 +203,19 @@ func QuerySyncedEips(client *golangsdk.ServiceClient, url, objectId string) ([]i
 	return records, nil
 }
 
-func flattenProtectedEips(eips []interface{}) []interface{} {
+func isEipProtectedByObject(eip interface{}, objectId string) bool {
+	status := utils.PathSearch("status", eip, float64(1))
+	if int(status.(float64)) != openEipProtection {
+		return false
+	}
+
+	return utils.PathSearch("object_id", eip, "").(string) == objectId
+}
+
+func flattenProtectedEips(eips []interface{}, objectId string) []interface{} {
 	rst := make([]interface{}, 0, len(eips))
 	for _, eip := range eips {
-		if status := utils.PathSearch("status", eip, float64(1)); int(status.(float64)) != openEipProtection {
+		if !isEipProtectedByObject(eip, objectId) {
 			continue
 		}
 		rst = append(rst, map[string]interface{}{
@@ -219,10 +228,9 @@ func flattenProtectedEips(eips []interface{}) []interface{} {
 }
 
 // ProtectedEipExist method will return true if a protected public IP exists under the object.
-func ProtectedEipExist(eips []interface{}) bool {
+func ProtectedEipExist(eips []interface{}, objectId string) bool {
 	for _, eip := range eips {
-		status := utils.PathSearch("status", eip, float64(1))
-		if int(status.(float64)) == openEipProtection {
+		if isEipProtectedByObject(eip, objectId) {
 			return true
 		}
 	}
@@ -247,7 +255,7 @@ func resourceEipProtectionRead(_ context.Context, d *schema.ResourceData, meta i
 
 	mErr := multierror.Append(nil,
 		d.Set("region", region),
-		d.Set("protected_eip", flattenProtectedEips(resp)),
+		d.Set("protected_eip", flattenProtectedEips(resp, objectId)),
 	)
 	if err = mErr.ErrorOrNil(); err != nil {
 		return diag.Errorf("error saving EIP protection resource fields: %s", err)
@@ -260,7 +268,7 @@ func getEipProtection(client *golangsdk.ServiceClient, queryHttpUrl, objectId st
 	if err != nil {
 		return nil, common.ConvertExpected400ErrInto404Err(err, "error_code", "CFW.00200005")
 	}
-	if !ProtectedEipExist(resp) {
+	if !ProtectedEipExist(resp, objectId) {
 		return nil, golangsdk.ErrDefault404{}
 	}
 
@@ -331,7 +339,7 @@ func protectEips(ctx context.Context, client *golangsdk.ServiceClient, objectId 
 	requestParams, protectedEipIds := buildModifyProtectedEipsParams(objectId, protectedEipSet, openEipProtection)
 
 	// Before modifying the EIP protection, synchronize all public IPs to the CFW service.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      syncedEipsRefreshFunc(client, queryHttpUrl, objectId, protectedEipIds, closeEipProtection),
@@ -358,7 +366,7 @@ func protectEips(ctx context.Context, client *golangsdk.ServiceClient, objectId 
 	}
 
 	// After modifying the EIP protection, check the status of all protected public IPs.
-	stateConf = &resource.StateChangeConf{
+	stateConf = &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      syncedEipsRefreshFunc(client, queryHttpUrl, objectId, protectedEipIds, openEipProtection),
@@ -389,7 +397,7 @@ func unprotectEips(ctx context.Context, client *golangsdk.ServiceClient, objectI
 		return fmt.Errorf("error disabling EIP protection: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      syncedEipsRefreshFunc(client, queryHttpUrl, objectId, protectedEipIds, closeEipProtection),
@@ -405,7 +413,7 @@ func unprotectEips(ctx context.Context, client *golangsdk.ServiceClient, objectI
 }
 
 func syncedEipsRefreshFunc(client *golangsdk.ServiceClient, url, objectId string, syncEips []string,
-	targetStatus int) resource.StateRefreshFunc {
+	targetStatus int) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := QuerySyncedEips(client, url, objectId)
 		if err != nil {

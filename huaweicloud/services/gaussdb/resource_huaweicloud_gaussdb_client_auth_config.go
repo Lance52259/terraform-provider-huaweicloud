@@ -185,7 +185,6 @@ func resourceGaussDBClientAuthConfigRead(_ context.Context, d *schema.ResourceDa
 	databaseRaw := d.Get("database").(string)
 	userRaw := d.Get("user").(string)
 	addressRaw := d.Get("address").(string)
-	methodRaw := d.Get("method").(string)
 
 	var hbaConf interface{}
 
@@ -231,7 +230,7 @@ func resourceGaussDBClientAuthConfigRead(_ context.Context, d *schema.ResourceDa
 		d.Set("database", databaseRaw),
 		d.Set("user", userRaw),
 		d.Set("address", addressRaw),
-		d.Set("method", methodRaw),
+		d.Set("method", utils.PathSearch("method", hbaConf, "").(string)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
@@ -242,54 +241,55 @@ func buildGaussDBClientAuthConfigQueryParams(offset int) string {
 }
 
 func resourceGaussDBClientAuthConfigUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cfg := meta.(*config.Config)
-	region := cfg.GetRegion(d)
-
 	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/hba-info"
-		product = "opengauss"
+		cfg        = meta.(*config.Config)
+		region     = cfg.GetRegion(d)
+		httpUrl    = "v3/{project_id}/instances/{instance_id}/hba-info"
+		product    = "opengauss"
+		instanceId = d.Get("instance_id").(string)
 	)
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating GaussDB client: %s", err)
 	}
 
-	instanceID := d.Get("instance_id").(string)
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", instanceID)
+	if d.HasChange("method") {
+		updatePath := client.Endpoint + httpUrl
+		updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+		updatePath = strings.ReplaceAll(updatePath, "{instance_id}", instanceId)
 
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		MoreHeaders: map[string]string{
-			"Content-Type": "application/json",
-		},
-	}
+		updateOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			MoreHeaders: map[string]string{
+				"Content-Type": "application/json",
+			},
+		}
 
-	oldMethodRaw, newMethodRaw := d.GetChange("method")
+		oldMethodRaw, newMethodRaw := d.GetChange("method")
 
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateGaussDBClientAuthConfigBodyParams(
-		oldMethodRaw.(string),
-		newMethodRaw.(string),
-		d,
-	))
+		updateOpt.JSONBody = utils.RemoveNil(buildUpdateGaussDBClientAuthConfigBodyParams(
+			oldMethodRaw.(string),
+			newMethodRaw.(string),
+			d,
+		))
 
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, instanceID),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
-	})
-	if err != nil {
-		return diag.Errorf("error updating GaussDB client auth config: %s", err)
+		retryFunc := func() (interface{}, bool, error) {
+			res, err := client.Request("PUT", updatePath, &updateOpt)
+			retry, err := handleMultiOperationsError(err)
+			return res, retry, err
+		}
+		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
+			Ctx:          ctx,
+			RetryFunc:    retryFunc,
+			WaitFunc:     instanceStateRefreshFunc(client, instanceId),
+			WaitTarget:   []string{"ACTIVE"},
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			DelayTimeout: 10 * time.Second,
+			PollInterval: 10 * time.Second,
+		})
+		if err != nil {
+			return diag.Errorf("error updating GaussDB client auth config: %s", err)
+		}
 	}
 
 	return resourceGaussDBClientAuthConfigRead(ctx, d, meta)

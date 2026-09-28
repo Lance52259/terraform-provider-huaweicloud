@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -186,7 +186,7 @@ func resourceFunctionTriggerCreate(ctx context.Context, d *schema.ResourceData, 
 }
 
 func waitForFunctionTriggerStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: functionTriggerStatusRefreshFunc(client, d.Get("function_urn").(string), d.Get("type").(string),
@@ -200,7 +200,7 @@ func waitForFunctionTriggerStatusCompleted(ctx context.Context, client *golangsd
 }
 
 func functionTriggerStatusRefreshFunc(client *golangsdk.ServiceClient, functionUrn, triggerType, triggerId string,
-	targets []string) resource.StateRefreshFunc {
+	targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetTriggerById(client, functionUrn, triggerType, triggerId)
 		if err != nil {
@@ -336,7 +336,7 @@ func resourceFunctionTriggerUpdate(ctx context.Context, d *schema.ResourceData, 
 
 	err = waitForFunctionTriggerStatusCompleted(ctx, client, d)
 	if err != nil {
-		diag.Errorf("error waiting for the function trigger (%s) status to become available: %s", triggerId, err)
+		return diag.Errorf("error waiting for the function trigger (%s) status to become available: %s", triggerId, err)
 	}
 	return nil
 }
@@ -415,13 +415,13 @@ func resourceFunctionTriggerDelete(ctx context.Context, d *schema.ResourceData, 
 
 	err = waitForFunctionTriggerDeleted(ctx, fgsClient, d)
 	if err != nil {
-		diag.Errorf("error waiting for the function trigger (%s) status to become deleted: %s", triggerId, err)
+		return diag.Errorf("error waiting for the function trigger (%s) status to become deleted: %s", triggerId, err)
 	}
 	return nil
 }
 
 func waitForFunctionTriggerDeleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      functionTriggerStatusRefreshFunc(client, d.Get("function_urn").(string), d.Get("type").(string), d.Id(), nil),

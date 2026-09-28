@@ -3,13 +3,14 @@ package ecs
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -151,7 +152,7 @@ func resourceComputeInterfaceAttachCreate(ctx context.Context, d *schema.Resourc
 	}
 
 	// Wait for job status become `SUCCESS`.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      getJobRefreshFunc(computeClient, jobID),
@@ -248,7 +249,7 @@ func getJob(computeClient *golangsdk.ServiceClient, id string) (interface{}, err
 	return utils.FlattenResponse(getJobResp)
 }
 
-func getJobRefreshFunc(computeClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func getJobRefreshFunc(computeClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		result, err := getJob(computeClient, id)
 		if err != nil {
@@ -444,7 +445,10 @@ func updateAttachInfo(client *golangsdk.ServiceClient, d *schema.ResourceData) e
 }
 
 func buildUpdateAttachInfoBodyParams(d *schema.ResourceData) map[string]interface{} {
-	deleteOnTermination, _ := strconv.ParseBool(d.Get("delete_on_termination").(string))
+	deleteOnTermination, err := strconv.ParseBool(d.Get("delete_on_termination").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'delete_on_termination' field to Boolean: %s", err)
+	}
 	bodyParams := map[string]interface{}{
 		"interface_attachment": map[string]interface{}{
 			"delete_on_termination": deleteOnTermination,
@@ -534,7 +538,7 @@ func resourceComputeInterfaceAttachDelete(ctx context.Context, d *schema.Resourc
 		return diag.Errorf("unable to find the job ID of the ECS NIC from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      getJobRefreshFunc(computeClient, jobID),

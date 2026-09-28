@@ -14,7 +14,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -527,18 +527,18 @@ func buildCreateConnectionPolicyRulesChildBody(d *schema.ResourceData) []map[str
 }
 
 func createConnectionWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// createConnectionWaiting: missing operation notes
 			var (
 				createConnectionWaitingHttpUrl = "v5/{project_id}/vpn-connection/{id}"
 				createConnectionWaitingProduct = "vpn"
 			)
-			createConnectionWaitingClient, err := config.NewServiceClient(createConnectionWaitingProduct, region)
+			createConnectionWaitingClient, err := cfg.NewServiceClient(createConnectionWaitingProduct, region)
 			if err != nil {
 				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}
@@ -864,18 +864,18 @@ func buildUpdateConnectionIpsecpolicyChildBody(d *schema.ResourceData) map[strin
 }
 
 func updateConnectionWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// updateConnectionWaiting: missing operation notes
 			var (
 				updateConnectionWaitingHttpUrl = "v5/{project_id}/vpn-connection/{id}"
 				updateConnectionWaitingProduct = "vpn"
 			)
-			updateConnectionWaitingClient, err := config.NewServiceClient(updateConnectionWaitingProduct, region)
+			updateConnectionWaitingClient, err := cfg.NewServiceClient(updateConnectionWaitingProduct, region)
 			if err != nil {
 				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}
@@ -959,18 +959,18 @@ func resourceConnectionDelete(ctx context.Context, d *schema.ResourceData, meta 
 }
 
 func deleteConnectionWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// deleteConnectionWaiting: missing operation notes
 			var (
 				deleteConnectionWaitingHttpUrl = "v5/{project_id}/vpn-connection/{id}"
 				deleteConnectionWaitingProduct = "vpn"
 			)
-			deleteConnectionWaitingClient, err := config.NewServiceClient(deleteConnectionWaitingProduct, region)
+			deleteConnectionWaitingClient, err := cfg.NewServiceClient(deleteConnectionWaitingProduct, region)
 			if err != nil {
 				return nil, "ERROR", fmt.Errorf("error creating VPN client: %s", err)
 			}

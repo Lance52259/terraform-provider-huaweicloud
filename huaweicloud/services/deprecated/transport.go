@@ -1,15 +1,15 @@
 package deprecated
 
 import (
+	"context"
 	"fmt"
-	"net/url"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -33,19 +33,6 @@ func isEmptyValue(v reflect.Value) (bool, error) {
 		return true, nil
 	}
 	return false, fmt.Errorf("isEmptyValue:: unknown type")
-}
-
-func addQueryParams(rawurl string, params map[string]string) (string, error) {
-	u, err := url.Parse(rawurl)
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	for k, v := range params {
-		q.Set(k, v)
-	}
-	u.RawQuery = q.Encode()
-	return u.String(), nil
 }
 
 func replaceVars(d *schema.ResourceData, linkTmpl string, kv map[string]interface{}) (string, error) {
@@ -75,20 +62,6 @@ func replaceVars(d *schema.ResourceData, linkTmpl string, kv map[string]interfac
 
 	s := re.ReplaceAllStringFunc(linkTmpl, replaceFunc)
 	return strings.Replace(s, "replace_holder/", "", 1), nil
-}
-
-func navigateMap(d interface{}, index []string) (interface{}, error) {
-	for _, i := range index {
-		d1, ok := d.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("navigateMap:: Can not convert to map")
-		}
-		d, ok = d1[i]
-		if !ok {
-			return nil, fmt.Errorf("navigateMap:: '%s' may not exist", i)
-		}
-	}
-	return d, nil
 }
 
 func navigateValue(d interface{}, index []string, arrayIndex map[string]int) (interface{}, error) {
@@ -133,21 +106,6 @@ func navigateValue(d interface{}, index []string, arrayIndex map[string]int) (in
 	return d, nil
 }
 
-func isUserInput(d *schema.ResourceData, index []string, arrayIndex map[string]int) bool {
-	var r = make([]string, 0, len(index)*2)
-	for n, i := range index {
-		r = append(r, i)
-
-		if arrayIndex != nil {
-			if j, ok := arrayIndex[strings.Join(index[:n+1], ".")]; ok {
-				r = append(r, strconv.Itoa(j))
-			}
-		}
-	}
-	_, e := d.GetOkExists(strings.Join(r[:len(r)], "."))
-	return e
-}
-
 func convertToInt(v interface{}) (int64, error) {
 	s := fmt.Sprintf("%v", v)
 	r, err := strconv.ParseInt(s, 10, 64)
@@ -157,10 +115,8 @@ func convertToInt(v interface{}) (int64, error) {
 
 	if i, ok := v.(int); ok {
 		return int64(i), nil
-
 	} else if i, ok := v.(float64); ok {
 		return int64(i), nil
-
 	} else if i, ok := v.(float32); ok {
 		return int64(i), nil
 	}
@@ -177,8 +133,8 @@ func convertSeconds2Str(v int64) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
-func waitToFinish(target, pending []string, timeout, interval time.Duration, f resource.StateRefreshFunc) (interface{}, error) {
-	stateConf := &resource.StateChangeConf{
+func waitToFinish(target, pending []string, timeout, interval time.Duration, f retry.StateRefreshFunc) (interface{}, error) {
+	stateConf := &retry.StateChangeConf{
 		Target:     target,
 		Pending:    pending,
 		Refresh:    f,
@@ -187,7 +143,7 @@ func waitToFinish(target, pending []string, timeout, interval time.Duration, f r
 		MinTimeout: interval,
 	}
 
-	return stateConf.WaitForState()
+	return stateConf.WaitForStateContext(context.Background())
 }
 
 func checkCsClusterV1DeleteFinished(data interface{}) bool {

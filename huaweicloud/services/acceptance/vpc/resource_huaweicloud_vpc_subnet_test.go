@@ -1,6 +1,7 @@
 package vpc
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"testing"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccVpcSubnetV1_basic(t *testing.T) {
@@ -97,7 +97,7 @@ func TestAccVpcSubnetV1_ipv6(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
 					resource.TestCheckResourceAttr(resourceName, "ipv6_enable", "true"),
 					resource.TestMatchResourceAttr(resourceName, "ipv6_cidr",
-						regexp.MustCompile("([[:xdigit:]]*):([[:xdigit:]]*:){1,6}[[:xdigit:]]*/\\d{1,3}")),
+						regexp.MustCompile(`([[:xdigit:]]*):([[:xdigit:]]*:){1,6}[[:xdigit:]]*/\d{1,3}`)),
 					resource.TestMatchResourceAttr(resourceName, "ipv6_gateway",
 						regexp.MustCompile("([[:xdigit:]]*):([[:xdigit:]]*:){1,6}([[:xdigit:]]){1,4}")),
 					resource.TestCheckResourceAttrSet(resourceName, "ipv4_subnet_id"),
@@ -150,10 +150,10 @@ func TestAccVpcSubnetV1_dhcp(t *testing.T) {
 }
 
 func testAccCheckVpcSubnetV1Destroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	subnetClient, err := config.NetworkingV1Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	subnetClient, err := cfg.NetworkingV1Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud vpc client: %s", err)
+		return fmt.Errorf("error creating VPC client: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -163,7 +163,7 @@ func testAccCheckVpcSubnetV1Destroy(s *terraform.State) error {
 
 		_, err := subnets.Get(subnetClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Subnet still exists")
+			return fmt.Errorf("the subnet still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 
@@ -174,17 +174,17 @@ func testAccCheckVpcSubnetV1Exists(n string, subnet *subnets.Subnet) resource.Te
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the subnet %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		subnetClient, err := config.NetworkingV1Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		subnetClient, err := cfg.NetworkingV1Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Error creating huaweicloud Vpc client: %s", err)
+			return fmt.Errorf("error creating VPC client: %s", err)
 		}
 
 		found, err := subnets.Get(subnetClient, rs.Primary.ID).Extract()
@@ -193,7 +193,7 @@ func testAccCheckVpcSubnetV1Exists(n string, subnet *subnets.Subnet) resource.Te
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("Subnet not found")
+			return fmt.Errorf("the subnet is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*subnet = *found

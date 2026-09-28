@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -2817,6 +2817,7 @@ func buildCdnDomainClientCertOpts(rawArray []interface{}) map[string]interface{}
 }
 
 // nolint
+// nolint:gocyclo
 func buildUpdateCdnDomainFullConfigsOpts(bodyParams map[string]interface{}, configs map[string]interface{}, d *schema.ResourceData) {
 	if d.HasChange("configs.0.ipv6_enable") {
 		bodyParams["ipv6_accelerate"] = buildCdnDomainIpv6AccelerateOpts(configs["ipv6_enable"].(bool))
@@ -3181,7 +3182,7 @@ func enableDomain(client *golangsdk.ServiceClient, d *schema.ResourceData, epsID
 	return err
 }
 
-func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId string, targets []string) resource.StateRefreshFunc {
+func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			resourceNotFoundErrCodes = []string{
@@ -3218,7 +3219,7 @@ func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId stri
 
 func waitForDomainStatusAvailable(ctx context.Context, client *golangsdk.ServiceClient, domainName, epsId string,
 	targets []string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshDomainStatus(client, domainName, epsId, targets),

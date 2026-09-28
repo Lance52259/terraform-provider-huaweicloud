@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -95,7 +95,7 @@ func ResourcePtrRecord() *schema.Resource {
 func resourcePtrRecordCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
-	dnsClient, err := cfg.DnsV2Client(region)
+	dnsClient, err := cfg.DNSV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -145,7 +145,7 @@ func getPtrRecordsTagList(d *schema.ResourceData) []ptrrecords.Tag {
 func waitForPtrRecordCreateOrUpdate(ctx context.Context, dnsClient *golangsdk.ServiceClient, ptrRecordId string,
 	timeout time.Duration) error {
 	log.Printf("[DEBUG] Waiting for DNS PTR record (%s) to become ACTIVE", ptrRecordId)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      waitForPtrRecord(dnsClient, ptrRecordId, false),
@@ -163,7 +163,7 @@ func resourcePtrRecordRead(_ context.Context, d *schema.ResourceData, meta inter
 		region      = conf.GetRegion(d)
 		ptrRecordId = d.Id()
 	)
-	dnsClient, err := conf.DnsV2Client(region)
+	dnsClient, err := conf.DNSV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -208,7 +208,7 @@ func resourcePtrRecordUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		region      = conf.GetRegion(d)
 		ptrRecordId = d.Id()
 	)
-	dnsClient, err := conf.DnsV2Client(region)
+	dnsClient, err := conf.DNSV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -248,7 +248,7 @@ func resourcePtrRecordDelete(ctx context.Context, d *schema.ResourceData, meta i
 		conf        = meta.(*config.Config)
 		ptrRecordId = d.Id()
 	)
-	dnsClient, err := conf.DnsV2Client(conf.GetRegion(d))
+	dnsClient, err := conf.DNSV2Client(conf.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating DNS client: %s", err)
 	}
@@ -259,7 +259,7 @@ func resourcePtrRecordDelete(ctx context.Context, d *schema.ResourceData, meta i
 	}
 
 	log.Printf("[DEBUG] Waiting for DNS PTR record (%s) to be deleted", ptrRecordId)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		// Allows deletion of PTR record with status 'ERROR'.
 		Pending:      []string{"PENDING"},
 		Target:       []string{"DELETED"},
@@ -276,7 +276,7 @@ func resourcePtrRecordDelete(ctx context.Context, d *schema.ResourceData, meta i
 	return nil
 }
 
-func waitForPtrRecord(dnsClient *golangsdk.ServiceClient, ptrRecordId string, isDelete bool) resource.StateRefreshFunc {
+func waitForPtrRecord(dnsClient *golangsdk.ServiceClient, ptrRecordId string, isDelete bool) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		ptrRecord, err := ptrrecords.Get(dnsClient, ptrRecordId).Extract()
 		if err != nil {

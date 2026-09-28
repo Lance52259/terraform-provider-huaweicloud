@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -384,7 +384,17 @@ func ResourceObsBucket() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
-
+			// Fields `ies_location` and `edge_location` only support in specified site.
+			"ies_location": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"edge_location": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"bucket_domain_name": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -488,6 +498,8 @@ func resourceObsBucketCreate(ctx context.Context, d *schema.ResourceData, meta i
 		obs.WithCustomHeader("x-obs-server-side-encryption-kms-key-id", buildSideEncryptionKmsKeyIdParam(d)),
 		obs.WithCustomHeader("x-obs-server-side-encryption-bucket-key-enabled", buildSideEncryptionBucketKeyEnabledParam(d)),
 		obs.WithCustomHeader("x-obs-sse-kms-key-project-id", buildKmsKeyProjectIdParam(d)),
+		obs.WithCustomHeader("x-obs-ies-location", d.Get("ies_location").(string)),
+		obs.WithCustomHeader("x-obs-edge-location", d.Get("edge_location").(string)),
 	)
 	if err != nil {
 		return diag.FromErr(getObsError("Error creating bucket", bucket, err))
@@ -498,6 +510,7 @@ func resourceObsBucketCreate(ctx context.Context, d *schema.ResourceData, meta i
 	return resourceObsBucketUpdate(ctx, d, meta)
 }
 
+// nolint:gocyclo
 func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -595,7 +608,6 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		if err := resourceObsBucketEnterpriseProjectIdUpdate(ctx, d, conf, obsClient, region); err != nil {
 			return diag.FromErr(err)
 		}
-
 	}
 
 	if d.HasChange("user_domain_names") {
@@ -607,6 +619,7 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	return resourceObsBucketRead(ctx, d, meta)
 }
 
+// nolint:gocyclo
 func resourceObsBucketRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -865,7 +878,7 @@ func resourceObsBucketVersioningUpdate(obsClient *obs.ObsClient, d *schema.Resou
 	return nil
 }
 
-func resourceObsBucketEncryptionUpdate(config *config.Config, obsClient *obs.ObsClient, d *schema.ResourceData) error {
+func resourceObsBucketEncryptionUpdate(_ *config.Config, obsClient *obs.ObsClient, d *schema.ResourceData) error {
 	bucket := d.Get("bucket").(string)
 
 	if d.Get("encryption").(bool) {
@@ -951,9 +964,9 @@ func resourceObsBucketQuotaUpdate(obsClient *obs.ObsClient, d *schema.ResourceDa
 	}
 
 	return nil
-
 }
 
+// nolint:gocyclo
 func resourceObsBucketLifecycleUpdate(obsClient *obs.ObsClient, d *schema.ResourceData) error {
 	bucket := d.Get("bucket").(string)
 	lifecycleRules := d.Get("lifecycle_rule").([]interface{})
@@ -1194,7 +1207,7 @@ func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.R
 
 	// After the EPS service side updates enterprise project ID, it will take a few time to wait the OBS service
 	// read the data back into the database.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Success"},
 		Refresh:      waitForOBSEnterpriseProjectIdChanged(obsClient, bucket, d.Get("enterprise_project_id").(string)),
@@ -1209,7 +1222,7 @@ func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.R
 	return nil
 }
 
-func waitForOBSEnterpriseProjectIdChanged(obsClient *obs.ObsClient, bucket string, enterpriseProjectId string) resource.StateRefreshFunc {
+func waitForOBSEnterpriseProjectIdChanged(obsClient *obs.ObsClient, bucket string, enterpriseProjectId string) retry.StateRefreshFunc {
 	return func() (result interface{}, state string, err error) {
 		input := &obs.GetBucketMetadataInput{
 			Bucket: bucket,

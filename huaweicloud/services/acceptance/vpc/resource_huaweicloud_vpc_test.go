@@ -1,6 +1,7 @@
 package vpc
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func TestAccVpcV1_basic(t *testing.T) {
@@ -249,7 +249,6 @@ func TestAccVpcV1_WithEnhancedLocalRoute(t *testing.T) {
 // TestAccVpcV1_WithCustomRegion this case will run a test for resource-level region. Before run this case,
 // you shoule set `HW_CUSTOM_REGION_NAME` in your system and it should be different from `HW_REGION_NAME`.
 func TestAccVpcV1_WithCustomRegion(t *testing.T) {
-
 	vpcName1 := fmt.Sprintf("test_vpc_region_%s", acctest.RandString(5))
 	vpcName2 := fmt.Sprintf("test_vpc_region_%s", acctest.RandString(5))
 
@@ -275,10 +274,10 @@ func TestAccVpcV1_WithCustomRegion(t *testing.T) {
 }
 
 func testAccCheckVpcV1Destroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	vpcClient, err := config.NetworkingV1Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	vpcClient, err := cfg.NetworkingV1Client(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating huaweicloud vpc client: %s", err)
+		return fmt.Errorf("error creating VPC client: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -288,7 +287,7 @@ func testAccCheckVpcV1Destroy(s *terraform.State) error {
 
 		_, err := vpcs.Get(vpcClient, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Vpc still exists")
+			return fmt.Errorf("the VPC still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 
@@ -299,17 +298,17 @@ func testAccCheckCustomRegionVpcV1Exists(name string, vpc *vpcs.Vpc, region stri
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[name]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", name)
+			return fmt.Errorf("the VPC %s not found", name)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		vpcClient, err := config.NetworkingV1Client(region)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		vpcClient, err := cfg.NetworkingV1Client(region)
 		if err != nil {
-			return fmtp.Errorf("Error creating huaweicloud vpc client: %s", err)
+			return fmt.Errorf("error creating VPC client: %s", err)
 		}
 
 		found, err := vpcs.Get(vpcClient, rs.Primary.ID).Extract()
@@ -318,7 +317,7 @@ func testAccCheckCustomRegionVpcV1Exists(name string, vpc *vpcs.Vpc, region stri
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("vpc not found")
+			return fmt.Errorf("the VPC is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*vpc = *found
@@ -330,17 +329,17 @@ func testAccCheckVpcV1Exists(n string, vpc *vpcs.Vpc) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
-			return fmtp.Errorf("Not found: %s", n)
+			return fmt.Errorf("the VPC %s not found", n)
 		}
 
 		if rs.Primary.ID == "" {
-			return fmtp.Errorf("No ID is set")
+			return errors.New("no ID is set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		vpcClient, err := config.NetworkingV1Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		vpcClient, err := cfg.NetworkingV1Client(acceptance.HW_REGION_NAME)
 		if err != nil {
-			return fmtp.Errorf("Error creating huaweicloud vpc client: %s", err)
+			return fmt.Errorf("error creating VPC client: %s", err)
 		}
 
 		found, err := vpcs.Get(vpcClient, rs.Primary.ID).Extract()
@@ -349,7 +348,7 @@ func testAccCheckVpcV1Exists(n string, vpc *vpcs.Vpc) resource.TestCheckFunc {
 		}
 
 		if found.ID != rs.Primary.ID {
-			return fmtp.Errorf("vpc not found")
+			return fmt.Errorf("the VPC is not found, which ID is %s", rs.Primary.ID)
 		}
 
 		*vpc = *found
