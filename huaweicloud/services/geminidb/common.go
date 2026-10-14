@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/jmespath/go-jmespath"
 
@@ -137,8 +137,8 @@ func updateGeminiDbInstanceField(ctx context.Context, d *schema.ResourceData, cl
 	if params.isRetry {
 		retryFunc := func() (interface{}, bool, error) {
 			r, err := client.Request(params.httpMethod, updatePath, &updateOpt)
-			retry, err := handleMultiOperationsError(err)
-			return r, retry, err
+			shouldRetry, err := handleMultiOperationsError(err)
+			return r, shouldRetry, err
 		}
 		res, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -213,7 +213,7 @@ func checkJobAndOrderExpression(params updateInstanceFieldParams, jobId, orderId
 }
 
 func waitForGeminiDBInstanceReady(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{"ACTIVE"},
 		Refresh:      geminiDbInstanceStatusRefreshFunc(client, d.Id()),
 		Timeout:      d.Timeout(schema.TimeoutUpdate),
@@ -270,4 +270,107 @@ func handleDeletionError(err error) (bool, error) {
 		}
 	}
 	return false, err
+}
+
+func checkGeminiDbJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string,
+	timeout time.Duration) error {
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"Pending"},
+		Target:       []string{"Completed"},
+		Refresh:      geminiDbJobRefreshFunc(client, jobID),
+		Timeout:      timeout,
+		Delay:        5 * time.Second,
+		PollInterval: 10 * time.Second,
+	}
+	if _, err := stateConf.WaitForStateContext(ctx); err != nil {
+		return fmt.Errorf("error waiting for GeminiDB job (%s) to be completed: %s ", jobID, err)
+	}
+	return nil
+}
+
+func geminiDbJobRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		var (
+			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"
+		)
+
+		getJobStatusPath := client.Endpoint + getJobStatusHttpUrl
+		getJobStatusPath = strings.ReplaceAll(getJobStatusPath, "{project_id}", client.ProjectID)
+		getJobStatusPath = strings.ReplaceAll(getJobStatusPath, "{job_id}", jobId)
+
+		getJobStatusOpt := golangsdk.RequestOpts{
+			KeepResponseBody: true,
+			MoreHeaders: map[string]string{
+				"Content-Type": "application/json",
+			},
+		}
+		getJobStatusResp, err := client.Request("GET", getJobStatusPath, &getJobStatusOpt)
+		if err != nil {
+			return nil, "Failed", err
+		}
+
+		getJobStatusRespBody, err := utils.FlattenResponse(getJobStatusResp)
+		if err != nil {
+			return nil, "Failed", err
+		}
+
+		status := utils.PathSearch("jobs[0].status", getJobStatusRespBody, "").(string)
+		if status == "" {
+			return nil, "Failed", errors.New("job is not found")
+		}
+		if status == "Failed" {
+			return getJobStatusRespBody, "Failed", nil
+		}
+		if status == "Completed" {
+			return getJobStatusRespBody, "Completed", nil
+		}
+
+		return getJobStatusRespBody, "Pending", nil
+	}
+}
+
+type getInstanceFieldParams struct {
+	httpUrl    string
+	httpMethod string
+	pathParams map[string]string
+}
+
+func getInstanceField(client *golangsdk.ServiceClient, params getInstanceFieldParams) (interface{}, error) {
+	getPath := client.Endpoint + params.httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	for pathParam, value := range params.pathParams {
+		getPath = strings.ReplaceAll(getPath, fmt.Sprintf("{%s}", pathParam), value)
+	}
+
+	getOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
+	}
+	getResp, err := client.Request(params.httpMethod, getPath, &getOpt)
+	if err != nil {
+		return nil, err
+	}
+	return utils.FlattenResponse(getResp)
+}
+
+func handleTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// if the http status code is 500 and the error code is DBS.111205, it indicates timeout for the service
+	// error should be ignored, just wait for success
+	if errCode, ok := err.(golangsdk.ErrDefault500); ok {
+		var apiError interface{}
+		if jsonErr := json.Unmarshal(errCode.Body, &apiError); jsonErr != nil {
+			return false
+		}
+		errorCode, errorCodeErr := jmespath.Search("error_code", apiError)
+		if errorCodeErr != nil {
+			return false
+		}
+		if errorCode.(string) == "DBS.111205" {
+			return true
+		}
+	}
+	return false
 }

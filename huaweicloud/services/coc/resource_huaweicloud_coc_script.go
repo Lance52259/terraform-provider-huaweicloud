@@ -116,7 +116,7 @@ func ResourceScript() *schema.Resource {
 						"value": {
 							Type:     schema.TypeString,
 							Required: true,
-							DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+							DiffSuppressFunc: func(_, oldValue, _ string, _ *schema.ResourceData) bool {
 								return oldValue == defaultSensitiveValue
 							},
 						},
@@ -456,6 +456,6 @@ func resourceScriptDelete(_ context.Context, d *schema.ResourceData, meta interf
 	return nil
 }
 
-func suppressDosOrUnix(_, old, new string, _ *schema.ResourceData) bool {
-	return strings.ReplaceAll(old, "\r\n", "\n") == strings.ReplaceAll(new, "\r\n", "\n")
+func suppressDosOrUnix(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	return strings.ReplaceAll(oldVal, "\r\n", "\n") == strings.ReplaceAll(newVal, "\r\n", "\n")
 }

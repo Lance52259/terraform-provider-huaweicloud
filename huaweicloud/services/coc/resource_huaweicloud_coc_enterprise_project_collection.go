@@ -36,7 +36,7 @@ func ResourceEnterpriseProjectCollection() *schema.Resource {
 }
 
 func buildEnterpriseProjectCollectionOpts(epIdList []interface{}, collectionID string) map[string]interface{} {
-	if epIdList == nil {
+	if len(epIdList) == 0 {
 		epIdList = make([]interface{}, 0)
 		epIdList = append(epIdList, "")
 	}
@@ -116,7 +116,7 @@ func getEnterpriseProjectCollection(client *golangsdk.ServiceClient, collectionI
 				Method:    "GET",
 				URL:       "/v1/enterprise-project-collect",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the enterprise project collection (%s) does not exist", collectionID)),
+				Body:      fmt.Appendf(nil, "the enterprise project collection (%s) does not exist", collectionID),
 			},
 		}
 	}

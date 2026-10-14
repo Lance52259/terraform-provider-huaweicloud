@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -306,7 +307,7 @@ func GetTurboDetail(client *golangsdk.ServiceClient, shareId string) (interface{
 
 func waitingForTurboStatusReady(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -536,7 +537,7 @@ func buildTurboExtendOpts(newSize, hpcCacheBandwidth int, isPrePaid bool) map[st
 
 func waitingForTurboSubStatusReady(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -573,6 +574,7 @@ func waitingForTurboSubStatusReady(ctx context.Context, client *golangsdk.Servic
 	return err
 }
 
+// nolint:gocyclo
 func resourceSFSTurboUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg     = meta.(*config.Config)
@@ -655,7 +657,7 @@ func resourceSFSTurboUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the SFS Turbo (%s): %s", d.Id(), err)
 		}
 	}
@@ -731,7 +733,7 @@ func getOldTagKeys(d *schema.ResourceData) []string {
 
 func waitingForTurboSubStatusDeleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

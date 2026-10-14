@@ -68,6 +68,7 @@ func DataSourceCceAutopilotClusterCertificate() *schema.Resource {
 									"certificate_authority_data": {
 										Type:        schema.TypeString,
 										Computed:    true,
+										Sensitive:   true,
 										Description: `The certificate authority data of the cluster certificate.`,
 									},
 									"insecure_skip_tls_verify": {
@@ -101,11 +102,13 @@ func DataSourceCceAutopilotClusterCertificate() *schema.Resource {
 									"client_certificate_data": {
 										Type:        schema.TypeString,
 										Computed:    true,
+										Sensitive:   true,
 										Description: `The client certificate data of the cluster certificate.`,
 									},
 									"client_key_data": {
 										Type:        schema.TypeString,
 										Computed:    true,
+										Sensitive:   true,
 										Description: `The client key data of the cluster certificate.`,
 									},
 								},
@@ -251,10 +254,10 @@ func (w *ClusterCertificateDSWrapper) createAutopilotKubernetesClusterCertToSche
 				return map[string]any{
 					"name": contexts.Get("name").Value(),
 					"context": schemas.SliceToList(contexts.Get("context"),
-						func(context gjson.Result) any {
+						func(ctx gjson.Result) any {
 							return map[string]any{
-								"cluster": context.Get("cluster").Value(),
-								"user":    context.Get("user").Value(),
+								"cluster": ctx.Get("cluster").Value(),
+								"user":    ctx.Get("user").Value(),
 							}
 						},
 					),

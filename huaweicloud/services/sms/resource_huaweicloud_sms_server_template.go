@@ -161,7 +161,6 @@ func buildNicsOpts(client *golangsdk.ServiceClient, nics []string) ([]templates.
 				Cidr: rst.CIDR,
 			}
 		}
-
 	}
 	return request, nil
 }
@@ -194,7 +193,6 @@ func buildSecGroupOpts(client *golangsdk.ServiceClient, sgs []string) ([]templat
 				Name: rst.Name,
 			}
 		}
-
 	}
 	return request, nil
 }
@@ -262,13 +260,13 @@ func buildServerTemplateParameters(d *schema.ResourceData, cfg *config.Config) (
 }
 
 func resourceServerTemplateCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	smsClient, err := config.SmsV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	smsClient, err := cfg.SmsV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating SMS client: %s", err)
 	}
 
-	createOpts, err := buildServerTemplateParameters(d, config)
+	createOpts, err := buildServerTemplateParameters(d, cfg)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -284,11 +282,11 @@ func resourceServerTemplateCreate(ctx context.Context, d *schema.ResourceData, m
 }
 
 func flattenSubnetIDs(nics []templates.NicObject) []string {
-	subnets := make([]string, len(nics))
+	subnetIds := make([]string, len(nics))
 	for i, nic := range nics {
-		subnets[i] = nic.Id
+		subnetIds[i] = nic.Id
 	}
-	return subnets
+	return subnetIds
 }
 
 func flattenSecGroupIDs(groups []templates.SgObject) []string {
@@ -300,8 +298,8 @@ func flattenSecGroupIDs(groups []templates.SgObject) []string {
 }
 
 func resourceServerTemplateRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	smsClient, err := config.SmsV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	smsClient, err := cfg.SmsV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating SMS client: %s", err)
 	}
@@ -334,13 +332,13 @@ func resourceServerTemplateRead(_ context.Context, d *schema.ResourceData, meta 
 }
 
 func resourceServerTemplateUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	smsClient, err := config.SmsV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	smsClient, err := cfg.SmsV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating SMS client: %s", err)
 	}
 
-	updateOpts, err := buildServerTemplateParameters(d, config)
+	updateOpts, err := buildServerTemplateParameters(d, cfg)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -354,9 +352,9 @@ func resourceServerTemplateUpdate(ctx context.Context, d *schema.ResourceData, m
 	return resourceServerTemplateRead(ctx, d, meta)
 }
 
-func resourceServerTemplateDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	smsClient, err := config.SmsV3Client(config.GetRegion(d))
+func resourceServerTemplateDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	smsClient, err := cfg.SmsV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating SMS client: %s", err)
 	}

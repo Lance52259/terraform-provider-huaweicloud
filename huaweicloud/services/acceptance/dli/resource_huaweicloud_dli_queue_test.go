@@ -65,6 +65,8 @@ func TestAccDliQueue_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(typeSQL, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(typeSQL, "resource_mode", "1"),
 					resource.TestCheckResourceAttrSet(typeSQL, "create_time"),
+					resource.TestCheckResourceAttrSet(typeSQL, "owner"),
+					resource.TestCheckResourceAttrSet(typeSQL, "resource_id"),
 					rcForTypeGeneral.CheckResourceExists(),
 					resource.TestCheckResourceAttr(typeGeneral, "elastic_resource_pool_name", elasticResourceName),
 					resource.TestCheckResourceAttr(typeGeneral, "name", rName+"_general"),
@@ -72,6 +74,8 @@ func TestAccDliQueue_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(typeGeneral, "cu_count", fmt.Sprintf("%d", dli.CU16)),
 					resource.TestCheckResourceAttr(typeGeneral, "resource_mode", "1"),
 					resource.TestCheckResourceAttrSet(typeGeneral, "create_time"),
+					resource.TestCheckResourceAttrSet(typeGeneral, "owner"),
+					resource.TestCheckResourceAttrSet(typeGeneral, "resource_id"),
 				),
 			},
 			{
@@ -128,6 +132,7 @@ resource "huaweicloud_dli_queue" "general" {
 }`, elasticResourceName, rName, cuCount)
 }
 
+// Before running this test, please ensure that the minimum CU of the second elastic resource pool is not less than 48.
 func TestAccDliQueue_another(t *testing.T) {
 	var (
 		obj                    queues.CreateOpts

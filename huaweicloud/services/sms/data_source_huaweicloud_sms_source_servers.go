@@ -117,8 +117,8 @@ func DataSourceServers() *schema.Resource {
 }
 
 func dataSourceServersRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	smsClient, err := config.SmsV3Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	smsClient, err := cfg.SmsV3Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating SMS client: %s", err)
 	}
@@ -151,7 +151,7 @@ func dataSourceServersRead(_ context.Context, d *schema.ResourceData, meta inter
 	}
 
 	if err := d.Set("servers", stateServers); err != nil {
-		diag.Errorf("error setting SMS source servers: %s", err)
+		return diag.Errorf("error setting SMS source servers: %s", err)
 	}
 
 	return nil

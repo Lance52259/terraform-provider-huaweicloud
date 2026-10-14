@@ -24,76 +24,82 @@ import (
 // @API DataArtsStudio POST /v2/{project_id}/design/standards
 // @API DataArtsStudio GET /v2/{project_id}/design/standards
 // @API DataArtsStudio PUT /v2/{project_id}/design/standards/{id}
-// @API DataArtsStudio GET //v2/{project_id}/design/standards/{id}
+// @API DataArtsStudio GET /v2/{project_id}/design/standards/{id}
 // @API DataArtsStudio DELETE /v2/{project_id}/design/standards
-func ResourceDataStandard() *schema.Resource {
+func ResourceArchitectureDataStandard() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: resourceDataStandardCreate,
-		UpdateContext: resourceDataStandardUpdate,
-		ReadContext:   resourceDataStandardRead,
-		DeleteContext: resourceDataStandardDelete,
+		CreateContext: resourceArchitectureDataStandardCreate,
+		UpdateContext: resourceArchitectureDataStandardUpdate,
+		ReadContext:   resourceArchitectureDataStandardRead,
+		DeleteContext: resourceArchitectureDataStandardDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: resourceDataStandardImportState,
+			StateContext: resourceArchitectureDataStandardImportState,
 		},
 
 		Schema: map[string]*schema.Schema{
 			"region": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				ForceNew:    true,
+				Description: `The region where the data standard is located.`,
 			},
+
+			// Required parameters.
 			"workspace_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: `Specifies the workspace ID of DataArts Architecture.`,
+				ForceNew:    true,
+				Description: `The ID of the workspace to which the data standard belongs.`,
 			},
 			"directory_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: `Specifies the directory ID that the data standard belongs to.`,
+				Description: `The directory ID to which the data standard belongs.`,
 			},
 			"values": {
 				Type:        schema.TypeSet,
 				Elem:        dataStandardValueSchema(),
 				Required:    true,
-				Description: `Specifies the value of data standard attributes.`,
+				Description: `The value of data standard attributes.`,
 			},
+
+			// Attributes.
 			"directory_path": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the path of the directory.`,
+				Description: `The directory path of the data standard.`,
 			},
 			"status": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the status of the data standard.`,
+				Description: `The status of the data standard.`,
 			},
 			"created_by": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the name of creator.`,
+				Description: `The name of data standard creator.`,
 			},
 			"updated_by": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the name of updater.`,
+				Description: `The name of data standard updater.`,
 			},
 			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the creation time of the data standard.`,
+				Description: `The creation time of the data standard, in RFC3339 format.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the latest update time of the data standard.`,
+				Description: `The latest update time of the data standard, in RFC3339 format.`,
 			},
 			"new_biz": {
 				Type:        schema.TypeList,
 				Elem:        dataStandardNewBizSchema(),
 				Computed:    true,
-				Description: `Indicates the biz info of manager.`,
+				Description: `The biz info of the data standard.`,
 			},
 		},
 	}
@@ -105,57 +111,57 @@ func dataStandardValueSchema() *schema.Resource {
 			"fd_name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: `Specifies the name of the data standard attribute.`,
+				Description: `The name of the data standard attribute.`,
 			},
 			"fd_value": {
 				Type:        schema.TypeString,
 				Optional:    true,
-				Description: `Specifies the value of the data standard attribute.`,
+				Description: `The value of the data standard attribute.`,
 			},
 			"id": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the ID of the data standard attribute.`,
+				Description: `The ID of the data standard attribute.`,
 			},
 			"fd_id": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the ID of the data standard attribute.`,
-			},
-			"directory_id": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: `Indicates the directory ID that the attribute belongs to.`,
+				Description: `The ID of the data standard attribute definition.`,
 			},
 			"row_id": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the ID of data standard.`,
+				Description: `The row ID of the data standard attribute.`,
+			},
+			"directory_id": {
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: `The directory ID to which the attribute belongs.`,
 			},
 			"status": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the status of the data standard.`,
+				Description: `The status of the data standard attribute.`,
 			},
 			"created_by": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the name of creator.`,
+				Description: `The name of attribute creator.`,
 			},
 			"updated_by": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the name of updater.`,
+				Description: `The name of attribute updater.`,
 			},
 			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the creation time of the data standard.`,
+				Description: `The creation time of the data standard attribute, in RFC3339 format.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the latest update time of the data standard.`,
+				Description: `The latest update time of the data standard attribute, in RFC3339 format.`,
 			},
 		},
 	}
@@ -168,49 +174,49 @@ func dataStandardNewBizSchema() *schema.Resource {
 			"id": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the ID of the new biz.`,
+				Description: `The ID of the new biz.`,
 			},
 			"biz_type": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the type of the new biz.`,
+				Description: `The type of the new biz.`,
 			},
 			"biz_id": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the ID of data standard.`,
+				Description: `The ID of the new biz.`,
 			},
 			"biz_info": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the info of the new biz.`,
+				Description: `The info of the new biz.`,
 			},
 			"status": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the status of the new biz.`,
+				Description: `The status of the new biz.`,
 			},
 			"biz_version": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the version of the new biz.`,
+				Description: `The version of the new biz.`,
 			},
 			"created_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the creation time of the new biz.`,
+				Description: `The time when the new biz was created, in RFC3339 format.`,
 			},
 			"updated_at": {
 				Type:        schema.TypeString,
 				Computed:    true,
-				Description: `Indicates the latest update time of the new biz.`,
+				Description: `The time when the new biz was updated, in RFC3339 format.`,
 			},
 		},
 	}
 	return &sc
 }
 
-func resourceDataStandardCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceArchitectureDataStandardCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -251,7 +257,7 @@ func resourceDataStandardCreate(ctx context.Context, d *schema.ResourceData, met
 	}
 	d.SetId(standardId)
 
-	return resourceDataStandardRead(ctx, d, meta)
+	return resourceArchitectureDataStandardRead(ctx, d, meta)
 }
 
 func buildCreateDataStandardBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -278,7 +284,7 @@ func buildCreateDataStandardRequestBodyValue(rawArray []interface{}) []map[strin
 	return rst
 }
 
-func resourceDataStandardRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceArchitectureDataStandardRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -403,7 +409,7 @@ func flattenGetDataStandardResponseBodyNewBiz(resp interface{}) []interface{} {
 	return rst
 }
 
-func resourceDataStandardUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceArchitectureDataStandardUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -445,7 +451,7 @@ func resourceDataStandardUpdate(ctx context.Context, d *schema.ResourceData, met
 			return diag.Errorf("error updating DataArts Architecture data standard: %s", err)
 		}
 	}
-	return resourceDataStandardRead(ctx, d, meta)
+	return resourceArchitectureDataStandardRead(ctx, d, meta)
 }
 
 func getDataStandard(d *schema.ResourceData, client *golangsdk.ServiceClient) (interface{}, error) {
@@ -515,7 +521,7 @@ func buildUpdateDataStandardRequestBodyValue(d *schema.ResourceData, dataStandar
 	return rst
 }
 
-func resourceDataStandardDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceArchitectureDataStandardDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
 
@@ -556,8 +562,8 @@ func buildDeleteDataStandardBodyParams(d *schema.ResourceData) map[string]interf
 	return bodyParams
 }
 
-// resourceDataStandardImportState use to import an id with format <workspace_id>/<id>
-func resourceDataStandardImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
+// resourceArchitectureDataStandardImportState use to import an id with format <workspace_id>/<id>
+func resourceArchitectureDataStandardImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.Split(d.Id(), "/")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid format specified for import ID, must be <workspace_id>/<id>")

@@ -4,6 +4,7 @@ package rms
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -109,10 +110,10 @@ func (w *AdvancedQuerySchemasDSWrapper) listSchemasToSchema(body *gjson.Result) 
 	d := w.ResourceData
 	mErr := multierror.Append(nil,
 		d.Set("schemas", schemas.SliceToList(body.Get("value"),
-			func(schema gjson.Result) any {
+			func(schemaItem gjson.Result) any {
 				return map[string]any{
-					"type":   schema.Get("type").Value(),
-					"schema": w.setValueSchema(schema),
+					"type":   schemaItem.Get("type").Value(),
+					"schema": w.setValueSchema(schemaItem),
 				}
 			},
 		)),
@@ -124,7 +125,10 @@ func (*AdvancedQuerySchemasDSWrapper) setValueSchema(data gjson.Result) map[stri
 	schemaToSet := data.Get("schema")
 	result := make(map[string]interface{})
 	for k, v := range schemaToSet.Map() {
-		jsonBytes, _ := json.Marshal(v)
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling schema value: %s", err)
+		}
 		result[k] = string(jsonBytes)
 	}
 	return result

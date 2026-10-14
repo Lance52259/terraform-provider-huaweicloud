@@ -11,13 +11,12 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 func getMemberResourceFunc(conf *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	c, err := conf.LoadBalancerClient(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmt.Errorf("error creating HuaweiCloud LB v2 client: %s", err)
+		return nil, fmt.Errorf("error creating ELB client: %s", err)
 	}
 	resp, err := pools.GetMember(c, state.Primary.Attributes["pool_id"], state.Primary.ID).Extract()
 	if resp == nil && err == nil {
@@ -27,8 +26,8 @@ func getMemberResourceFunc(conf *config.Config, state *terraform.ResourceState) 
 }
 
 func TestAccLBV2Member_basic(t *testing.T) {
-	var member_1 pools.Member
-	var member_2 pools.Member
+	var member1 pools.Member
+	var member2 pools.Member
 	resourceName1 := "huaweicloud_lb_member.member_1"
 	resourceName2 := "huaweicloud_lb_member.member_2"
 	rName := acceptance.RandomAccResourceNameWithDash()
@@ -36,12 +35,12 @@ func TestAccLBV2Member_basic(t *testing.T) {
 
 	rc1 := acceptance.InitResourceCheck(
 		resourceName1,
-		&member_1,
+		&member1,
 		getMemberResourceFunc,
 	)
 	rc2 := acceptance.InitResourceCheck(
 		resourceName2,
-		&member_2,
+		&member2,
 		getMemberResourceFunc,
 	)
 
@@ -76,10 +75,10 @@ func TestAccLBV2Member_basic(t *testing.T) {
 }
 
 func testAccCheckLBV2MemberDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	elbClient, err := config.LoadBalancerClient(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	elbClient, err := cfg.LoadBalancerClient(acceptance.HW_REGION_NAME)
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud elb client: %s", err)
+		return fmt.Errorf("error creating ELB client: %s", err)
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -90,7 +89,7 @@ func testAccCheckLBV2MemberDestroy(s *terraform.State) error {
 		poolId := rs.Primary.Attributes["pool_id"]
 		_, err := pools.GetMember(elbClient, poolId, rs.Primary.ID).Extract()
 		if err == nil {
-			return fmtp.Errorf("Member still exists: %s", rs.Primary.ID)
+			return fmt.Errorf("the member still exists, which ID is %s", rs.Primary.ID)
 		}
 	}
 

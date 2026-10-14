@@ -44,9 +44,10 @@ func ResourceDmsRabbitmqUser() *schema.Resource {
 				ForceNew: true,
 			},
 			"access_key": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				ForceNew:  true,
+				Sensitive: true,
 			},
 			"secret_key": {
 				Type:      schema.TypeString,
@@ -202,7 +203,7 @@ func GetRabbitmqUser(client *golangsdk.ServiceClient, instanceID, accessKey stri
 					Method:    "GET",
 					URL:       "/v2/rabbitmq/{project_id}/instances/{instance_id}/users",
 					RequestId: "NONE",
-					Body:      []byte(fmt.Sprintf("the user (%s) does not exist", accessKey)),
+					Body:      fmt.Appendf(nil, "the user (%s) does not exist", accessKey),
 				},
 			}
 		}

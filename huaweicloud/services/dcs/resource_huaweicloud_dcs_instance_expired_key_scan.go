@@ -10,8 +10,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/pagination"
@@ -73,6 +74,19 @@ func ResourceDcsInstanceExpiredKeyScan() *schema.Resource {
 			"finished_at": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -174,7 +188,7 @@ func resourceDcsInstanceExpiredKeyScanDelete(_ context.Context, _ *schema.Resour
 
 func waitForExpiredKeyScanTaskComplete(ctx context.Context, client *golangsdk.ServiceClient, instanceID, taskID string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"pending"},
 		Target:       []string{"success"},
 		Refresh:      instanceExpiredKeyScanTaskStatusRefreshFunc(client, instanceID, taskID),
@@ -187,7 +201,7 @@ func waitForExpiredKeyScanTaskComplete(ctx context.Context, client *golangsdk.Se
 	return nil
 }
 
-func instanceExpiredKeyScanTaskStatusRefreshFunc(client *golangsdk.ServiceClient, instanceID, taskID string) resource.StateRefreshFunc {
+func instanceExpiredKeyScanTaskStatusRefreshFunc(client *golangsdk.ServiceClient, instanceID, taskID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		record, err := getInstanceExpiredKeyScanTask(client, instanceID, taskID)
 		if err != nil {

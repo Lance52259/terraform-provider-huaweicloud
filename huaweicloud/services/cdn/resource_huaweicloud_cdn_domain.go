@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -41,9 +41,10 @@ var httpsConfig = schema.Schema{
 				Computed: true,
 			},
 			"certificate_body": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"private_key": {
 				Type:      schema.TypeString,
@@ -922,6 +923,49 @@ var clientCert = schema.Schema{
 	},
 }
 
+var flowLimitStrategy = schema.Schema{
+	Type:     schema.TypeSet,
+	Optional: true,
+	Computed: true,
+	Elem: &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+			},
+			"strategy_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"instant", "hour", "day",
+				}, false),
+			},
+			"item_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"bandwidth", "traffic",
+				}, false),
+			},
+			"limit_value": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"alarm_percent_threshold": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+			"ban_time": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Computed: true,
+			},
+		},
+	},
+}
+
 // @API CDN POST /v1.0/cdn/domains
 // @API CDN GET /v1.0/cdn/configuration/domains/{domain_name}
 // @API CDN PUT /v1.0/cdn/domains/{domain_id}/disable
@@ -1017,9 +1061,10 @@ func ResourceDomain() *schema.Resource {
 							Computed: true,
 						},
 						"bucket_access_key": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
+							Type:      schema.TypeString,
+							Optional:  true,
+							Computed:  true,
+							Sensitive: true,
 							Description: utils.SchemaDesc(
 								"Third-party object storage access key.",
 								utils.SchemaDescInput{
@@ -1028,9 +1073,10 @@ func ResourceDomain() *schema.Resource {
 							),
 						},
 						"bucket_secret_key": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Computed: true,
+							Type:      schema.TypeString,
+							Optional:  true,
+							Computed:  true,
+							Sensitive: true,
 							Description: utils.SchemaDesc(
 								"Third-party object storage secret key.",
 								utils.SchemaDescInput{
@@ -1145,6 +1191,7 @@ func ResourceDomain() *schema.Resource {
 						"browser_cache_rules":        &browserCacheRules,
 						"access_area_filter":         &accessAreaFilters,
 						"client_cert":                &clientCert,
+						"flow_limit_strategy":        &flowLimitStrategy,
 					},
 				},
 			},
@@ -2143,6 +2190,44 @@ func flattenClientCertAttributes(configResp interface{}) []map[string]interface{
 	return []map[string]interface{}{hstsAttrs}
 }
 
+func flattenFlowLimitStrategyAttributes(configResp interface{}, d *schema.ResourceData) []interface{} {
+	curJson := utils.PathSearch("configs.flow_limit_strategy", configResp, make([]interface{}, 0))
+	curArray := curJson.([]interface{})
+	if len(curArray) == 0 {
+		// The flow limit strategy has been cleared from the cloud. If the configuration declares a block with
+		// `enabled` set to false, keep the disabled block in the state to stay consistent with the configuration
+		// and avoid unexpected plan.
+		if rawConfigs, ok := d.GetOk("configs.0.flow_limit_strategy"); ok {
+			rawArray := rawConfigs.(*schema.Set).List()
+			for _, v := range rawArray {
+				rawMap := v.(map[string]interface{})
+				if enabled, ok := rawMap["enabled"]; ok && !enabled.(bool) {
+					return []interface{}{
+						map[string]interface{}{
+							"enabled": false,
+						},
+					}
+				}
+			}
+		}
+		return nil
+	}
+
+	rst := make([]interface{}, 0, len(curArray))
+	for _, v := range curArray {
+		rawMap := v.(map[string]interface{})
+		rst = append(rst, map[string]interface{}{
+			"enabled":                 true,
+			"strategy_type":           rawMap["strategy_type"],
+			"item_type":               rawMap["item_type"],
+			"limit_value":             rawMap["limit_value"],
+			"alarm_percent_threshold": rawMap["alarm_percent_threshold"],
+			"ban_time":                rawMap["ban_time"],
+		})
+	}
+	return rst
+}
+
 func flattenConfigAttributes(configResp interface{}, d *schema.ResourceData) []map[string]interface{} {
 	if configResp == nil {
 		return nil
@@ -2187,6 +2272,7 @@ func flattenConfigAttributes(configResp interface{}, d *schema.ResourceData) []m
 		"browser_cache_rules":           flattenBrowserCacheRulesAttributes(configResp),
 		"access_area_filter":            flattenAccessAreaFiltersAttributes(configResp),
 		"client_cert":                   flattenClientCertAttributes(configResp),
+		"flow_limit_strategy":           flattenFlowLimitStrategyAttributes(configResp, d),
 	}
 	return []map[string]interface{}{configsAttrs}
 }
@@ -2813,7 +2899,33 @@ func buildCdnDomainClientCertOpts(rawArray []interface{}) map[string]interface{}
 	}
 }
 
+func buildCdnDomainFlowLimitStrategyOpts(rawFlowLimitStrategy []interface{}) []interface{} {
+	if len(rawFlowLimitStrategy) < 1 {
+		// Define an empty array to clear all flow limit strategy
+		return make([]interface{}, 0)
+	}
+
+	rst := make([]interface{}, 0, len(rawFlowLimitStrategy))
+	for _, v := range rawFlowLimitStrategy {
+		rawMap := v.(map[string]interface{})
+		if enabled, ok := rawMap["enabled"]; ok && !enabled.(bool) {
+			// The flow limit strategy is disabled, clear the related configuration.
+			return make([]interface{}, 0)
+		}
+
+		rst = append(rst, map[string]interface{}{
+			"strategy_type":           utils.ValueIgnoreEmpty(rawMap["strategy_type"]),
+			"item_type":               utils.ValueIgnoreEmpty(rawMap["item_type"]),
+			"limit_value":             utils.ValueIgnoreEmpty(rawMap["limit_value"]),
+			"alarm_percent_threshold": utils.ValueIgnoreEmpty(rawMap["alarm_percent_threshold"]),
+			"ban_time":                utils.ValueIgnoreEmpty(rawMap["ban_time"]),
+		})
+	}
+	return rst
+}
+
 // nolint
+// nolint:gocyclo
 func buildUpdateCdnDomainFullConfigsOpts(bodyParams map[string]interface{}, configs map[string]interface{}, d *schema.ResourceData) {
 	if d.HasChange("configs.0.ipv6_enable") {
 		bodyParams["ipv6_accelerate"] = buildCdnDomainIpv6AccelerateOpts(configs["ipv6_enable"].(bool))
@@ -2919,6 +3031,10 @@ func buildUpdateCdnDomainFullConfigsOpts(bodyParams map[string]interface{}, conf
 	}
 	if d.HasChange("configs.0.client_cert") {
 		bodyParams["client_cert"] = buildCdnDomainClientCertOpts(configs["client_cert"].([]interface{}))
+	}
+	if d.HasChange("configs.0.flow_limit_strategy") {
+		flowLimitStrategy := configs["flow_limit_strategy"].(*schema.Set).List()
+		bodyParams["flow_limit_strategy"] = buildCdnDomainFlowLimitStrategyOpts(flowLimitStrategy)
 	}
 }
 
@@ -3178,7 +3294,7 @@ func enableDomain(client *golangsdk.ServiceClient, d *schema.ResourceData, epsID
 	return err
 }
 
-func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId string, targets []string) resource.StateRefreshFunc {
+func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			resourceNotFoundErrCodes = []string{
@@ -3215,7 +3331,7 @@ func refreshDomainStatus(client *golangsdk.ServiceClient, domainName, epsId stri
 
 func waitForDomainStatusAvailable(ctx context.Context, client *golangsdk.ServiceClient, domainName, epsId string,
 	targets []string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshDomainStatus(client, domainName, epsId, targets),

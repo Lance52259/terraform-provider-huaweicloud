@@ -9,8 +9,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -18,6 +19,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var applicationQuotaAssociateNonUpdatableParams = []string{
+	"instance_id",
+	"quota_id",
+}
 
 // @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/app-quotas/{app_quota_id}/binding-apps
 // @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/app-quotas/{app_quota_id}/bindable-apps
@@ -40,6 +46,8 @@ func ResourceApplicationQuotaAssociate() *schema.Resource {
 			Delete: schema.DefaultTimeout(3 * time.Minute),
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(applicationQuotaAssociateNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:        schema.TypeString,
@@ -51,13 +59,11 @@ func ResourceApplicationQuotaAssociate() *schema.Resource {
 			"instance_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the dedicated instance to which the application quota (policy) belongs.",
 			},
 			"quota_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the application quota (policy).",
 			},
 			"applications": {
@@ -79,6 +85,18 @@ func ResourceApplicationQuotaAssociate() *schema.Resource {
 				},
 				Description: "The configuration of applications bound to the quota.",
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
+					}),
+			},
 		},
 	}
 }
@@ -92,7 +110,7 @@ func parseAssociatedAppIds(applications *schema.Set) []string {
 	return result
 }
 
-func bindableAppRefreshFunc(client *golangsdk.ServiceClient, instanceId, quotaId string, appIds []string) resource.StateRefreshFunc {
+func bindableAppRefreshFunc(client *golangsdk.ServiceClient, instanceId, quotaId string, appIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl = "v2/{project_id}/apigw/instances/{instance_id}/app-quotas/{app_quota_id}/bindable-apps"
@@ -128,7 +146,7 @@ func precheckAllAppIdsAreAvailable(ctx context.Context, client *golangsdk.Servic
 		instanceId = d.Get("instance_id").(string)
 		quotaId    = d.Get("quota_id").(string)
 	)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: bindableAppRefreshFunc(client, instanceId, quotaId, appIds),
@@ -180,7 +198,7 @@ func QueryQuotaAssociatedApplications(client *golangsdk.ServiceClient, instanceI
 }
 
 func appsBindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, quota string,
-	appIds []string) resource.StateRefreshFunc {
+	appIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryQuotaAssociatedApplications(client, instanceId, quota)
 		if err != nil {
@@ -215,7 +233,7 @@ func associateAppsToQuota(ctx context.Context, client *golangsdk.ServiceClient, 
 		return fmt.Errorf("failed to associate application(s) to the application quota (%s): %s", quotaId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: appsBindingRefreshFunc(client, instanceId, quotaId, appIds),
@@ -334,7 +352,7 @@ func disassociateAppsFromQuota(ctx context.Context, client *golangsdk.ServiceCli
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: appsUnbindingRefreshFunc(client, instanceId, quotaId, appIds),
@@ -351,7 +369,7 @@ func disassociateAppsFromQuota(ctx context.Context, client *golangsdk.ServiceCli
 }
 
 func appsUnbindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, quota string,
-	appIds []string) resource.StateRefreshFunc {
+	appIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryQuotaAssociatedApplications(client, instanceId, quota)
 		if err != nil {
@@ -371,6 +389,34 @@ func appsUnbindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, quota
 	}
 }
 
+func updateApplicationQuotaAssociate(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout time.Duration) error {
+	var (
+		instanceId     = d.Get("instance_id").(string)
+		quotaId        = d.Get("quota_id").(string)
+		oldVal, newVal = d.GetChange("applications")
+		rmRaw          = oldVal.(*schema.Set).Difference(newVal.(*schema.Set))
+		addRaw         = newVal.(*schema.Set).Difference(oldVal.(*schema.Set))
+		err            error
+	)
+
+	if rmRaw.Len() > 0 {
+		if err = disassociateAppsFromQuota(ctx, client, instanceId, quotaId, parseAssociatedAppIds(rmRaw), timeout); err != nil {
+			return err
+		}
+	}
+
+	if addRaw.Len() > 0 {
+		err = precheckAllAppIdsAreAvailable(ctx, client, d, parseAssociatedAppIds(addRaw), timeout)
+		if err != nil {
+			return err
+		}
+		if err = associateAppsToQuota(ctx, client, instanceId, quotaId, parseAssociatedAppIds(addRaw), timeout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func resourceApplicationQuotaAssociateUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg    = meta.(*config.Config)
@@ -382,28 +428,8 @@ func resourceApplicationQuotaAssociateUpdate(ctx context.Context, d *schema.Reso
 		return diag.Errorf("error creating APIG client: %s", err)
 	}
 
-	var (
-		instanceId     = d.Get("instance_id").(string)
-		quotaId        = d.Get("quota_id").(string)
-		oldVal, newVal = d.GetChange("applications")
-		rmRaw          = oldVal.(*schema.Set).Difference(newVal.(*schema.Set))
-		addRaw         = newVal.(*schema.Set).Difference(oldVal.(*schema.Set))
-	)
-
-	if rmRaw.Len() > 0 {
-		if err = disassociateAppsFromQuota(ctx, client, instanceId, quotaId, parseAssociatedAppIds(rmRaw),
-			d.Timeout(schema.TimeoutUpdate)); err != nil {
-			return diag.FromErr(err)
-		}
-	}
-
-	if addRaw.Len() > 0 {
-		err = precheckAllAppIdsAreAvailable(ctx, client, d, parseAssociatedAppIds(addRaw), d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		if err = associateAppsToQuota(ctx, client, instanceId, quotaId, parseAssociatedAppIds(addRaw),
-			d.Timeout(schema.TimeoutUpdate)); err != nil {
+	if d.HasChangeExcept("enable_force_new") {
+		if err := updateApplicationQuotaAssociate(ctx, client, d, d.Timeout(schema.TimeoutUpdate)); err != nil {
 			return diag.FromErr(err)
 		}
 	}

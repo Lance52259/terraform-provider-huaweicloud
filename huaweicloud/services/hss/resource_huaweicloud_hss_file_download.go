@@ -107,7 +107,7 @@ func resourceFileDownloadCreate(_ context.Context, d *schema.ResourceData, meta 
 	}
 
 	if err := writeToZipFile(bodyBytes, outputFile); err != nil {
-		return diag.Errorf(err.Error())
+		return diag.Errorf("error writing to zip file: %s", err)
 	}
 
 	generateUUID, err := uuid.GenerateUUID()
@@ -118,6 +118,19 @@ func resourceFileDownloadCreate(_ context.Context, d *schema.ResourceData, meta 
 	d.SetId(generateUUID)
 
 	return nil
+}
+
+func readAll(rc io.ReadCloser) (err error) {
+	defer func() {
+		if closeErr := rc.Close(); closeErr != nil {
+			if err != nil {
+				err = fmt.Errorf("%v; close error: %v", err, closeErr)
+			}
+		}
+	}()
+
+	_, err = io.ReadAll(rc)
+	return
 }
 
 func writeToZipFile(bodyBytes []byte, outputFile string) error {
@@ -132,9 +145,7 @@ func writeToZipFile(bodyBytes []byte, outputFile string) error {
 			return fmt.Errorf("error opening zip file entry: %s", err)
 		}
 
-		_, err = io.ReadAll(rc)
-		rc.Close()
-		if err != nil {
+		if err = readAll(rc); err != nil {
 			return fmt.Errorf("error reading zip file content: %s", err)
 		}
 	}

@@ -3,6 +3,7 @@ package rds
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -204,7 +205,7 @@ func flattenGetFlavors(resp interface{}, d *schema.ResourceData) []interface{} {
 		if groupTypeOk && groupType != groupTypeRaw {
 			continue
 		}
-		vcpusRaw := utils.PathSearch("vcpus", v, nil)
+		vcpusRaw := utils.PathSearch("vcpus", v, "")
 		if vcpusOk && fmt.Sprint(vcpus) != fmt.Sprint(vcpusRaw) {
 			continue
 		}
@@ -220,7 +221,10 @@ func flattenGetFlavors(resp interface{}, d *schema.ResourceData) []interface{} {
 			}
 		}
 
-		vcpusValue, _ := strconv.Atoi(vcpusRaw.(string))
+		vcpusValue, err := strconv.Atoi(vcpusRaw.(string))
+		if err != nil {
+			log.Printf("[WARN] failed to parse VCPUs: %s", err)
+		}
 		rst = append(rst, map[string]interface{}{
 			"id":                 utils.PathSearch("id", v, nil),
 			"name":               utils.PathSearch("spec_code", v, nil),

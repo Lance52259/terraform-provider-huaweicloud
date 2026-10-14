@@ -741,6 +741,7 @@ func buildAssetPropertiesHwcDomainContactSchema() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
+				Sensitive:   true,
 				Description: utils.SchemaDesc("Specifies the email address.", utils.SchemaDescInput{Required: true}),
 			},
 			"register": {
@@ -759,6 +760,7 @@ func buildAssetPropertiesHwcDomainContactSchema() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
+				Sensitive:   true,
 				Description: utils.SchemaDesc("Specifies the phone number.", utils.SchemaDescInput{Required: true}),
 			},
 			"province": {
@@ -4177,7 +4179,7 @@ func flattenLevelAttribute(respValue interface{}) int {
 
 	r, err := strconv.Atoi(stringValue)
 	if err != nil {
-		log.Printf("[ERROR] convert the string %q to int failed.", stringValue)
+		log.Printf("[WARN] convert the string %q to int failed.", stringValue)
 	}
 
 	return r

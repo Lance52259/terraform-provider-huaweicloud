@@ -294,7 +294,7 @@ func GetPrivilegeById(client *golangsdk.ServiceClient, workspaceId, permissionSe
 				Method:    "GET",
 				URL:       "/v1/{project_id}/security/permission-sets/{permission_set_id}/permissions",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the privilege (%s) does not exist", privilegeId)),
+				Body:      fmt.Appendf(nil, "the privilege (%s) does not exist", privilegeId),
 			},
 		}
 	}
@@ -384,9 +384,11 @@ func resourceSecurityPermissionSetPrivilegeUpdate(ctx context.Context, d *schema
 		return diag.Errorf("error creating DataArts Studio client: %s", err)
 	}
 
-	_, err = updatePermissionSetPrivilege(client, d)
-	if err != nil {
-		return diag.Errorf("error updating DataArts Security permission set privilege: %s", err)
+	if d.HasChangesExcept("enable_force_new") {
+		_, err = updatePermissionSetPrivilege(client, d)
+		if err != nil {
+			return diag.Errorf("error updating DataArts Security permission set privilege: %s", err)
+		}
 	}
 
 	return resourceSecurityPermissionSetPrivilegeRead(ctx, d, meta)

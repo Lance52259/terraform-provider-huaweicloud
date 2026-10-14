@@ -382,6 +382,7 @@ The following arguments are supported:
   + **Python2.7**
   + **Python3.6**
   + **Python3.9**
+  + **Python3.10**
   + **Go1.x**
   + **C#(.NET Core 2.1)**
   + **C#(.NET Core 3.1)**
@@ -391,6 +392,8 @@ The following arguments are supported:
   + **Custom Image**
   + **Cangjie1.0**
 
+  For more runtimes, please refer to the description of `runtime` parameter during the
+  [documentation](https://support.huaweicloud.com/intl/en-us/api-functiongraph/functiongraph_06_0108.html#section2).
   Changing this will create a new resource.
 
 * `timeout` - (Required, Int) Specifies the timeout interval of the function, in seconds.  
@@ -410,7 +413,8 @@ The following arguments are supported:
 
 * `handler` - (Required, String) Specifies the entry point of the function.
 
--> If the function is created by an SWR image, keep `code_type` empty and use hyphen character (-) to set the handler.
+-> If the function is created by an SWR image, set `code_type` to **Custom-Image-Swr** and use the hyphen character (-)
+   to set the handler.
 
 * `description` - (Optional, String) Specifies the description of the function.
 

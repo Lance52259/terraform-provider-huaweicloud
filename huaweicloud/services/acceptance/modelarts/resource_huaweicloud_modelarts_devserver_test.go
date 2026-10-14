@@ -26,15 +26,13 @@ func getDevServerResourceFunc(cfg *config.Config, state *terraform.ResourceState
 
 func TestAccDevServer_basic(t *testing.T) {
 	var (
-		obj          interface{}
+		obj interface{}
+
 		resourceName = "huaweicloud_modelarts_devserver.test"
-		name         = acceptance.RandomAccResourceName()
-		password     = acceptance.RandomPassword("!@%-_=+[{}]:,./?")
-		rc           = acceptance.InitResourceCheck(
-			resourceName,
-			&obj,
-			getDevServerResourceFunc,
-		)
+		rc           = acceptance.InitResourceCheck(resourceName, &obj, getDevServerResourceFunc)
+
+		name        = acceptance.RandomAccResourceName()
+		updatedName = acceptance.RandomAccResourceName()
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -43,14 +41,21 @@ func TestAccDevServer_basic(t *testing.T) {
 			acceptance.TestAccPreCheckModelartsDevServer(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
+		ExternalProviders: map[string]resource.ExternalProvider{
+			"random": {
+				Source: "hashicorp/random",
+				// The version of the random provider must be greater than 3.3.0 to support the 'numeric' parameter.
+				VersionConstraint: "3.3.0",
+			},
+		},
+		CheckDestroy: rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDevServer_basic(true, name, password),
+				Config: testAccDevServer_basic(name, true),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
-					resource.TestCheckResourceAttr(resourceName, "flavor", acceptance.HW_MODELARTS_DEVSERVER_FLAVOR),
+					resource.TestCheckResourceAttr(resourceName, "resource_flavor", acceptance.HW_MODELARTS_DEVSERVER_FLAVOR),
 					resource.TestCheckResourceAttrSet(resourceName, "architecture"),
 					resource.TestCheckResourceAttrPair(resourceName, "vpc_id", "huaweicloud_vpc.test", "id"),
 					resource.TestCheckResourceAttrPair(resourceName, "subnet_id", "huaweicloud_vpc_subnet.test", "id"),
@@ -61,32 +66,48 @@ func TestAccDevServer_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "auto_renew", "true"),
 					resource.TestMatchResourceAttr(resourceName, "created_at",
 						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
+					// Deprecated parameters.
+					resource.TestCheckResourceAttrSet(resourceName, "flavor"),
 				),
 			},
 			{
-				Config: testAccDevServer_basic(false, name, password),
+				Config: testAccDevServer_basic(updatedName, false),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", updatedName),
 					resource.TestCheckResourceAttr(resourceName, "auto_renew", "false"),
 				),
 			},
 			// Stopping the DevServer.
 			{
-				Config: testAccDevServer_doAction(name, password, "stop", false),
+				Config: testAccDevServer_doAction(updatedName, "stop", false),
 			},
 			// Stopping the stopped DevServer.
 			{
-				Config:      testAccDevServer_doAction(name, password, "stop", true),
-				ExpectError: regexp.MustCompile(`Resource.Server '[a-f0-9-]+' is not allowed STOP: STOPPED`),
+				Config:      testAccDevServer_doAction(updatedName, "stop", true),
+				ExpectError: regexp.MustCompile(`unable to stop DevServer \([a-f0-9-]+\)`),
 			},
-			// Starting the DevServer.
+			// Reinstalling the DevServer OS.
 			{
-				Config: testAccDevServer_doAction(name, password, "start", false),
+				Config: testAccDevServer_doAction(updatedName, "reinstallos", false),
+			},
+			// After reinstalling the DevServer OS, the status be changed to "RUNNING", and if we want to test the start
+			// action, we need to stop the DevServer first.
+			{
+				Config: testAccDevServer_doAction(updatedName, "stop", false),
+			},
+			// Starting the DevServer (after reinstall OS image).
+			{
+				Config: testAccDevServer_doAction(updatedName, "start", false),
 			},
 			// Starting the running DevServer.
 			{
-				Config:      testAccDevServer_doAction(name, password, "start", true),
-				ExpectError: regexp.MustCompile(`Resource.Server '[a-f0-9-]+' is not allowed START: RUNNING`),
+				Config:      testAccDevServer_doAction(updatedName, "start", true),
+				ExpectError: regexp.MustCompile(`unable to start DevServer \([a-f0-9-]+\)`),
+			},
+			// Rebooting the DevServer.
+			{
+				Config: testAccDevServer_doAction(updatedName, "reboot", false),
 			},
 			{
 				ResourceName:      resourceName,
@@ -106,18 +127,28 @@ func TestAccDevServer_basic(t *testing.T) {
 	})
 }
 
-func testAccDevServer_basic(isAutoRenew bool, name, password string) string {
+func testAccDevServer_basic(name string, isAutoRenew bool) string {
 	return fmt.Sprintf(`
 %[1]s
 
+resource "random_password" "test" {
+  length           = 12
+  min_numeric      = 1
+  min_upper        = 1
+  min_lower        = 1
+  special          = true
+  min_special      = 1
+  override_special = "!@"
+}
+
 resource "huaweicloud_modelarts_devserver" "test" {
   name              = "%[2]s"
-  flavor            = "%[3]s"
+  resource_flavor   = "%[3]s"
   vpc_id            = huaweicloud_vpc.test.id
   subnet_id         = huaweicloud_vpc_subnet.test.id
   security_group_id = huaweicloud_networking_secgroup.test.id
   image_id          = "%[4]s"
-  admin_pass        = "%[5]s"
+  admin_pass        = random_password.test.result
 
   root_volume {
     size = 100
@@ -127,24 +158,32 @@ resource "huaweicloud_modelarts_devserver" "test" {
   charging_mode = "PRE_PAID"
   period_unit   = "MONTH"
   period        = 1
-  auto_renew    = "%[6]v"
+  auto_renew    = "%[5]v"
 }
 `, common.TestBaseNetwork(name), name,
-		acceptance.HW_MODELARTS_DEVSERVER_FLAVOR, acceptance.HW_MODELARTS_DEVSERVER_IMAGE_ID, password, isAutoRenew)
+		acceptance.HW_MODELARTS_DEVSERVER_FLAVOR, acceptance.HW_MODELARTS_DEVSERVER_IMAGE_ID, isAutoRenew)
 }
 
-func testAccDevServer_doAction(name, password, actionType string, doRetryAction bool) string {
+func testAccDevServer_doAction(name, actionType string, doRetryAction bool) string {
 	return fmt.Sprintf(`
 %[1]s
 
+variable "action_type" {
+  type    = string
+  default = "%[2]s"
+}
+
 resource "huaweicloud_modelarts_devserver_action" "test" {
   devserver_id = huaweicloud_modelarts_devserver.test.id
-  action       = "%[2]s"
+  action       = var.action_type
+  admin_pass   = var.action_type == "reinstallos" ? random_password.test.result : null
+
+  enable_force_new = "true"
 }
 
 variable "is_retry_devserver_action" {
   type    = bool
-  default = "%[3]v"
+  default = %[3]v
 }
 
 resource "huaweicloud_modelarts_devserver_action" "expect_err" {
@@ -153,7 +192,9 @@ resource "huaweicloud_modelarts_devserver_action" "expect_err" {
   depends_on = [huaweicloud_modelarts_devserver_action.test]
 
   devserver_id = huaweicloud_modelarts_devserver.test.id
-  action       = "%[2]s"
+  action       = var.action_type
+
+  enable_force_new = "true"
 }
-`, testAccDevServer_basic(false, name, password), actionType, doRetryAction)
+`, testAccDevServer_basic(name, false), actionType, doRetryAction)
 }

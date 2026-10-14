@@ -541,6 +541,11 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Version: "v1.0",
 		Product: "CTS",
 	},
+	"das": {
+		Name:    "das",
+		Version: "v3",
+		Product: "DAS",
+	},
 	"lts": {
 		Name:    "lts",
 		Version: "v2",
@@ -1047,12 +1052,4 @@ func GetServiceEndpoint(c *Config, srv, region string) string {
 		ep = fmt.Sprintf("https://%s.%s.%s/", catalog.Name, region, c.Cloud)
 	}
 	return ep
-}
-
-// GetServiceCatalog returns the catalog object of a service
-func GetServiceCatalog(service string) *ServiceCatalog {
-	if catalog, ok := allServiceCatalog[service]; ok {
-		return &catalog
-	}
-	return nil
 }

@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -360,7 +360,7 @@ func resourcePublicScriptExecuteCreate(ctx context.Context, d *schema.ResourceDa
 
 	d.SetId(executeUUID)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"pending"},
 		Target:       []string{"exited"},
 		Refresh:      refreshGetExecutionTicketDetail(client, executeUUID),
@@ -369,7 +369,7 @@ func resourcePublicScriptExecuteCreate(ctx context.Context, d *schema.ResourceDa
 		PollInterval: 15 * time.Second,
 	}
 	if _, err = stateConf.WaitForStateContext(ctx); err != nil {
-		if _, ok := err.(*resource.UnexpectedStateError); ok {
+		if _, ok := err.(*retry.UnexpectedStateError); ok {
 			return diag.Errorf("error executing COC public script: %s", err)
 		}
 	}
@@ -387,7 +387,7 @@ func resourcePublicScriptExecuteRead(_ context.Context, d *schema.ResourceData, 
 	}
 
 	ticketID := d.Id()
-	ticketDetail, err := getExecutionTicketDetail(client, ticketID)
+	ticketDetail, err := GetExecutionTicketDetail(client, ticketID)
 	if err != nil {
 		return common.CheckDeletedDiag(d, common.ConvertExpected400ErrInto404Err(err, "error_code",
 			scriptOrderNotFoundErrCodes...), "COC public script execute")

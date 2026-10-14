@@ -1,9 +1,12 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -11,8 +14,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceVpnServiceV2() *schema.Resource {
@@ -92,11 +93,10 @@ func ResourceVpnServiceV2() *schema.Resource {
 }
 
 func resourceVpnServiceV2Create(d *schema.ResourceData, meta interface{}) error {
-
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	var createOpts services.CreateOptsBuilder
@@ -114,14 +114,14 @@ func resourceVpnServiceV2Create(d *schema.ResourceData, meta interface{}) error 
 		MapValueSpecs(d),
 	}
 
-	logp.Printf("[DEBUG] Create service: %#v", createOpts)
+	log.Printf("[DEBUG] Create service: %#v", createOpts)
 
 	service, err := services.Create(networkingClient, createOpts).Extract()
 	if err != nil {
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"NOT_CREATED"},
 		Target:     []string{"PENDING_CREATE"},
 		Refresh:    waitForServiceCreation(networkingClient, service.ID),
@@ -129,13 +129,13 @@ func resourceVpnServiceV2Create(d *schema.ResourceData, meta interface{}) error 
 		Delay:      0,
 		MinTimeout: 2 * time.Second,
 	}
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
 	if err != nil {
 		return err
 	}
 
-	logp.Printf("[DEBUG] Service created: %#v", service)
+	log.Printf("[DEBUG] Service created: %#v", service)
 
 	d.SetId(service.ID)
 
@@ -143,12 +143,12 @@ func resourceVpnServiceV2Create(d *schema.ResourceData, meta interface{}) error 
 }
 
 func resourceVpnServiceV2Read(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Retrieve information about service: %s", d.Id())
+	log.Printf("[DEBUG] Retrieve information about service: %s", d.Id())
 
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	service, err := services.Get(networkingClient, d.Id()).Extract()
@@ -156,7 +156,7 @@ func resourceVpnServiceV2Read(d *schema.ResourceData, meta interface{}) error {
 		return common.CheckDeleted(d, err, "service")
 	}
 
-	logp.Printf("[DEBUG] Read HuaweiCloud Service %s: %#v", d.Id(), service)
+	log.Printf("[DEBUG] Read Service %s: %#v", d.Id(), service)
 
 	d.Set("name", service.Name)
 	d.Set("description", service.Description)
@@ -167,17 +167,16 @@ func resourceVpnServiceV2Read(d *schema.ResourceData, meta interface{}) error {
 	d.Set("status", service.Status)
 	d.Set("external_v6_ip", service.ExternalV6IP)
 	d.Set("external_v4_ip", service.ExternalV4IP)
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }
 
 func resourceVpnServiceV2Update(d *schema.ResourceData, meta interface{}) error {
-
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	opts := services.UpdateOpts{}
@@ -205,14 +204,14 @@ func resourceVpnServiceV2Update(d *schema.ResourceData, meta interface{}) error 
 	var updateOpts services.UpdateOptsBuilder
 	updateOpts = opts
 
-	logp.Printf("[DEBUG] Updating service with id %s: %#v", d.Id(), updateOpts)
+	log.Printf("[DEBUG] Updating service with id %s: %#v", d.Id(), updateOpts)
 
 	if hasChange {
 		service, err := services.Update(networkingClient, d.Id(), updateOpts).Extract()
 		if err != nil {
 			return err
 		}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending:    []string{"PENDING_UPDATE"},
 			Target:     []string{"UPDATED"},
 			Refresh:    waitForServiceUpdate(networkingClient, service.ID),
@@ -220,25 +219,25 @@ func resourceVpnServiceV2Update(d *schema.ResourceData, meta interface{}) error 
 			Delay:      0,
 			MinTimeout: 2 * time.Second,
 		}
-		_, err = stateConf.WaitForState()
+		_, err = stateConf.WaitForStateContext(context.Background())
 
 		if err != nil {
 			return err
 		}
 
-		logp.Printf("[DEBUG] Updated service with id %s", d.Id())
+		log.Printf("[DEBUG] Updated service with id %s", d.Id())
 	}
 
 	return resourceVpnServiceV2Read(d, meta)
 }
 
 func resourceVpnServiceV2Delete(d *schema.ResourceData, meta interface{}) error {
-	logp.Printf("[DEBUG] Destroy service: %s", d.Id())
+	log.Printf("[DEBUG] Destroy service: %s", d.Id())
 
-	config := meta.(*config.Config)
-	networkingClient, err := config.NetworkingV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	networkingClient, err := cfg.NetworkingV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud networking client: %s", err)
+		return fmt.Errorf("error creating networking client: %s", err)
 	}
 
 	err = services.Delete(networkingClient, d.Id()).Err
@@ -247,7 +246,7 @@ func resourceVpnServiceV2Delete(d *schema.ResourceData, meta interface{}) error 
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"DELETING"},
 		Target:     []string{"DELETED"},
 		Refresh:    waitForServiceDeletion(networkingClient, d.Id()),
@@ -256,31 +255,30 @@ func resourceVpnServiceV2Delete(d *schema.ResourceData, meta interface{}) error 
 		MinTimeout: 2 * time.Second,
 	}
 
-	_, err = stateConf.WaitForState()
+	_, err = stateConf.WaitForStateContext(context.Background())
 
 	return err
 }
 
-func waitForServiceDeletion(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
-
+func waitForServiceDeletion(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		serv, err := services.Get(networkingClient, id).Extract()
-		logp.Printf("[DEBUG] Got service %s => %#v", id, serv)
+		log.Printf("[DEBUG] Got service %s => %#v", id, serv)
 
 		if err != nil {
 			if _, ok := err.(golangsdk.ErrDefault404); ok {
-				logp.Printf("[DEBUG] Service %s is actually deleted", id)
+				log.Printf("[DEBUG] Service %s is actually deleted", id)
 				return "", "DELETED", nil
 			}
-			return nil, "", fmtp.Errorf("Unexpected error: %s", err)
+			return nil, "", fmt.Errorf("Unexpected error: %s", err)
 		}
 
-		logp.Printf("[DEBUG] Service %s deletion is pending", id)
+		log.Printf("[DEBUG] Service %s deletion is pending", id)
 		return serv, "DELETING", nil
 	}
 }
 
-func waitForServiceCreation(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForServiceCreation(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		service, err := services.Get(networkingClient, id).Extract()
 		if err != nil {
@@ -290,7 +288,7 @@ func waitForServiceCreation(networkingClient *golangsdk.ServiceClient, id string
 	}
 }
 
-func waitForServiceUpdate(networkingClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func waitForServiceUpdate(networkingClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		service, err := services.Get(networkingClient, id).Extract()
 		if err != nil {

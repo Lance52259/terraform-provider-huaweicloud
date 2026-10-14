@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -125,7 +125,7 @@ func resourceDNSRecordSetV2Create(ctx context.Context, d *schema.ResourceData, m
 	d.SetId(id)
 
 	log.Printf("[DEBUG] Waiting for DNS record set (%s) to become ACTIVE", n.ID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:     []string{"ACTIVE"},
 		Pending:    []string{"PENDING"},
 		Refresh:    waitForDNSRecordSet(dnsClient, zoneID, n.ID),
@@ -248,7 +248,7 @@ func resourceDNSRecordSetV2Update(ctx context.Context, d *schema.ResourceData, m
 		}
 
 		log.Printf("[DEBUG] Waiting for DNS record set (%s) to update", recordsetID)
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Target:     []string{"ACTIVE"},
 			Pending:    []string{"PENDING"},
 			Refresh:    waitForDNSRecordSet(dnsClient, zoneID, recordsetID),
@@ -297,7 +297,7 @@ func resourceDNSRecordSetV2Delete(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	log.Printf("[DEBUG] Waiting for DNS record set (%s) to be deleted", recordsetID)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:     []string{"DELETED"},
 		Pending:    []string{"ACTIVE", "PENDING", "ERROR"},
 		Refresh:    waitForDNSRecordSet(dnsClient, zoneID, recordsetID),
@@ -323,7 +323,7 @@ func parseStatus(rawStatus string) string {
 	return splits[0]
 }
 
-func waitForDNSRecordSet(dnsClient *golangsdk.ServiceClient, zoneID, recordsetId string) resource.StateRefreshFunc {
+func waitForDNSRecordSet(dnsClient *golangsdk.ServiceClient, zoneID, recordsetId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		recordset, err := recordsets.Get(dnsClient, zoneID, recordsetId).Extract()
 		if err != nil {
@@ -362,11 +362,11 @@ func chooseDNSClientbyZoneID(d *schema.ResourceData, zoneID string, meta interfa
 	var client *golangsdk.ServiceClient
 	var zoneInfo *zones.Zone
 	// Firstly, try to ues the DNS global endpoint
-	client, err := conf.DnsV2Client(region)
+	client, err := conf.DNSV2Client(region)
 	if err != nil {
 		return nil, "", golangsdk.ErrDefault400{
 			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
-				Body: []byte(fmt.Sprintf("error creating DNS client: %s", err)),
+				Body: fmt.Appendf(nil, "error creating DNS client: %s", err),
 			},
 		}
 	}
@@ -378,7 +378,7 @@ func chooseDNSClientbyZoneID(d *schema.ResourceData, zoneID string, meta interfa
 
 		// try to ues the DNS region endpoint
 		var clientErr error
-		client, clientErr = conf.DnsWithRegionClient(region)
+		client, clientErr = conf.DNSWithRegionClient(region)
 		if clientErr != nil {
 			// it looks tricky as we return the fetching error rather than clientErr
 			return nil, "", err

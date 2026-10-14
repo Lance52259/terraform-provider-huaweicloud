@@ -38,6 +38,8 @@ func TestAccCluster_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "authentication_mode", "rbac"),
 					resource.TestCheckResourceAttr(resourceName, "service_network_cidr", "10.248.0.0/16"),
 					resource.TestCheckResourceAttr(resourceName, "timezone", "Asia/Shanghai"),
+					resource.TestCheckResourceAttr(resourceName, "agency_name", "CCEServiceAgency"),
+					resource.TestCheckResourceAttr(resourceName, "description", "the description of cluster"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
 				),
@@ -55,7 +57,8 @@ func TestAccCluster_basic(t *testing.T) {
 			{
 				Config: testAccCluster_update(rName),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "description", "new description"),
+					resource.TestCheckResourceAttr(resourceName, "description", ""),
+					resource.TestCheckResourceAttr(resourceName, "agency_name", "CCEAutoClusterAgency"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar_update"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key_update", "value_update"),
 				),
@@ -130,7 +133,7 @@ func TestAccCluster_withEip(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
-					"eip", "certificate_users.0.client_certificate_data", "kube_config_raw",
+					"eip", "certificate_users.0.client_key_data", "certificate_users.0.client_certificate_data", "kube_config_raw",
 				},
 			},
 		},
@@ -185,7 +188,6 @@ func TestAccCluster_turbo(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckClusterExists(resourceName, &cluster),
 					resource.TestCheckResourceAttr(resourceName, "container_network_type", "eni"),
-					resource.TestCheckResourceAttr(resourceName, "enable_dist_mgt", "true"),
 					resource.TestCheckOutput("is_eni_subnet_id_different", "false"),
 				),
 			},
@@ -407,8 +409,8 @@ func TestAccCluster_resizePeriod(t *testing.T) {
 }
 
 func testAccCheckClusterDestroy(s *terraform.State) error {
-	config := acceptance.TestAccProvider.Meta().(*config.Config)
-	cceClient, err := config.CceV3Client(acceptance.HW_REGION_NAME)
+	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+	cceClient, err := cfg.CceV3Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return fmt.Errorf("error creating CCE v3 client: %s", err)
 	}
@@ -438,8 +440,8 @@ func testAccCheckClusterExists(n string, cluster *clusters.Clusters) resource.Te
 			return fmt.Errorf("resource ID is not set")
 		}
 
-		config := acceptance.TestAccProvider.Meta().(*config.Config)
-		cceClient, err := config.CceV3Client(acceptance.HW_REGION_NAME)
+		cfg := acceptance.TestAccProvider.Meta().(*config.Config)
+		cceClient, err := cfg.CceV3Client(acceptance.HW_REGION_NAME)
 		if err != nil {
 			return fmt.Errorf("error creating CCE v3 client: %s", err)
 		}
@@ -496,6 +498,8 @@ resource "huaweicloud_cce_cluster" "test" {
   container_network_type = "overlay_l2"
   service_network_cidr   = "10.248.0.0/16"
   timezone               = "Asia/Shanghai"
+  description            = "the description of cluster"
+  agency_name            = "CCEServiceAgency"
 
   tags = {
     foo = "bar"
@@ -516,8 +520,9 @@ resource "huaweicloud_cce_cluster" "test" {
   subnet_id              = huaweicloud_vpc_subnet.test.id
   container_network_type = "overlay_l2"
   service_network_cidr   = "10.248.0.0/16"
-  description            = "new description"
   timezone               = "Asia/Shanghai"
+  description            = ""
+  agency_name            = "CCEAutoClusterAgency"
 
   tags = {
     foo        = "bar_update"
@@ -632,7 +637,6 @@ resource "huaweicloud_cce_cluster" "test" {
   vpc_id                 = huaweicloud_vpc.test.id
   subnet_id              = huaweicloud_vpc_subnet.test.id
   container_network_type = "eni"
-  enable_dist_mgt        = true
   eni_subnet_id          = join(",", huaweicloud_vpc_subnet.eni_test[*].ipv4_subnet_id)
 }
 

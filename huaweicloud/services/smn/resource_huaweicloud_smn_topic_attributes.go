@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -58,6 +59,19 @@ func ResourceTopicAttributes() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: `The topic attribute value, in JSON format.`,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -161,12 +175,14 @@ func resourceTopicAttributesUpdate(ctx context.Context, d *schema.ResourceData, 
 		return diag.Errorf("error creating SMN client: %s", err)
 	}
 
-	topicUrn := d.Get("topic_urn").(string)
-	name := d.Get("name").(string)
-	value := d.Get("value").(string)
+	if d.HasChangeExcept("enable_force_new") {
+		topicUrn := d.Get("topic_urn").(string)
+		name := d.Get("name").(string)
+		value := d.Get("value").(string)
 
-	if err := updateTopicAttribute(client, topicUrn, name, value); err != nil {
-		return diag.Errorf("error updating attributes (names %s) for topic %s: %s", name, topicUrn, err)
+		if err := updateTopicAttribute(client, topicUrn, name, value); err != nil {
+			return diag.Errorf("error updating attributes (names %s) for topic %s: %s", name, topicUrn, err)
+		}
 	}
 
 	return resourceTopicAttributesRead(ctx, d, meta)

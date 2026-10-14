@@ -32,7 +32,7 @@ func ConvertTimeStrToNanoTimestamp(timeStr string, customFormat ...string) int64
 	}
 	t, err := time.Parse(timeFormat, timeStr)
 	if err != nil {
-		log.Printf("error parsing the input time (%s), the time string does not match time format (%s): %s",
+		log.Printf("[WARN] error parsing the input time (%s), the time string does not match time format (%s): %s",
 			timeStr, timeFormat, err)
 		return 0
 	}
@@ -49,7 +49,10 @@ func ConvertTimeStrToNanoTimestamp(timeStr string, customFormat ...string) int64
 // For example, the time zone code for 'Asia/Shanghai' is 8, and the time zone code for 'America/Alaska' is -4.
 func GetTimezoneCode() int {
 	timeStr := strings.Split(time.Now().String(), " ")[2]
-	timezoneNum, _ := strconv.Atoi(timeStr)
+	timezoneNum, err := strconv.Atoi(timeStr)
+	if err != nil {
+		log.Printf("[WARN] failed to parse timezone string: %s", err)
+	}
 	return timezoneNum / 100
 }
 
@@ -95,7 +98,7 @@ func CalculateNextWholeHourAfterFewTime(inputTimeStr string, interval time.Durat
 	customOutputFormat ...string) string {
 	parsedTime, err := time.Parse(time.RFC3339, inputTimeStr)
 	if err != nil {
-		log.Printf("[ERROR] incorrect time format for the input time: %s", inputTimeStr)
+		log.Printf("[WARN] incorrect time format for the input time: %s", inputTimeStr)
 		return ""
 	}
 

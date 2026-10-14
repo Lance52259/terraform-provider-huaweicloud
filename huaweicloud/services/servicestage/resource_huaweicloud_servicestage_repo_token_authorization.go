@@ -13,7 +13,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 // @API ServiceStage POST /v1/{project_id}/git/auths/{repo_type}/personal
@@ -64,10 +63,10 @@ func ResourceRepoTokenAuth() *schema.Resource {
 
 func resourceRepoTokenAuthCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var err error
-	config := meta.(*config.Config)
-	client, err := config.ServiceStageV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.ServiceStageV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.DiagErrorf("error creating ServiceStage v1 client: %s", err)
+		return diag.Errorf("error creating ServiceStage v1 client: %s", err)
 	}
 
 	opt := repositories.PersonalAuthOpts{
@@ -100,17 +99,17 @@ func getAuthorizationByName(c *golangsdk.ServiceClient, name string) (*repositor
 			Method:    "GET",
 			URL:       "/v1/{project_id}/git/auths",
 			RequestId: "NONE",
-			Body:      []byte(fmt.Sprintf("the authorization (%s) does not exist", name)),
+			Body:      fmt.Appendf(nil, "the authorization (%s) does not exist", name),
 		},
 	}
 }
 
 func resourceRepoAuthRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.ServiceStageV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ServiceStageV1Client(region)
 	if err != nil {
-		return fmtp.DiagErrorf("error creating ServiceStage v1 client: %s", err)
+		return diag.Errorf("error creating ServiceStage v1 client: %s", err)
 	}
 
 	auth, err := getAuthorizationByName(client, d.Id())
@@ -127,16 +126,16 @@ func resourceRepoAuthRead(_ context.Context, d *schema.ResourceData, meta interf
 }
 
 func resourceRepoAuthDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.ServiceStageV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ServiceStageV1Client(region)
 	if err != nil {
-		return fmtp.DiagErrorf("error creating ServiceStage v1 client: %s", err)
+		return diag.Errorf("error creating ServiceStage v1 client: %s", err)
 	}
 
 	err = repositories.Delete(client, d.Id())
 	if err != nil {
-		return fmtp.DiagErrorf("error deleting ServiceStage repository authorization (%s): %s", d.Id(), err)
+		return diag.Errorf("error deleting ServiceStage repository authorization (%s): %s", d.Id(), err)
 	}
 	return nil
 }

@@ -5,6 +5,11 @@
         "huaweicloud_cce_cluster": {
           "block": {
             "attributes": {
+              "agency_name": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "alias": {
                 "type": "string",
                 "optional": true,
@@ -13,17 +18,20 @@
               "authenticating_proxy_ca": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true
+                "forcenew": true,
+                "sensitive": true
               },
               "authenticating_proxy_cert": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true
+                "forcenew": true,
+                "sensitive": true
               },
               "authenticating_proxy_private_key": {
                 "type": "string",
                 "optional": true,
-                "forcenew": true
+                "forcenew": true,
+                "sensitive": true
               },
               "authentication_mode": {
                 "type": "string",
@@ -124,8 +132,7 @@
               },
               "description": {
                 "type": "string",
-                "optional": true,
-                "computed": true
+                "optional": true
               },
               "eip": {
                 "type": "string",

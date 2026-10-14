@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -103,7 +103,7 @@ func ResourceClusterElbAssociate() *schema.Resource {
 	}
 }
 
-func refreshClusterElbAssociateFunc(client *golangsdk.ServiceClient, clusterId, elbId string) resource.StateRefreshFunc {
+func refreshClusterElbAssociateFunc(client *golangsdk.ServiceClient, clusterId, elbId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		elb, err := GetClusterAssociatedElbById(client, clusterId, elbId)
 		if err != nil {
@@ -158,16 +158,16 @@ func associateClusterElb(ctx context.Context, client *golangsdk.ServiceClient, c
 		},
 	}
 
-	err := resource.RetryContext(ctx, timeout, func() *resource.RetryError {
+	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
 		_, reqErr := client.Request("POST", createPath, &createOpts)
 		if reqErr != nil {
 			if isClusterElbAssociateRetryableError(reqErr) {
 				// Wait for the update to take effect
 				// lintignore:R018
 				time.Sleep(10 * time.Second)
-				return resource.RetryableError(reqErr)
+				return retry.RetryableError(reqErr)
 			}
-			return resource.NonRetryableError(reqErr)
+			return retry.NonRetryableError(reqErr)
 		}
 		return nil
 	})
@@ -175,7 +175,7 @@ func associateClusterElb(ctx context.Context, client *golangsdk.ServiceClient, c
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshClusterElbAssociateFunc(client, clusterId, elbId),
@@ -203,7 +203,7 @@ func GetClusterAssociatedElbById(client *golangsdk.ServiceClient, clusterId stri
 				Method:    "GET",
 				URL:       "/v1.0/{project_id}/clusters/{cluster_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the ELB is not associated with the DWS cluster (%s)", clusterId)),
+				Body:      fmt.Appendf(nil, "the ELB is not associated with the DWS cluster (%s)", clusterId),
 			},
 		}
 	}
@@ -215,7 +215,7 @@ func GetClusterAssociatedElbById(client *golangsdk.ServiceClient, clusterId stri
 				Method:    "GET",
 				URL:       "/v1.0/{project_id}/clusters/{cluster_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the ELB (%s) is not associated with the DWS cluster (%s)", elbId, clusterId)),
+				Body:      fmt.Appendf(nil, "the ELB (%s) is not associated with the DWS cluster (%s)", elbId, clusterId),
 			},
 		}
 	}
@@ -279,7 +279,7 @@ func resourceClusterElbAssociateUpdate(ctx context.Context, d *schema.ResourceDa
 	return resourceClusterElbAssociateRead(ctx, d, meta)
 }
 
-func refreshClusterElbDisassociateFunc(client *golangsdk.ServiceClient, clusterId, elbId string) resource.StateRefreshFunc {
+func refreshClusterElbDisassociateFunc(client *golangsdk.ServiceClient, clusterId, elbId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		elb, err := GetClusterAssociatedElbById(client, clusterId, elbId)
 		if err != nil {
@@ -306,16 +306,16 @@ func disassociateClusterElb(ctx context.Context, client *golangsdk.ServiceClient
 		},
 	}
 
-	err := resource.RetryContext(ctx, timeout, func() *resource.RetryError {
+	err := retry.RetryContext(ctx, timeout, func() *retry.RetryError {
 		_, reqErr := client.Request("DELETE", deletePath, &deleteOpts)
 		if reqErr != nil {
 			if isClusterElbAssociateRetryableError(reqErr) {
 				// Wait for the update to take effect
 				// lintignore:R018
 				time.Sleep(10 * time.Second)
-				return resource.RetryableError(reqErr)
+				return retry.RetryableError(reqErr)
 			}
-			return resource.NonRetryableError(reqErr)
+			return retry.NonRetryableError(reqErr)
 		}
 		return nil
 	})
@@ -323,7 +323,7 @@ func disassociateClusterElb(ctx context.Context, client *golangsdk.ServiceClient
 		return err
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshClusterElbDisassociateFunc(client, clusterId, elbId),

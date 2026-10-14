@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -63,23 +64,23 @@ func ResourceLoadBalancerV3() *schema.Resource {
 
 		CustomizeDiff: customdiff.All(
 			config.FlexibleForceNew(loadBalancerNonUpdatableParams),
-			customdiff.ValidateChange("charging_mode", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("charging_mode", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from postPaid
-				if old.(string) != new.(string) && (old.(string) == "prePaid") {
+				if oldVal.(string) != newVal.(string) && (oldVal.(string) == "prePaid") {
 					return fmt.Errorf("charging_mode can only be updated from postPaid to prePaid")
 				}
 				return nil
 			}),
-			customdiff.ValidateChange("period_unit", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("period_unit", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from empty
-				if old.(string) != new.(string) && old.(string) != "" {
+				if oldVal.(string) != newVal.(string) && oldVal.(string) != "" {
 					return fmt.Errorf("period_unit can only be updated when changing charging_mode to prePaid")
 				}
 				return nil
 			}),
-			customdiff.ValidateChange("period", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("period", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from empty
-				if old.(int) != new.(int) && old.(int) != 0 {
+				if oldVal.(int) != newVal.(int) && oldVal.(int) != 0 {
 					return fmt.Errorf("period can only be updated when changing charging_mode to prePaid")
 				}
 				return nil
@@ -492,7 +493,10 @@ func buildCreateLoadBalancerPrepaidOptionsBodyParams(d *schema.ResourceData) map
 		return nil
 	}
 
-	autoRenew, _ := strconv.ParseBool(d.Get("auto_renew").(string))
+	autoRenew, err := strconv.ParseBool(d.Get("auto_renew").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'auto_renew' field to Boolean: %s", err)
+	}
 	bodyParams := map[string]interface{}{
 		"period_type": utils.ValueIgnoreEmpty(d.Get("period_unit").(string)),
 		"period_num":  utils.ValueIgnoreEmpty(d.Get("period").(int)),
@@ -611,7 +615,7 @@ func resourceLoadBalancerV3Update(ctx context.Context, d *schema.ResourceData, m
 			return diag.FromErr(err)
 		}
 	} else if d.HasChange("auto_renew") {
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the load balancer (%s): %s", d.Id(), err)
 		}
 	}
@@ -939,7 +943,7 @@ func waitForElbV3LoadBalancer(ctx context.Context, elbClient *golangsdk.ServiceC
 	id string, target string, pending []string, timeout time.Duration) error {
 	log.Printf("[DEBUG] Waiting for LoadBalancer %s to become %s", id, target)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{target},
 		Pending:      pending,
 		Refresh:      resourceElbV3LoadBalancerRefreshFunc(elbClient, id),
@@ -964,7 +968,7 @@ func waitForElbV3LoadBalancer(ctx context.Context, elbClient *golangsdk.ServiceC
 	return nil
 }
 
-func resourceElbV3LoadBalancerRefreshFunc(elbClient *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func resourceElbV3LoadBalancerRefreshFunc(elbClient *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		lb, err := loadbalancers.Get(elbClient, id).Extract()
 		if err != nil {

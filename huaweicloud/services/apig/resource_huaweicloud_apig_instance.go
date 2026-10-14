@@ -11,7 +11,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -22,8 +23,20 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
+var apigInstanceV2NonUpdatableParams = []string{
+	"vpc_id",
+	"subnet_id",
+	"availability_zones",
+	"ipv6_enable",
+	"available_zones",
+	"loadbalancer_provider",
+}
+
 // @API APIG POST /v2/{project_id}/apigw/instances
 // @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}
+// @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/extra-elbs
+// @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/extra-elbs
+// @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}/extra-elbs
 // @API APIG PUT /v2/{project_id}/apigw/instances/{instance_id}
 // @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/postpaid-resize
 // @API APIG DELETE /v2/{project_id}/apigw/instances/{instance_id}
@@ -55,7 +68,10 @@ func ResourceApigInstanceV2() *schema.Resource {
 			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 
-		CustomizeDiff: config.MergeDefaultTags(),
+		CustomizeDiff: customdiff.All(
+			config.FlexibleForceNew(apigInstanceV2NonUpdatableParams),
+			config.MergeDefaultTags(),
+		),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -78,13 +94,11 @@ func ResourceApigInstanceV2() *schema.Resource {
 			"vpc_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `The ID of the VPC used to create the dedicated instance.`,
 			},
 			"subnet_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `The ID of the VPC subnet used to create the dedicated instance.`,
 			},
 			"security_group_id": {
@@ -96,7 +110,6 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:        schema.TypeList,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: `schema: Required; The name list of availability zones for the dedicated instance.`,
 			},
@@ -120,8 +133,14 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Computed:    true,
-				ForceNew:    true,
 				Description: `Whether public access with an IPv6 address is supported.`,
+			},
+			"elb_ids": {
+				Type:        schema.TypeSet,
+				Optional:    true,
+				Computed:    true,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: `The list of the dedicated network load balancer IDs associated with the dedicated instance.`,
 			},
 			"maintain_begin": {
 				Type:     schema.TypeString,
@@ -226,7 +245,6 @@ func ResourceApigInstanceV2() *schema.Resource {
 			"available_zones": {
 				Type:        schema.TypeList,
 				Optional:    true,
-				ForceNew:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: `schema: Deprecated; The name list of availability zones for the dedicated instance.`,
 			},
@@ -253,11 +271,22 @@ func ResourceApigInstanceV2() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
-				ForceNew: true,
 				Description: utils.SchemaDesc(
 					`The type of loadbalancer provider used by the instance.`,
 					utils.SchemaDescInput{
 						Computed: true,
+					}),
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
 					}),
 			},
 		},
@@ -294,6 +323,16 @@ func buildInstanceAvailabilityZones(d *schema.ResourceData) interface{} {
 }
 
 func buildCreateInstanceBodyParams(d *schema.ResourceData, cfg *config.Config) map[string]interface{} {
+	var (
+		initialElbId         = ""
+		elbIds               = d.Get("elb_ids").(*schema.Set).List()
+		loadbalancerProvider = d.Get("loadbalancer_provider").(string)
+	)
+	if loadbalancerProvider == "" && len(elbIds) > 0 {
+		loadbalancerProvider = "elb"
+		initialElbId = elbIds[0].(string)
+	}
+
 	result := map[string]interface{}{
 		"instance_name":                   d.Get("name"),
 		"spec_id":                         d.Get("edition"),
@@ -302,11 +341,11 @@ func buildCreateInstanceBodyParams(d *schema.ResourceData, cfg *config.Config) m
 		"security_group_id":               d.Get("security_group_id"),
 		"available_zone_ids":              utils.ValueIgnoreEmpty(buildInstanceAvailabilityZones(d)),
 		"description":                     utils.ValueIgnoreEmpty(d.Get("description")),
-		"bandwidth_size":                  d.Get("bandwidth_size"), // Bandwidth 0 means turn off the egress access.
 		"enterprise_project_id":           cfg.GetEnterpriseProjectID(d),
 		"eip_id":                          utils.ValueIgnoreEmpty(d.Get("eip_id")),
 		"ipv6_enable":                     utils.ValueIgnoreEmpty(d.Get("ipv6_enable")),
-		"loadbalancer_provider":           utils.ValueIgnoreEmpty(d.Get("loadbalancer_provider")),
+		"elb_id":                          utils.ValueIgnoreEmpty(initialElbId),
+		"loadbalancer_provider":           utils.ValueIgnoreEmpty(loadbalancerProvider),
 		"tags":                            utils.ExpandResourceTagsMap(d.Get("tags").(map[string]interface{})),
 		"vpcep_service_name":              utils.ValueIgnoreEmpty(d.Get("vpcep_service_name")),
 		"ingress_bandwidth_size":          utils.ValueIgnoreEmpty(d.Get("ingress_bandwidth_size")), // BandWidth must be greater than or equal to 5.
@@ -314,6 +353,12 @@ func buildCreateInstanceBodyParams(d *schema.ResourceData, cfg *config.Config) m
 		"maintain_begin":                  utils.ValueIgnoreEmpty(d.Get("maintain_begin")),
 		"maintain_end":                    utils.ValueIgnoreEmpty(buildMaintainEndTime(d.Get("maintain_begin").(string))),
 	}
+
+	if len(elbIds) == 0 {
+		// NLB series edition does not support bandwidth size.
+		result["bandwidth_size"] = d.Get("bandwidth_size") // Bandwidth 0 means turn off the egress access.
+	}
+
 	log.Printf("[DEBUG] The request body of the create method for the dedicated instance is: %#v", result)
 	return result
 }
@@ -335,7 +380,7 @@ func QueryInstanceDetail(client *golangsdk.ServiceClient, instanceId string) (in
 	return utils.FlattenResponse(requestResp)
 }
 
-func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) resource.StateRefreshFunc {
+func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryInstanceDetail(client, instanceId)
 		if err != nil {
@@ -357,6 +402,150 @@ func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string
 		}
 		return "continue", "PENDING", nil
 	}
+}
+
+func associatedElbStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, elbIds []interface{},
+	isDelete bool) retry.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		respBody, err := getInstanceExtraElbs(client, instanceId)
+		if err != nil {
+			return nil, "ERROR", err
+		}
+
+		extraELbIds := utils.PathSearch("[*].elb_id", respBody, make([]interface{}, 0)).([]interface{})
+		extraElbsContainsInputElbs := utils.SliceContainsAnother(extraELbIds, elbIds)
+		if (isDelete && !extraElbsContainsInputElbs) || (!isDelete && extraElbsContainsInputElbs) {
+			return respBody, "COMPLETED", nil
+		}
+
+		return "continue", "PENDING", nil
+	}
+}
+
+func batchDeleteExtraElbs(ctx context.Context, client *golangsdk.ServiceClient, instanceId string, elbIds []interface{},
+	timeout time.Duration) error {
+	httpUrl := "v2/{project_id}/apigw/instances/{instance_id}/extra-elbs"
+	deletePath := client.Endpoint + httpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{project_id}", client.ProjectID)
+	deletePath = strings.ReplaceAll(deletePath, "{instance_id}", instanceId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json;charset=utf8",
+		},
+		JSONBody: map[string]interface{}{
+			"elb_ids": elbIds,
+		},
+	}
+
+	_, err := client.Request("DELETE", deletePath, &opt)
+	if err != nil {
+		return err
+	}
+
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      associatedElbStateRefreshFunc(client, instanceId, elbIds, true),
+		Timeout:      timeout,
+		Delay:        15 * time.Second,
+		PollInterval: 10 * time.Second,
+	}
+	_, err = stateConf.WaitForStateContext(ctx)
+	return err
+}
+
+func deleteInstanceExtraElb(ctx context.Context, client *golangsdk.ServiceClient, instanceId, elbId string, timeout time.Duration) error {
+	return batchDeleteExtraElbs(ctx, client, instanceId, []interface{}{elbId}, timeout)
+}
+
+func buildBatchCreateExtraElbsBodyParams(elbIds []interface{}) map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(elbIds))
+	for _, elbId := range elbIds {
+		result = append(result, map[string]interface{}{
+			"id":                      elbId,
+			"force_overwrite_enabled": true,
+		})
+	}
+
+	return map[string]interface{}{
+		"elb_details": result,
+	}
+}
+
+func batchCreateExtraElbs(ctx context.Context, client *golangsdk.ServiceClient, instanceId string, elbIds []interface{},
+	timeout time.Duration) error {
+	httpUrl := "v2/{project_id}/apigw/instances/{instance_id}/extra-elbs"
+	createPath := client.Endpoint + httpUrl
+	createPath = strings.ReplaceAll(createPath, "{project_id}", client.ProjectID)
+	createPath = strings.ReplaceAll(createPath, "{instance_id}", instanceId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json;charset=utf8",
+		},
+		JSONBody: buildBatchCreateExtraElbsBodyParams(elbIds),
+	}
+
+	_, err := client.Request("POST", createPath, &opt)
+	if err != nil {
+		return err
+	}
+
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      associatedElbStateRefreshFunc(client, instanceId, elbIds, false),
+		Timeout:      timeout,
+		Delay:        15 * time.Second,
+		PollInterval: 10 * time.Second,
+	}
+	_, err = stateConf.WaitForStateContext(ctx)
+	return err
+}
+
+func createInstanceExtraElb(ctx context.Context, client *golangsdk.ServiceClient, instanceId, elbId string, timeout time.Duration) error {
+	return batchCreateExtraElbs(ctx, client, instanceId, []interface{}{elbId}, timeout)
+}
+
+func updateInstanceExtraElbs(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout time.Duration) error {
+	var (
+		oldRaw, newRaw      = d.GetChange("elb_ids")
+		oldSet              = oldRaw.(*schema.Set)
+		newSet              = newRaw.(*schema.Set)
+		removeList          = oldSet.Difference(newSet).List()
+		addList             = newSet.Difference(oldSet).List()
+		deleteExtraElbFirst = oldSet.Len() > 1
+		instanceId          = d.Id()
+	)
+
+	// To ensure the effective execution of the ELB operation (the maximum number of ELBs that can be associated with
+	// different instances is different).
+	// When the number of bound ELBs is greater than 1, it is necessary to delete the extra ELBs first, then add new
+	// ELBs, and each group of ELBs to be deleted and added should be operated sequentially.
+	// When the number of bound ELBs is less than or equal to 1, it is necessary to add new ELBs first, then delete
+	// extra ELBs, and each group of ELBs to be deleted and added should be operated sequentially.
+	for len(removeList) > 0 || len(addList) > 0 {
+		if deleteExtraElbFirst && len(removeList) > 0 {
+			if err := deleteInstanceExtraElb(ctx, client, instanceId, removeList[0].(string), timeout); err != nil {
+				return err
+			}
+			removeList = removeList[1:]
+		}
+
+		if len(addList) > 0 {
+			if err := createInstanceExtraElb(ctx, client, instanceId, addList[0].(string), timeout); err != nil {
+				return err
+			}
+			addList = addList[1:]
+		}
+
+		deleteExtraElbFirst = true
+	}
+
+	return nil
 }
 
 func resourceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -388,7 +577,7 @@ func resourceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta in
 	instanceId := utils.PathSearch("instance_id", respBody, "").(string)
 	d.SetId(instanceId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -399,6 +588,13 @@ func resourceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta in
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
 		return diag.Errorf("error waiting for the status of dedicated instance (%s) to become running: %s", instanceId, err)
+	}
+
+	elbIds := d.Get("elb_ids").(*schema.Set).List()
+	if len(elbIds) > 1 {
+		if err := batchCreateExtraElbs(ctx, client, instanceId, elbIds[1:], d.Timeout(schema.TimeoutCreate)); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if v, ok := d.GetOk("custom_ingress_ports"); ok {
@@ -433,6 +629,28 @@ func parseVpcepServiceName(serviceName string) string {
 	return result[1]
 }
 
+func getInstanceExtraElbs(client *golangsdk.ServiceClient, instanceId string) ([]interface{}, error) {
+	httpUrl := "v2/{project_id}/apigw/instances/{instance_id}/extra-elbs"
+	getPath := client.Endpoint + httpUrl
+	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
+	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
+
+	opt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+	}
+
+	requestResp, err := client.Request("GET", getPath, &opt)
+	if err != nil {
+		return nil, err
+	}
+	respBody, err := utils.FlattenResponse(requestResp)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.PathSearch("elbs", respBody, make([]interface{}, 0)).([]interface{}), nil
+}
+
 func queryInstanceTags(client *golangsdk.ServiceClient, instanceId string) interface{} {
 	httpUrl := "v2/{project_id}/apigw/instances/{instance_id}/instance-tags"
 	createPath := client.Endpoint + httpUrl
@@ -445,7 +663,7 @@ func queryInstanceTags(client *golangsdk.ServiceClient, instanceId string) inter
 
 	requestResp, err := client.Request("GET", createPath, &opt)
 	if err != nil {
-		log.Printf("[WARN] error qeurying tag list of the dedicated instance (%s): %s", instanceId, err)
+		log.Printf("[WARN] error querying tag list of the dedicated instance (%s): %s", instanceId, err)
 		return nil
 	}
 	respBody, err := utils.FlattenResponse(requestResp)
@@ -469,7 +687,12 @@ func resourceInstanceRead(_ context.Context, d *schema.ResourceData, meta interf
 	instanceId := d.Id()
 	respBody, err := QueryInstanceDetail(client, instanceId)
 	if err != nil {
-		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error qeurying dedicated instance (%s) detail", instanceId))
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error querying dedicated instance (%s) detail", instanceId))
+	}
+
+	extraElbs, err := getInstanceExtraElbs(client, instanceId)
+	if err != nil {
+		log.Printf("[WARN] error querying extra ELBs of the dedicated instance (%s): %s", instanceId, err)
 	}
 
 	mErr := multierror.Append(nil,
@@ -484,6 +707,7 @@ func resourceInstanceRead(_ context.Context, d *schema.ResourceData, meta interf
 		d.Set("bandwidth_size", utils.PathSearch("bandwidth_size", respBody, nil)),
 		d.Set("ipv6_enable", utils.PathSearch("!!eip_ipv6_address", respBody, nil)),
 		d.Set("loadbalancer_provider", utils.PathSearch("loadbalancer_provider", respBody, nil)),
+		d.Set("elb_ids", utils.PathSearch("[*].elb_id", extraElbs, make([]interface{}, 0))),
 		d.Set("availability_zones", parseInstanceAvailabilityZones(utils.PathSearch("available_zone_ids", respBody, "").(string))),
 		d.Set("maintain_begin", utils.PathSearch("maintain_begin", respBody, nil)),
 		d.Set("vpcep_service_name", parseVpcepServiceName(utils.PathSearch("endpoint_services[0].service_name", respBody, "").(string))),
@@ -567,7 +791,7 @@ func updateInstanceBasicConfiguration(ctx context.Context, client *golangsdk.Ser
 		return fmt.Errorf("error updating dedicated instance: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -600,7 +824,7 @@ func updatePostPaidInstanceEdition(ctx context.Context, client *golangsdk.Servic
 		return fmt.Errorf("error updating the specification of the dedicated instance (%s): %s", instanceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"Running"}),
@@ -756,7 +980,7 @@ func updateInstanceTags(client *golangsdk.ServiceClient, d *schema.ResourceData)
 
 func waitForElbIngressAccessCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId, action string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshInstanceFunc(client, instanceId, action),
@@ -773,7 +997,7 @@ func waitForElbIngressAccessCompleted(ctx context.Context, client *golangsdk.Ser
 	return nil
 }
 
-func refreshInstanceFunc(client *golangsdk.ServiceClient, instanceId, action string) resource.StateRefreshFunc {
+func refreshInstanceFunc(client *golangsdk.ServiceClient, instanceId, action string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := QueryInstanceDetail(client, instanceId)
 		if err != nil {
@@ -849,7 +1073,7 @@ func resourceInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error creating APIG client: %s", err)
 	}
 
-	if d.HasChanges("instance_name", "description", "security_group_id", "vpcep_service_name", "maintain_begin", "maintain_end") {
+	if d.HasChanges("name", "description", "security_group_id", "vpcep_service_name", "maintain_begin", "maintain_end") {
 		if err = updateInstanceBasicConfiguration(ctx, client, d); err != nil {
 			return diag.FromErr(err)
 		}
@@ -904,6 +1128,12 @@ func resourceInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta in
 		oldRaws, newRaws := d.GetChange("custom_ingress_ports")
 		err = updateCustomIngressPorts(client, oldRaws, newRaws, instanceId)
 		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("elb_ids") {
+		if err = updateInstanceExtraElbs(ctx, client, d, d.Timeout(schema.TimeoutUpdate)); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1012,7 +1242,7 @@ func resourceInstanceDelete(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf("error deleting dedicated instance (%s): %s", instanceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, d.Id(), nil),

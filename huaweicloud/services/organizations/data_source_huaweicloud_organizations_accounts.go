@@ -85,6 +85,7 @@ func organizationsAccountSchema() *schema.Resource {
 			"mobile_phone": {
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 				Description: `The mobile phone number.`,
 			},
 			"intl_number_prefix": {
@@ -95,6 +96,7 @@ func organizationsAccountSchema() *schema.Resource {
 			"email": {
 				Type:        schema.TypeString,
 				Computed:    true,
+				Sensitive:   true,
 				Description: `The email address associated with the account.`,
 			},
 		},
@@ -155,11 +157,11 @@ func dataSourceAccountsRead(_ context.Context, d *schema.ResourceData, meta inte
 		return diag.Errorf("error retrieving accounts: %s", err)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	return diag.FromErr(d.Set("accounts", flattenAccounts(accounts, d.Get("name").(string))))
 }

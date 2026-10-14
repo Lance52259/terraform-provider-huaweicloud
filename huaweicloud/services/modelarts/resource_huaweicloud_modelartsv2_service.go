@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -34,7 +34,7 @@ var v2ServiceNonUpdatableParams = []string{
 // @API ModelArts POST /v2/{project_id}/services/{service_id}/versions/switch
 // @API ModelArts PUT /v2/{project_id}/services/{service_id}
 // @API ModelArts POST /v2/{project_id}/modelarts-service-v2/{service_id}/tags/create
-// @API ModelArts DELETE /v2/{project_id}/modelarts-service-v2/{service_id}/tags/create
+// @API ModelArts DELETE /v2/{project_id}/modelarts-service-v2/{service_id}/tags/delete
 // @API ModelArts POST /v2/{project_id}/services/delete
 func ResourceV2Service() *schema.Resource {
 	return &schema.Resource{
@@ -245,6 +245,17 @@ func ResourceV2Service() *schema.Resource {
 					utils.SchemaDescInput{
 						Internal: true,
 					},
+				),
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true},
 				),
 			},
 		},
@@ -745,10 +756,10 @@ func buildV2ServiceLogConfigs(logConfigs []interface{}) []map[string]interface{}
 	for _, logConfig := range logConfigs {
 		result = append(result, map[string]interface{}{
 			// Required parameters.
-			"weight": utils.PathSearch("weight", logConfig, nil),
+			"type": utils.PathSearch("type", logConfig, nil),
 			// Optional parameters.
-			"log_group_id":  utils.PathSearch("log_group_id", logConfig, nil),
-			"log_stream_id": utils.PathSearch("log_stream_id", logConfig, nil),
+			"log_group_id":  utils.ValueIgnoreEmpty(utils.PathSearch("log_group_id", logConfig, nil)),
+			"log_stream_id": utils.ValueIgnoreEmpty(utils.PathSearch("log_stream_id", logConfig, nil)),
 		})
 	}
 
@@ -773,7 +784,7 @@ func buildV2ServiceCreateBodyParams(d *schema.ResourceData) map[string]interface
 	}
 }
 
-func serviceStatusRefreshFunc(client *golangsdk.ServiceClient, serviceId string, targets []string) resource.StateRefreshFunc {
+func serviceStatusRefreshFunc(client *golangsdk.ServiceClient, serviceId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetServiceById(client, serviceId)
 		if err != nil {
@@ -835,7 +846,7 @@ func resourceV2ServiceCreate(ctx context.Context, d *schema.ResourceData, meta i
 	}
 	d.SetId(serviceId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      serviceStatusRefreshFunc(client, serviceId, []string{"STOPPED", "RUNNING"}),
@@ -1019,7 +1030,7 @@ func flattenServiceLogConfigs(logConfigs []interface{}) []map[string]interface{}
 
 	for _, logConfig := range logConfigs {
 		result = append(result, map[string]interface{}{
-			"weight":        utils.PathSearch("weight", logConfig, nil),
+			"type":          utils.PathSearch("type", logConfig, nil),
 			"log_group_id":  utils.PathSearch("log_group_id", logConfig, nil),
 			"log_stream_id": utils.PathSearch("log_stream_id", logConfig, nil),
 		})
@@ -1239,7 +1250,7 @@ func switchServiceVersion(ctx context.Context, client *golangsdk.ServiceClient, 
 		return nil, fmt.Errorf("error switching specified service version (%s): %s", targetVersion, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      serviceStatusRefreshFunc(client, serviceId, []string{"STOPPED", "RUNNING"}),
@@ -1384,7 +1395,7 @@ func upgradeService(ctx context.Context, client *golangsdk.ServiceClient, d *sch
 		return fmt.Errorf("error upgrading service (%s): %s", serviceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      serviceStatusRefreshFunc(client, serviceId, []string{"STOPPED", "RUNNING"}),
@@ -1491,7 +1502,7 @@ func resourceV2ServiceDelete(ctx context.Context, d *schema.ResourceData, meta i
 		return diag.Errorf("error deleting service (%s): %s", serviceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      serviceStatusRefreshFunc(client, serviceId, nil),

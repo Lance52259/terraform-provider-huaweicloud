@@ -11,13 +11,14 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -228,6 +229,7 @@ func ResourceCBHHAInstance() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceHAInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg     = meta.(*config.Config)
@@ -259,7 +261,7 @@ func resourceHAInstanceCreate(ctx context.Context, d *schema.ResourceData, meta 
 		return diag.Errorf("error waiting for CBH HA instance order (%s) complete: %s", orderId, err)
 	}
 
-	resourceIDs, err := common.GetResourceIDsByOrder(bssClient, orderId, 1)
+	resourceIDs, err := cbc.GetResourceIDsByOrder(bssClient, orderId, 1)
 	if err != nil {
 		return diag.Errorf("error retrieving resource IDs of CBH HA instance order (%s): %s", orderId, err)
 	}
@@ -470,7 +472,7 @@ func doHAInstancePowerAction(ctx context.Context, client *golangsdk.ServiceClien
 
 func waitingForHAInstanceUpdateVpcCompleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, masterId string) error {
 	masterExpression := fmt.Sprintf("[?server_id == '%s']|[0]", masterId)
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -506,7 +508,7 @@ func waitingForHAInstanceShutoff(ctx context.Context, client *golangsdk.ServiceC
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedStatus := []string{"DELETING", "DELETED", "ERROR", "FROZEN"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -554,7 +556,7 @@ func waitingForHAInstanceActive(ctx context.Context, client *golangsdk.ServiceCl
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedStatus := []string{"SHUTOFF", "DELETING", "DELETED", "ERROR", "FROZEN"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -603,7 +605,7 @@ func waitingForHAInstanceTaskCompleted(ctx context.Context, client *golangsdk.Se
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
 		unexpectedTaskStatus := []string{"delete_wait", "frozen", "unfrozen", "updating", "configuring-ha",
 			"data-migrating", "rollback", "traffic-switchover"}
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {
@@ -798,7 +800,7 @@ func resourceHAInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta 
 				"master instance resource ID is not found in list API response", id)
 		}
 
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), masterResourceId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), masterResourceId); err != nil {
 			return diag.Errorf("error updating the auto-renew of the CBH HA instance (%s): %s", id, err)
 		}
 	}
@@ -1112,7 +1114,7 @@ func waitingForHAInstanceDeleted(ctx context.Context, client *golangsdk.ServiceC
 	timeout time.Duration) error {
 	for _, serverId := range ids {
 		expression := fmt.Sprintf("[?server_id == '%s']|[0]", serverId)
-		stateConf := &resource.StateChangeConf{
+		stateConf := &retry.StateChangeConf{
 			Pending: []string{"PENDING"},
 			Target:  []string{"COMPLETED"},
 			Refresh: func() (interface{}, string, error) {

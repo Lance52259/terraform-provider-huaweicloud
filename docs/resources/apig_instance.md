@@ -64,12 +64,25 @@ The following arguments are supported:
   + **PROFESSIONAL_IPV6**: IPv6 instance of the Professional Edition.
   + **ENTERPRISE_IPV6**: IPv6 instance of the Enterprise Edition.
   + **PLATINUM_IPV6**: IPv6 instance of the Platinum Edition.
+  + **NLB_BASIC**: without built-in ELBs.
+  + **NLB_PROFESSIONAL**: without built-in ELBs.
+  + **NLB_ENTERPRISE**: without built-in ELBs.
+  + **NLB_PLATINUM**: without built-in ELBs.
+  + **NLB_BASIC_IPV6**: without built-in ELBs.
+  + **NLB_PROFESSIONAL_IPV6**: without built-in ELBs.
+  + **NLB_ENTERPRISE_IPV6**: without built-in ELBs.
+  + **NLB_PLATINUM_IPV6**: without built-in ELBs.
+
+  For more editions, please following values of the `spec_id` parameters in the
+  [documentation](https://support.huaweicloud.com/intl/en-us/api-apig/CreateInstanceV2.html#section4).
 
 * `vpc_id` - (Required, String, ForceNew) Specifies the ID of the VPC used to create the dedicated instance.  
   Changing this will create a new resource.
 
 * `subnet_id` - (Required, String, ForceNew) Specifies the ID of the VPC subnet used to create the dedicated instance.  
   Changing this will create a new resource.
+
+  -> If the value of `edition` parameter is NLB series edition, the network must be same as the ELB's network.
 
 * `security_group_id` - (Required, String) Specifies the ID of the security group to which the dedicated instance
   belongs to.
@@ -94,6 +107,12 @@ The following arguments are supported:
 * `ipv6_enable` - (Optional, Bool, ForceNew) Specifies whether public access with an IPv6 address is supported.  
   Changing this will create a new resource.
 
+* `elb_ids` - (Optional, List, ForceNew) Specifies the list of the dedicated network load balancer IDs associated with
+  the dedicated instance.  
+  This parameter is required when the instance edition is NLB series edition. The ELB must be dedicated and include
+  network load balancing type.  
+  Changing this will create a new resource.
+
 * `vpcep_service_name` - (Optional, String) Specifies the name of the VPC endpoint service.
   It can contain a maximum of 16 characters, including letters, digits, underscores (_), and hyphens (-).
   If this parameter is not specified, the system automatically generates a name in the "{region}.apig.{service_id}" format.
@@ -108,7 +127,6 @@ The following arguments are supported:
 * `ingress_bandwidth_charging_mode` - (Optional, String) Specifies the ingress bandwidth billing type of the dedicated instance.
   The valid values are as follows:
   + **bandwidth**: Billed by bandwidth.
-  + **traffic**: Billed by traffic.
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the dedicated instance.
 

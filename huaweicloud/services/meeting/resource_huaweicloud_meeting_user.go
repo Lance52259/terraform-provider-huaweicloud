@@ -151,9 +151,10 @@ func ResourceUser() *schema.Resource {
 				Default:  true,
 			},
 			"signature": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"status": {
 				Type:     schema.TypeInt,
@@ -179,8 +180,9 @@ func ResourceUser() *schema.Resource {
 				Computed: true,
 			},
 			"sip_number": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"type": {
 				Type:     schema.TypeInt,
@@ -380,7 +382,7 @@ func resourceUserDelete(_ context.Context, d *schema.ResourceData, meta interfac
 	return nil
 }
 
-func resourceUserManagementImportState(_ context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData,
+func resourceUserManagementImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData,
 	error) {
 	var mErr *multierror.Error
 	parts := strings.Split(d.Id(), "/")

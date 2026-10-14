@@ -57,12 +57,14 @@ func ResourceUser() *schema.Resource {
 				Description: `The activation mode of the user.`,
 			},
 			"email": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"phone": {
 				Type:        schema.TypeString,
 				Optional:    true,
+				Sensitive:   true,
 				Description: `The phone number of the user.`,
 			},
 			"password": {
@@ -176,7 +178,7 @@ func parseUserAccountExpires(expires int) string {
 	return utils.FormatTimeStampRFC3339(int64(expires/1000), false, RFC3339NoT)
 }
 
-func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceUserRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
 	client, err := conf.WorkspaceV2Client(region)
@@ -251,7 +253,7 @@ func resourceUserUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 	return resourceUserRead(ctx, d, meta)
 }
 
-func resourceUserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceUserDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	client, err := conf.WorkspaceV2Client(conf.GetRegion(d))
 	if err != nil {

@@ -1,10 +1,13 @@
 package deprecated
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"strconv"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -12,8 +15,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceMaasTaskV1() *schema.Resource {
@@ -47,9 +48,10 @@ func ResourceMaasTaskV1() *schema.Resource {
 							ForceNew: true,
 						},
 						"ak": {
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
+							Type:      schema.TypeString,
+							Required:  true,
+							ForceNew:  true,
+							Sensitive: true,
 						},
 						"sk": {
 							Type:      schema.TypeString,
@@ -89,9 +91,10 @@ func ResourceMaasTaskV1() *schema.Resource {
 							ForceNew: true,
 						},
 						"ak": {
-							Type:     schema.TypeString,
-							Required: true,
-							ForceNew: true,
+							Type:      schema.TypeString,
+							Required:  true,
+							ForceNew:  true,
+							Sensitive: true,
 						},
 						"sk": {
 							Type:      schema.TypeString,
@@ -179,7 +182,7 @@ func getSrcNode(d *schema.ResourceData) task.SrcNodeOpts {
 		CloudType: srcNode["cloud_type"].(string),
 	}
 
-	logp.Printf("[DEBUG] getSrcNode: %#v", srcNodeOpts)
+	log.Printf("[DEBUG] getSrcNode: %#v", srcNodeOpts)
 	return srcNodeOpts
 }
 
@@ -195,7 +198,7 @@ func getDstNode(d *schema.ResourceData) task.DstNodeOpts {
 		Bucket:    dstNode["bucket"].(string),
 	}
 
-	logp.Printf("[DEBUG] getDstNode: %#v", dstNodeOpts)
+	log.Printf("[DEBUG] getDstNode: %#v", dstNodeOpts)
 	return dstNodeOpts
 }
 
@@ -208,25 +211,11 @@ func getTriggerConditions(v []interface{}) []string {
 	return conds
 }
 
-func getSmnInfo(d *schema.ResourceData) task.SmnInfoOpts {
-	smnInfos := d.Get("smn_info").([]interface{})
-	smnInfo := smnInfos[0].(map[string]interface{})
-	triggerConditions := smnInfo["trigger_conditions"].(*schema.Set).List()
-
-	smnInfoOpts := task.SmnInfoOpts{
-		TopicUrn:          smnInfo["topic_urn"].(string),
-		Language:          smnInfo["language"].(string),
-		TriggerConditions: getTriggerConditions(triggerConditions),
-	}
-	logp.Printf("[DEBUG] getSmnInfo: %#v", smnInfoOpts)
-	return smnInfoOpts
-}
-
 func resourceMaasTaskV1Create(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	maasClient, err := config.MaasV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	maasClient, err := cfg.MaasV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating maas client: %s", err)
+		return fmt.Errorf("error creating maas client: %s", err)
 	}
 
 	enableKMS := d.Get("enable_kms").(bool)
@@ -251,10 +240,10 @@ func resourceMaasTaskV1Create(d *schema.ResourceData, meta interface{}) error {
 		createOpts.SmnInfo = &smnInfoOpts
 	}
 
-	logp.Printf("[DEBUG] Create Options: %#v", createOpts)
+	log.Printf("[DEBUG] Create Options: %#v", createOpts)
 	taskCreate, err := task.Create(maasClient, createOpts).Extract()
 	if err != nil {
-		return fmtp.Errorf("Error creating Task: %s", err)
+		return fmt.Errorf("error creating Task: %s", err)
 	}
 
 	timeout := d.Timeout(schema.TimeoutCreate)
@@ -262,7 +251,7 @@ func resourceMaasTaskV1Create(d *schema.ResourceData, meta interface{}) error {
 	d.SetId(taskID)
 	err = waitForTaskCompleted(maasClient, taskID, timeout)
 	if err != nil {
-		return fmtp.Errorf(
+		return fmt.Errorf(
 			"Error waiting for task (%s) completed: %s",
 			taskID, err)
 	}
@@ -271,17 +260,17 @@ func resourceMaasTaskV1Create(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceMaasTaskV1Read(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	maasClient, err := config.MaasV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	maasClient, err := cfg.MaasV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating maas client: %s", err)
+		return fmt.Errorf("error creating maas client: %s", err)
 	}
 
 	taskGet, err := task.Get(maasClient, d.Id()).Extract()
 	if err != nil {
 		return common.CheckDeleted(d, err, "task")
 	}
-	logp.Printf("[DEBUG] Retrieved Task %s: %#v", d.Id(), taskGet)
+	log.Printf("[DEBUG] Retrieved Task %s: %#v", d.Id(), taskGet)
 	d.Set("name", taskGet.Name)
 	d.Set("status", taskGet.Status)
 	d.Set("enable_kms", taskGet.EnableKMS)
@@ -313,37 +302,37 @@ func resourceMaasTaskV1Read(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceMaasTaskV1Delete(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	maasClient, err := config.MaasV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	maasClient, err := cfg.MaasV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating maas client: %s", err)
+		return fmt.Errorf("error creating maas client: %s", err)
 	}
 
 	id := d.Id()
 	err = task.Delete(maasClient, id).ExtractErr()
 	if err != nil {
-		return fmtp.Errorf("Error deleting task %s: %s", id, err)
+		return fmt.Errorf("error deleting task %s: %s", id, err)
 	}
 	d.SetId("")
 
 	return nil
 }
 
-func getTaskStatus(maasClient *golangsdk.ServiceClient, taskId string) resource.StateRefreshFunc {
+func getTaskStatus(maasClient *golangsdk.ServiceClient, taskId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		taskGet, err := task.Get(maasClient, taskId).Extract()
 		if err != nil {
 			return nil, "", err
 		}
 
-		logp.Printf("[DEBUG] Task: %+v", taskGet)
+		log.Printf("[DEBUG] Task: %+v", taskGet)
 		status := strconv.Itoa(taskGet.Status)
 		return taskGet, status, nil
 	}
 }
 
 func waitForTaskCompleted(maasClient *golangsdk.ServiceClient, taskID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:    []string{"0", "1", "2", "3"},
 		Target:     []string{"5"},
 		Refresh:    getTaskStatus(maasClient, taskID),
@@ -352,6 +341,6 @@ func waitForTaskCompleted(maasClient *golangsdk.ServiceClient, taskID string, ti
 		MinTimeout: 3 * time.Second,
 	}
 
-	_, err := stateConf.WaitForState()
+	_, err := stateConf.WaitForStateContext(context.Background())
 	return err
 }

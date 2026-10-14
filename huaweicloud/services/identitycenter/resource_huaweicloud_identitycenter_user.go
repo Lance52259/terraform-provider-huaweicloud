@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -76,11 +77,13 @@ func ResourceIdentityCenterUser() *schema.Resource {
 			"email": {
 				Type:        schema.TypeString,
 				Required:    true,
+				Sensitive:   true,
 				Description: `Specifies the email of the user.`,
 			},
 			"phone_number": {
 				Type:        schema.TypeString,
 				Optional:    true,
+				Sensitive:   true,
 				Description: `Specifies the phone number of the user.`,
 			},
 			"user_type": {
@@ -496,7 +499,10 @@ func buildUpdateIdentityCenterUserBodyParams(d *schema.ResourceData) map[string]
 			"family_name": utils.ValueIgnoreEmpty(d.Get("family_name")),
 			"given_name":  utils.ValueIgnoreEmpty(d.Get("given_name")),
 		}
-		updateValueJson, _ := json.Marshal(updateValue)
+		updateValueJson, err := json.Marshal(updateValue)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling name update value: %s", err)
+		}
 		operations = append(operations, map[string]interface{}{
 			"attribute_path":  "name",
 			"attribute_value": string(updateValueJson),
@@ -514,7 +520,10 @@ func buildUpdateIdentityCenterUserBodyParams(d *schema.ResourceData) map[string]
 			"type":    "Work",
 			"value":   utils.ValueIgnoreEmpty(d.Get("email")),
 		}}
-		updateValueJson, _ := json.Marshal(updateValue)
+		updateValueJson, err := json.Marshal(updateValue)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling email update value: %s", err)
+		}
 		operations = append(operations, map[string]interface{}{
 			"attribute_path":  "emails",
 			"attribute_value": string(updateValueJson),
@@ -527,7 +536,10 @@ func buildUpdateIdentityCenterUserBodyParams(d *schema.ResourceData) map[string]
 			"type":    "Work",
 			"value":   utils.ValueIgnoreEmpty(d.Get("phone_number")),
 		}}
-		updateValueJson, _ := json.Marshal(updateValue)
+		updateValueJson, err := json.Marshal(updateValue)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling phone number update value: %s", err)
+		}
 		operations = append(operations, map[string]interface{}{
 			"attribute_path":  "phone_numbers",
 			"attribute_value": string(updateValueJson),
@@ -543,7 +555,10 @@ func buildUpdateIdentityCenterUserBodyParams(d *schema.ResourceData) map[string]
 			"street_address": utils.ValueIgnoreEmpty(d.Get("addresses.0.street_address")),
 			"formatted":      utils.ValueIgnoreEmpty(d.Get("addresses.0.formatted")),
 		}}
-		updateValueJson, _ := json.Marshal(updateValue)
+		updateValueJson, err := json.Marshal(updateValue)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling address update value: %s", err)
+		}
 		operations = append(operations, map[string]interface{}{
 			"attribute_path":  "addresses",
 			"attribute_value": string(updateValueJson),
@@ -575,7 +590,10 @@ func buildUpdateIdentityCenterUserBodyParams(d *schema.ResourceData) map[string]
 				"value": utils.ValueIgnoreEmpty(d.Get("enterprise.0.manager")),
 			},
 		}
-		updateValueJson, _ := json.Marshal(updateValue)
+		updateValueJson, err := json.Marshal(updateValue)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling enterprise update value: %s", err)
+		}
 		operations = append(operations, map[string]interface{}{
 			"attribute_path":  "enterprise",
 			"attribute_value": string(updateValueJson),

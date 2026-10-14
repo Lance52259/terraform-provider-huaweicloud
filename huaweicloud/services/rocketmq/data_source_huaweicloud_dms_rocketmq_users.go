@@ -33,8 +33,9 @@ func DataSourceDmsRocketMQUsers() *schema.Resource {
 				Required: true,
 			},
 			"access_key": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"white_remote_address": {
 				Type:     schema.TypeString,
@@ -65,8 +66,9 @@ func usersSchema() *schema.Resource {
 	sc := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"access_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"white_remote_address": {
 				Type:     schema.TypeString,
@@ -166,7 +168,7 @@ func resourceDmsRocketMQUsersRead(_ context.Context, d *schema.ResourceData, met
 }
 
 func flattenListUsersBody(resp []interface{}) []interface{} {
-	if resp == nil {
+	if len(resp) == 0 {
 		return nil
 	}
 	rst := make([]interface{}, 0, len(resp))

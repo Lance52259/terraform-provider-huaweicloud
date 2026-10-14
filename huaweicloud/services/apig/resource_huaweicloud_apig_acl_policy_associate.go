@@ -9,8 +9,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/acls"
@@ -19,6 +20,11 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
+
+var aclPolicyAssociateNonUpdatableParams = []string{
+	"instance_id",
+	"policy_id",
+}
 
 // @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/acl-bindings
 // @API APIG GET /v2/{project_id}/apigw/instances/{instance_id}/acl-bindings/unbinded-apis
@@ -41,6 +47,8 @@ func ResourceAclPolicyAssociate() *schema.Resource {
 			StateContext: resourceAclPolicyAssociateImportState,
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(aclPolicyAssociateNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:        schema.TypeString,
@@ -52,13 +60,11 @@ func ResourceAclPolicyAssociate() *schema.Resource {
 			"instance_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the dedicated instance to which the APIs and the ACL policy belong.",
 			},
 			"policy_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ACL Policy ID for APIs binding.",
 			},
 			"publish_ids": {
@@ -67,12 +73,24 @@ func ResourceAclPolicyAssociate() *schema.Resource {
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "The publish IDs corresponding to the APIs bound by the ACL policy.",
 			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
+					}),
+			},
 		},
 	}
 }
 
 func aclPolicyBindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, policyId string,
-	publishIds []string) resource.StateRefreshFunc {
+	publishIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl  = "v2/{project_id}/apigw/instances/{instance_id}/acl-bindings/unbinded-apis"
@@ -129,7 +147,7 @@ func bindAclPolicyToApis(ctx context.Context, client *golangsdk.ServiceClient, o
 		return fmt.Errorf("error binding ACL policy to one or more APIs: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: aclPolicyBindingRefreshFunc(client, instanceId, policyId, publishIds),
@@ -214,11 +232,15 @@ func resourceAclPolicyAssociateRead(_ context.Context, d *schema.ResourceData, m
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "")
 	}
 
-	return diag.FromErr(d.Set("publish_ids", flattenApiPublishIdsForAclPolicy(resp)))
+	mErr := multierror.Append(nil,
+		d.Set("region", region),
+		d.Set("publish_ids", flattenApiPublishIdsForAclPolicy(resp)),
+	)
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func aclPolicyUnbindingRefreshFunc(client *golangsdk.ServiceClient, instanceId, policyId string,
-	publishIds []string) resource.StateRefreshFunc {
+	publishIds []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl  = "v2/{project_id}/apigw/instances/{instance_id}/acl-bindings/binded-apis"
@@ -309,7 +331,7 @@ func unbindAclPolicy(ctx context.Context, client *golangsdk.ServiceClient, opt a
 		return fmt.Errorf("an error occurred during unbind: %#v", unbindResp.Failures)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: aclPolicyUnbindingRefreshFunc(client, instanceId, policyId, utils.ExpandToStringList(publishIds.List())),
@@ -332,31 +354,33 @@ func resourceAclPolicyAssociateUpdate(ctx context.Context, d *schema.ResourceDat
 		return diag.Errorf("error creating APIG v2 client: %s", err)
 	}
 
-	var (
-		instanceId     = d.Get("instance_id").(string)
-		policyId       = d.Get("policy_id").(string)
-		oldRaw, newRaw = d.GetChange("publish_ids")
+	if d.HasChangeExcept("enable_force_new") {
+		var (
+			instanceId     = d.Get("instance_id").(string)
+			policyId       = d.Get("policy_id").(string)
+			oldRaw, newRaw = d.GetChange("publish_ids")
 
-		addSet = newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
-		rmSet  = oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
-	)
+			addSet = newRaw.(*schema.Set).Difference(oldRaw.(*schema.Set))
+			rmSet  = oldRaw.(*schema.Set).Difference(newRaw.(*schema.Set))
+		)
 
-	if rmSet.Len() > 0 {
-		opt := buildAclPolicyListOpts(instanceId, policyId)
-		err = unbindAclPolicy(ctx, client, opt, rmSet, d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return diag.FromErr(err)
+		if rmSet.Len() > 0 {
+			opt := buildAclPolicyListOpts(instanceId, policyId)
+			err = unbindAclPolicy(ctx, client, opt, rmSet, d.Timeout(schema.TimeoutUpdate))
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
-	}
-	if addSet.Len() > 0 {
-		opt := acls.BindOpts{
-			InstanceId: instanceId,
-			PolicyId:   policyId,
-			PublishIds: utils.ExpandToStringListBySet(addSet),
-		}
-		err = bindAclPolicyToApis(ctx, client, opt, d.Timeout(schema.TimeoutCreate))
-		if err != nil {
-			return diag.FromErr(err)
+		if addSet.Len() > 0 {
+			opt := acls.BindOpts{
+				InstanceId: instanceId,
+				PolicyId:   policyId,
+				PublishIds: utils.ExpandToStringListBySet(addSet),
+			}
+			err = bindAclPolicyToApis(ctx, client, opt, d.Timeout(schema.TimeoutUpdate))
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
 	}
 
@@ -377,7 +401,7 @@ func resourceAclPolicyAssociateDelete(ctx context.Context, d *schema.ResourceDat
 		opt        = buildAclPolicyListOpts(instanceId, policyId)
 	)
 
-	if err = unbindAclPolicy(ctx, client, opt, publishIds, d.Timeout(schema.TimeoutUpdate)); err != nil {
+	if err = unbindAclPolicy(ctx, client, opt, publishIds, d.Timeout(schema.TimeoutDelete)); err != nil {
 		return common.CheckDeletedDiag(d, err, "error unbinding APIs from ACL policy")
 	}
 	return nil

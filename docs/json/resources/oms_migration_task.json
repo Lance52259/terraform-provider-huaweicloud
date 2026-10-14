@@ -26,11 +26,6 @@
                 "forcenew": true,
                 "default": true
               },
-              "enable_kms": {
-                "type": "bool",
-                "optional": true,
-                "forcenew": true
-              },
               "enable_metadata_migration": {
                 "type": "bool",
                 "optional": true,
@@ -116,7 +111,8 @@
                     "access_key": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "bucket": {
                       "type": "string",
@@ -220,7 +216,8 @@
                     "access_key": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "app_id": {
                       "type": "string",

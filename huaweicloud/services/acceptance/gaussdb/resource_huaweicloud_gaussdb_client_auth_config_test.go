@@ -100,9 +100,7 @@ func TestAccGaussDBClientAuthConfig_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckEpsID(t)
-			acceptance.TestAccPreCheckHighCostAllow(t)
-			acceptance.TestAccPreCheckGaussDBOpenGaussInstanceId(t)
+			acceptance.TestAccPreCheckGaussDBInstanceId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -147,7 +145,7 @@ resource "huaweicloud_gaussdb_client_auth_config" "test" {
   address     = "10.10.0.0/16"
   method      = "md5"
 }
-`, acceptance.HW_GAUSSDB_OPENGAUSS_INSTANCE_ID)
+`, acceptance.HW_GAUSSDB_INSTANCE_ID)
 }
 
 func testGaussDBClientAuthConfig_update() string {
@@ -160,7 +158,7 @@ resource "huaweicloud_gaussdb_client_auth_config" "test" {
   address     = "10.10.0.0/16"
   method      = "sha256" 
 }
-`, acceptance.HW_GAUSSDB_OPENGAUSS_INSTANCE_ID)
+`, acceptance.HW_GAUSSDB_INSTANCE_ID)
 }
 
 func testAccGaussDBClientAuthConfigImportStateFunc(name string) resource.ImportStateIdFunc {

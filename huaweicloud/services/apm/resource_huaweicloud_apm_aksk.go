@@ -13,7 +13,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/entity"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient_go"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/internal/httpclient-go"
 )
 
 // @API APM POST /v1/apm2/access-keys
@@ -41,12 +41,14 @@ func ResourceApmAkSk() *schema.Resource {
 				Computed: true,
 			},
 			"access_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 			"secret_key": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:      schema.TypeString,
+				Computed:  true,
+				Sensitive: true,
 			},
 		},
 	}

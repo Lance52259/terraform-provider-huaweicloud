@@ -8,8 +8,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -52,16 +53,18 @@ func ResourceAccount() *schema.Resource {
 				Required: true,
 			},
 			"email": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"identity_store_user_name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
 			"identity_store_email": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"parent_organizational_unit_name": {
 				Type:     schema.TypeString,
@@ -72,8 +75,9 @@ func ResourceAccount() *schema.Resource {
 				Required: true,
 			},
 			"phone": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"blueprint": {
 				Type:     schema.TypeList,
@@ -111,6 +115,19 @@ func ResourceAccount() *schema.Resource {
 			"joined_method": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -151,7 +168,7 @@ func resourceAccountCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.Errorf("unable to find the account operation ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      accountStateRefreshFunc(createAccountClient, operationID),
@@ -233,7 +250,7 @@ func buildListAccountsQueryParams(marker string) string {
 	return res
 }
 
-func accountStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) resource.StateRefreshFunc {
+func accountStateRefreshFunc(client *golangsdk.ServiceClient, operationId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getAccountStatusHttpUrl := "v1/managed-organization/{operation_id}"
 		getAccountStatusPath := client.Endpoint + getAccountStatusHttpUrl
@@ -381,7 +398,7 @@ func resourceAccountDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.Errorf("unable to find the account operation ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"IN_PROGRESS"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      accountStateRefreshFunc(unEnrollAccountClient, operationID),

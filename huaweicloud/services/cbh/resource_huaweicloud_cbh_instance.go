@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -18,6 +18,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -496,7 +497,7 @@ func waitingForCBHInstanceShutoff(ctx context.Context, client *golangsdk.Service
 	timeout time.Duration) error {
 	expression := fmt.Sprintf("[?server_id == '%s']|[0]", d.Id())
 	unexpectedStatus := []string{"DELETING", "DELETED", "ERROR", "FROZEN"}
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -538,7 +539,7 @@ func waitingForCBHInstanceActive(ctx context.Context, client *golangsdk.ServiceC
 	timeout time.Duration) error {
 	expression := fmt.Sprintf("[?server_id == '%s']|[0]", d.Id())
 	unexpectedStatus := []string{"SHUTOFF", "DELETING", "DELETED", "ERROR", "FROZEN"}
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -579,7 +580,7 @@ func waitingForCBHInstanceTaskCompleted(ctx context.Context, client *golangsdk.S
 	expression := fmt.Sprintf("[?server_id == '%s']|[0]", d.Id())
 	unexpectedTaskStatus := []string{"delete_wait", "frozen", "unfrozen", "updating", "configuring-ha",
 		"data-migrating", "rollback", "traffic-switchover"}
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -616,6 +617,7 @@ func waitingForCBHInstanceTaskCompleted(ctx context.Context, client *golangsdk.S
 	return err
 }
 
+// nolint:gocyclo
 func resourceCBHInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg                      = meta.(*config.Config)
@@ -738,7 +740,7 @@ func resourceCBHInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta
 				"resource ID is not found in list API response", ID)
 		}
 
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), resourceId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), resourceId); err != nil {
 			return diag.Errorf("error updating the auto-renew of the CBH instance (%s): %s", ID, err)
 		}
 	}
@@ -1160,7 +1162,7 @@ func resourceCBHInstanceDelete(ctx context.Context, d *schema.ResourceData, meta
 func waitingForCBHInstanceDeleted(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
 	expression := fmt.Sprintf("[?server_id == '%s']|[0]", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

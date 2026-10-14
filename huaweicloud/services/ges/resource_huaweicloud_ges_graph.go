@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -331,7 +331,9 @@ func resourceGesGraphCreate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.FromErr(err)
 	}
 
-	graphId := utils.PathSearch("graph_id", createGraphRespBody, "").(string)
+	// The legacy code only used "graph_id". The original intent is unclear,
+	// so the new implementation adds "id" as a fallback for backward compatibility.
+	graphId := utils.PathSearch("graph_id||id", createGraphRespBody, "").(string)
 	if graphId == "" {
 		return diag.Errorf("unable to find the GES graph ID from the API response")
 	}
@@ -432,7 +434,7 @@ func buildCreateGraphReqBodyvertexIdType(rawParams interface{}) map[string]inter
 }
 
 func graphWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:                   []string{"PENDING"},
 		Target:                    []string{"COMPLETED"},
 		ContinuousTargetOccurence: 3,
@@ -750,7 +752,7 @@ func buildDeleteGraphBodyParams(d *schema.ResourceData) map[string]interface{} {
 }
 
 func deleteGraphWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:                   []string{"PENDING"},
 		Target:                    []string{"COMPLETED"},
 		ContinuousTargetOccurence: 3,

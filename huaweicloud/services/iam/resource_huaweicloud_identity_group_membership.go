@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -129,6 +130,11 @@ func resourceV3GroupMembershipCreate(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("error adding users to group (%s): %s", groupId, err)
 	}
 
+	// sleep 3 seconds to wait for the group membership to be created (during each PUT operation, the group membership
+	// with the expected result cannot be queried immediately).
+	// lintignore:R018
+	time.Sleep(3 * time.Second)
+
 	// If the request is successful, obtain the values of all slice parameters first and save them to the corresponding
 	// '_origin' attributes for subsequent determination and construction of the request body during next updates.
 	// And whether corresponding parameters are changed, the origin values must be refreshed.
@@ -149,7 +155,7 @@ func ListV3AssociatedUsersForGroup(client *golangsdk.ServiceClient, groupId stri
 				Method:    "GET",
 				URL:       "/v3/groups/{group_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the group (%s) does not exist", groupId)),
+				Body:      fmt.Appendf(nil, "the group (%s) does not exist", groupId),
 			},
 		}
 	}
@@ -178,7 +184,7 @@ func ListV3AssociatedUsersForGroup(client *golangsdk.ServiceClient, groupId stri
 				Method:    "GET",
 				URL:       "/v3/groups/{group_id}/users",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the managed membership for group (%s) does not exist", groupId)),
+				Body:      fmt.Appendf(nil, "the managed membership for group (%s) does not exist", groupId),
 			},
 		}
 	}
@@ -201,6 +207,7 @@ func orderV3AssociatedUsersByUsersOrigin(associatedUsers, usersOrigin []interfac
 			sortedAssociatedUsers = append(sortedAssociatedUsers, associatedUsersCopy[index])
 			// Remove the processed user from the original array.
 			associatedUsersCopy = append(associatedUsersCopy[:index], associatedUsersCopy[index+1:]...)
+			break
 		}
 	}
 	// Add any remaining unsorted users to the end of the sorted list.

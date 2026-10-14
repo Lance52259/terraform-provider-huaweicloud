@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -59,23 +59,23 @@ func ResourceFirewall() *schema.Resource {
 		},
 
 		CustomizeDiff: customdiff.All(
-			customdiff.ValidateChange("east_west_firewall_inspection_cidr", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("east_west_firewall_inspection_cidr", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from empty
-				if old.(string) != new.(string) && old.(string) != "" {
+				if oldVal.(string) != newVal.(string) && oldVal.(string) != "" {
 					return fmt.Errorf("east_west_firewall_inspection_cidr can't be updated")
 				}
 				return nil
 			}),
-			customdiff.ValidateChange("east_west_firewall_er_id", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("east_west_firewall_er_id", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from empty
-				if old.(string) != new.(string) && old.(string) != "" {
+				if oldVal.(string) != newVal.(string) && oldVal.(string) != "" {
 					return fmt.Errorf("east_west_firewall_er_id can't be updated")
 				}
 				return nil
 			}),
-			customdiff.ValidateChange("east_west_firewall_mode", func(_ context.Context, old, new, _ any) error {
+			customdiff.ValidateChange("east_west_firewall_mode", func(_ context.Context, oldVal, newVal, _ any) error {
 				// can only update from empty
-				if old.(string) != new.(string) && old.(string) != "" {
+				if oldVal.(string) != newVal.(string) && oldVal.(string) != "" {
 					return fmt.Errorf("east_west_firewall_mode can't be updated")
 				}
 				return nil
@@ -447,7 +447,7 @@ func buildUpdateEastWestFirewallStatusBodyParams(d *schema.ResourceData, objectI
 }
 
 func createFirewallWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -512,7 +512,7 @@ func createFirewallWaitingForStateCompleted(ctx context.Context, d *schema.Resou
 }
 
 func createEastWestFirewallWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -844,6 +844,7 @@ func getIpsSwitchStatus(client *golangsdk.ServiceClient, objectID string) (inter
 	return status, nil
 }
 
+// nolint:gocyclo
 func resourceFirewallUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1205,7 +1206,7 @@ func resourceFirewallDelete(ctx context.Context, d *schema.ResourceData, meta in
 }
 
 func deleteFirewallWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

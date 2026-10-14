@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	awspolicy "github.com/jen20/awspolicyequivalence"
@@ -31,8 +30,8 @@ func ComposeAnySchemaDiffSuppressFunc(fs ...schema.SchemaDiffSuppressFunc) schem
 	}
 }
 
-func SuppressEquivalentAwsPolicyDiffs(k, old, new string, d *schema.ResourceData) bool {
-	equivalent, err := awspolicy.PoliciesAreEquivalent(old, new)
+func SuppressEquivalentAwsPolicyDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	equivalent, err := awspolicy.PoliciesAreEquivalent(oldVal, newVal)
 	if err != nil {
 		return false
 	}
@@ -41,7 +40,7 @@ func SuppressEquivalentAwsPolicyDiffs(k, old, new string, d *schema.ResourceData
 }
 
 // Suppress all changes
-func SuppressDiffAll(k, old, new string, d *schema.ResourceData) bool {
+func SuppressDiffAll(_, _, _ string, _ *schema.ResourceData) bool {
 	return true
 }
 
@@ -54,20 +53,20 @@ func SuppressCaseDiffs() schema.SchemaDiffSuppressFunc {
 }
 
 // Suppress changes if we get a computed min_disk_gb if value is unspecified (default 0)
-func SuppressMinDisk(k, old, new string, d *schema.ResourceData) bool {
-	return new == "0" || old == new
+func SuppressMinDisk(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	return newVal == "0" || oldVal == newVal
 }
 
 // Suppress changes if we get a base64 format or plaint text user_data
-func SuppressUserData(k, old, new string, d *schema.ResourceData) bool {
+func SuppressUserData(_, oldVal, newVal string, _ *schema.ResourceData) bool {
 	// user_data is in base64 format
-	if HashAndHexEncode(old) == new {
+	if HashAndHexEncode(oldVal) == newVal {
 		return true
 	}
 
 	// user_data is plaint text
-	if plaint, err := base64.StdEncoding.DecodeString(old); err == nil {
-		if HashAndHexEncode(string(plaint)) == new {
+	if plaint, err := base64.StdEncoding.DecodeString(oldVal); err == nil {
+		if HashAndHexEncode(string(plaint)) == newVal {
 			return true
 		}
 	}
@@ -75,56 +74,42 @@ func SuppressUserData(k, old, new string, d *schema.ResourceData) bool {
 	return false
 }
 
-func SuppressTrimSpace(_, old, new string, _ *schema.ResourceData) bool {
-	return strings.TrimSpace(old) == strings.TrimSpace(new)
+func SuppressTrimSpace(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	return strings.TrimSpace(oldVal) == strings.TrimSpace(newVal)
 }
 
-func SuppressLBWhitelistDiffs(k, old, new string, d *schema.ResourceData) bool {
-	if len(old) != len(new) {
+func SuppressLBWhitelistDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	if len(oldVal) != len(newVal) {
 		return false
 	}
-	old_array := strings.Split(old, ",")
-	new_array := strings.Split(new, ",")
-	sort.Strings(old_array)
-	sort.Strings(new_array)
+	oldArray := strings.Split(oldVal, ",")
+	newArray := strings.Split(newVal, ",")
+	sort.Strings(oldArray)
+	sort.Strings(newArray)
 
-	return reflect.DeepEqual(old_array, new_array)
+	return reflect.DeepEqual(oldArray, newArray)
 }
 
-func SuppressSnatFiplistDiffs(k, old, new string, d *schema.ResourceData) bool {
-	if len(old) != len(new) {
+func SuppressSnatFiplistDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	if len(oldVal) != len(newVal) {
 		return false
 	}
-	old_array := strings.Split(old, ",")
-	new_array := strings.Split(new, ",")
-	sort.Strings(old_array)
-	sort.Strings(new_array)
+	oldArray := strings.Split(oldVal, ",")
+	newArray := strings.Split(newVal, ",")
+	sort.Strings(oldArray)
+	sort.Strings(newArray)
 
-	return reflect.DeepEqual(old_array, new_array)
+	return reflect.DeepEqual(oldArray, newArray)
 }
 
 // Suppress changes if we get a string with or without new line
-func SuppressNewLineDiffs(k, old, new string, d *schema.ResourceData) bool {
-	return strings.Trim(old, "\n") == strings.Trim(new, "\n")
+func SuppressNewLineDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	return strings.Trim(oldVal, "\n") == strings.Trim(newVal, "\n")
 }
 
-func SuppressEquivilentTimeDiffs(k, old, new string, d *schema.ResourceData) bool {
-	oldTime, err := time.Parse(time.RFC3339, old)
-	if err != nil {
-		return false
-	}
-
-	newTime, err := time.Parse(time.RFC3339, new)
-	if err != nil {
-		return false
-	}
-
-	return oldTime.Equal(newTime)
-}
-
-func SuppressVersionDiffs(k, old, new string, d *schema.ResourceData) bool {
-	oldArray := regexp.MustCompile(`[\.\-]+`).Split(old, -1)
-	newArray := regexp.MustCompile(`[\.\-]+`).Split(new, -1)
+func SuppressVersionDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	oldArray := regexp.MustCompile(`[\.\-]+`).Split(oldVal, -1)
+	newArray := regexp.MustCompile(`[\.\-]+`).Split(newVal, -1)
 	if len(newArray) > len(oldArray) {
 		return false
 	}
@@ -143,7 +128,10 @@ func CompareJsonTemplateAreEquivalent(tem1, tem2 string) (bool, error) {
 		return false, err
 	}
 
-	canonicalJson1, _ := json.Marshal(obj1)
+	canonicalJson1, err := json.Marshal(obj1)
+	if err != nil {
+		log.Printf("[ERROR] error marshaling canonical JSON 1: %s", err)
+	}
 
 	var obj2 interface{}
 	err = json.Unmarshal([]byte(tem2), &obj2)
@@ -151,7 +139,10 @@ func CompareJsonTemplateAreEquivalent(tem1, tem2 string) (bool, error) {
 		return false, err
 	}
 
-	canonicalJson2, _ := json.Marshal(obj2)
+	canonicalJson2, err := json.Marshal(obj2)
+	if err != nil {
+		log.Printf("[ERROR] error marshaling canonical JSON 2: %s", err)
+	}
 
 	equal := bytes.Equal(canonicalJson1, canonicalJson2)
 	if !equal {
@@ -161,12 +152,12 @@ func CompareJsonTemplateAreEquivalent(tem1, tem2 string) (bool, error) {
 	return equal, nil
 }
 
-func SuppressStringSepratedByCommaDiffs(_, old, new string, _ *schema.ResourceData) bool {
-	if len(old) != len(new) {
+func SuppressStringSepratedByCommaDiffs(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+	if len(oldVal) != len(newVal) {
 		return false
 	}
-	oldArray := strings.Split(old, ",")
-	newArray := strings.Split(new, ",")
+	oldArray := strings.Split(oldVal, ",")
+	newArray := strings.Split(newVal, ",")
 	sort.Strings(oldArray)
 	sort.Strings(newArray)
 
@@ -832,8 +823,14 @@ func diffStrSliceLength(paramKey, oldVal, newVal string, d *schema.ResourceData,
 	originVal := getOriginValueForStrSliceLength(baseField, originConfig, d)
 
 	// Get current values
-	oldCount, _ := strconv.Atoi(oldVal)
-	newCount, _ := strconv.Atoi(newVal)
+	oldCount, err := strconv.Atoi(oldVal)
+	if err != nil {
+		log.Printf("[WARN] failed to parse old count: %s", err)
+	}
+	newCount, err := strconv.Atoi(newVal)
+	if err != nil {
+		log.Printf("[WARN] failed to parse new count: %s", err)
+	}
 
 	// If origin is empty or nil, this is the first time setting the value
 	// However, if both oldCount and newCount are 0 (empty lists), suppress diff to avoid showing null
@@ -1924,8 +1921,14 @@ func diffObjectSliceLength(paramKey, oldVal, newVal string, d *schema.ResourceDa
 	originVal := d.Get(originParamKey)
 
 	// Get current values
-	oldCount, _ := strconv.Atoi(oldVal)
-	newCount, _ := strconv.Atoi(newVal)
+	oldCount, err := strconv.Atoi(oldVal)
+	if err != nil {
+		log.Printf("[WARN] failed to parse old count: %s", err)
+	}
+	newCount, err := strconv.Atoi(newVal)
+	if err != nil {
+		log.Printf("[WARN] failed to parse new count: %s", err)
+	}
 
 	// If counts are the same, suppress diff
 	if oldCount == newCount {
@@ -2563,6 +2566,7 @@ func handleObjectElementAdditionWhenNewObjectNil(baseField, objectHash string, o
 }
 
 // handleObjectElementAddition handles the case when an object element is being added or modified
+// nolint:gocyclo
 func handleObjectElementAddition(baseField, objectHash string, originVal interface{}, d *schema.ResourceData) bool {
 	// First, check if this object is being removed (in localRemovals)
 	oldParamVal, newParamVal := d.GetChange(baseField)
@@ -2945,38 +2949,6 @@ func getObjectFromOldState(d *schema.ResourceData, baseField, objectHash string)
 	// If not found, return nil and let the caller handle it.
 	// The caller will check if the object is in origin, and if not, assume it's a remote addition.
 	return nil
-}
-
-// checkObjectInRemoteState checks if an object exists in remote state (console value)
-func checkObjectInRemoteState(baseField string, obj map[string]interface{}, d *schema.ResourceData) bool {
-	// Get the old value (console/remote state) from GetChange
-	oldParamVal, _ := d.GetChange(baseField)
-	if oldParamVal == nil {
-		return false
-	}
-
-	var objectList []interface{}
-	switch v := oldParamVal.(type) {
-	case []interface{}:
-		objectList = v
-	case *schema.Set:
-		objectList = v.List()
-	default:
-		return false
-	}
-
-	// Check if the object exists in the list
-	for _, item := range objectList {
-		if itemMap, ok := item.(map[string]interface{}); ok {
-			if reflect.DeepEqual(itemMap, obj) {
-				log.Printf("[DEBUG][checkObjectInRemoteState] Object already exists in remote state, suppressing diff")
-				return true
-			}
-		}
-	}
-
-	log.Printf("[DEBUG][checkObjectInRemoteState] Object does not exist in remote state, allowing change")
-	return false
 }
 
 // convertToObjectSlice converts interface{} to []map[string]interface{}

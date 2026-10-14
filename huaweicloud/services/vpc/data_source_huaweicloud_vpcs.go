@@ -133,11 +133,11 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 
 	log.Printf("[DEBUG] retrieved VPC using given filter: %+v", vpcList)
 
-	var vpcs []map[string]interface{}
+	var vpcInfos []map[string]interface{}
 	tagFilter := d.Get("tags").(map[string]interface{})
 	var ids []string
 	for _, vpcResource := range vpcList {
-		vpc := map[string]interface{}{
+		queriedVpc := map[string]interface{}{
 			"id":                    vpcResource.ID,
 			"name":                  vpcResource.Name,
 			"cidr":                  vpcResource.CIDR,
@@ -152,7 +152,7 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 			if !utils.HasMapContains(tagmap, tagFilter) {
 				continue
 			}
-			vpc["tags"] = tagmap
+			queriedVpc["tags"] = tagmap
 		} else {
 			// The tags api does not support eps authorization, so don't return 403 to avoid error
 			if _, ok := err.(golangsdk.ErrDefault403); ok {
@@ -165,16 +165,16 @@ func dataSourceVpcsRead(_ context.Context, d *schema.ResourceData, meta interfac
 		// save VirtualPrivateCloudV3 extend_cidr
 		res, err := obtainV3VpcResp(v3Client, vpcResource.ID)
 		if err != nil {
-			diag.Errorf("error retrieving VPC (%s) v3 detail: %s", vpcResource.ID, err)
+			return diag.Errorf("error retrieving VPC (%s) v3 detail: %s", vpcResource.ID, err)
 		}
-		vpc["secondary_cidrs"] = utils.PathSearch("vpc.extend_cidrs", res, nil)
+		queriedVpc["secondary_cidrs"] = utils.PathSearch("vpc.extend_cidrs", res, nil)
 
-		vpcs = append(vpcs, vpc)
+		vpcInfos = append(vpcInfos, queriedVpc)
 		ids = append(ids, vpcResource.ID)
 	}
-	log.Printf("[DEBUG] VPC List after filter, count: %d vpcs: %+v", len(vpcs), vpcs)
+	log.Printf("[DEBUG] VPC List after filter, count: %d vpcs: %+v", len(vpcInfos), vpcInfos)
 
-	mErr := d.Set("vpcs", vpcs)
+	mErr := d.Set("vpcs", vpcInfos)
 	if mErr != nil {
 		return diag.Errorf("set vpcs err: %s", mErr)
 	}

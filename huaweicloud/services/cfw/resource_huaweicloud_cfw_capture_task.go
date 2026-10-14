@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -419,7 +419,7 @@ func stopCaptureTask(client *golangsdk.ServiceClient, d *schema.ResourceData) er
 }
 
 func waitCaptureTaskStopped(ctx context.Context, client *golangsdk.ServiceClient, name, instanceID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETE"},
 		Refresh: func() (interface{}, string, error) {
@@ -489,10 +489,9 @@ func resourceCaptureTaskDelete(ctx context.Context, d *schema.ResourceData, meta
 		return common.CheckDeletedDiag(d, parseError(err), "error deleting capture task")
 	}
 
-	// Deletion API call does not guranatee the deletion of the resource.
+	// Deletion API call does not guarantee the deletion of the resource.
 	// Call the detail API to check if the resource is actually deleted.
 	_, err = GetCaptureTask(client, name, instanceID)
-
 	return common.CheckDeletedDiag(d, parseError(err), "error deleting capture task")
 }
 

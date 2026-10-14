@@ -16,6 +16,8 @@ func TestAccDataSourceTaurusDBIncrementalBackups_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckTaurusDBBackupBeginTime(t)
+			acceptance.TestAccPreCheckTaurusDBBackupEndTime(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
@@ -52,5 +54,5 @@ data "huaweicloud_taurusdb_incremental_backups" "backup_time_filter" {
 output "backup_time_filter_is_useful" {
   value = length(data.huaweicloud_taurusdb_incremental_backups.backup_time_filter.backups) > 0
 }
-`, acceptance.HW_GAUSSDB_MYSQL_INSTANCE_ID, acceptance.HW_GAUSSDB_MYSQL_BACKUP_BEGIN_TIME, acceptance.HW_GAUSSDB_MYSQL_BACKUP_END_TIME)
+`, acceptance.HW_TAURUSDB_INSTANCE_ID, acceptance.HW_TAURUSDB_BACKUP_BEGIN_TIME, acceptance.HW_TAURUSDB_BACKUP_END_TIME)
 }

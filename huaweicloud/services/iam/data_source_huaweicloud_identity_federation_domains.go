@@ -23,8 +23,9 @@ func DataSourceIdentityFederationDomains() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"federation_token": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 
 			"domains": {
@@ -88,7 +89,7 @@ func dataSourceIdentityFederationDomainsRead(_ context.Context, d *schema.Resour
 }
 
 func flattenDomains(domainsBody []interface{}) []map[string]interface{} {
-	if domainsBody == nil {
+	if len(domainsBody) == 0 {
 		return nil
 	}
 	domains := make([]map[string]interface{}, 0, len(domainsBody))

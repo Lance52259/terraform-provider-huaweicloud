@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -30,7 +30,6 @@ import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/sdkerr"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
 )
 
 // ErrorResp is the response when API failed
@@ -48,12 +47,12 @@ func ParseErrorMsg(body []byte) (ErrorResp, error) {
 // GetRegion returns the region that was specified ina the resource. If a
 // region was not set, the provider-level region is checked. The provider-level
 // region can either be set by the region argument or by HW_REGION_NAME.
-func GetRegion(d *schema.ResourceData, config *config.Config) string {
+func GetRegion(d *schema.ResourceData, cfg *config.Config) string {
 	if v, ok := d.GetOk("region"); ok {
 		return v.(string)
 	}
 
-	return config.Region
+	return cfg.Region
 }
 
 // GetEipIDbyAddress returns the EIP ID of address when success.
@@ -69,14 +68,14 @@ func GetEipIDbyAddress(client *golangsdk.ServiceClient, address, epsID string) (
 
 	allEips, err := eips.ExtractPublicIPs(pages)
 	if err != nil {
-		return "", fmtp.Errorf("Unable to retrieve eips: %s ", err)
+		return "", fmt.Errorf("unable to retrieve eips: %s ", err)
 	}
 
 	total := len(allEips)
 	if total == 0 {
-		return "", fmtp.Errorf("queried none results with %s", address)
+		return "", fmt.Errorf("queried none results with %s", address)
 	} else if total > 1 {
-		return "", fmtp.Errorf("queried more results with %s", address)
+		return "", fmt.Errorf("queried more results with %s", address)
 	}
 
 	return allEips[0].ID, nil
@@ -90,7 +89,7 @@ func CheckDeleted(d *schema.ResourceData, err error, msg string) error {
 		return nil
 	}
 
-	return fmtp.Errorf("%s: %s", msg, err)
+	return fmt.Errorf("%s: %s", msg, err)
 }
 
 // CheckDeletedDiag checks the error to see if it's a 404 (Not Found) and, if so,
@@ -118,14 +117,14 @@ func CheckDeletedDiag(d *schema.ResourceData, err error, msg string) diag.Diagno
 		}
 	}
 
-	return fmtp.DiagErrorf("%s: %s", msg, err)
+	return diag.Errorf("%s: %s", msg, err)
 }
 
 // UnsubscribePrePaidResource impl the action of unsubscribe resource
-func UnsubscribePrePaidResource(d *schema.ResourceData, config *config.Config, resourceIDs []string) error {
-	bssV2Client, err := config.BssV2Client(GetRegion(d, config))
+func UnsubscribePrePaidResource(d *schema.ResourceData, cfg *config.Config, resourceIDs []string) error {
+	bssV2Client, err := cfg.BssV2Client(GetRegion(d, cfg))
 	if err != nil {
-		return fmtp.Errorf("Error creating HuaweiCloud bss V2 client: %s", err)
+		return fmt.Errorf("error creating bss V2 client: %s", err)
 	}
 
 	unsubscribeOpts := orders.UnsubscribeOpts{
@@ -136,25 +135,25 @@ func UnsubscribePrePaidResource(d *schema.ResourceData, config *config.Config, r
 	return err
 }
 
-func CheckForRetryableError(err error) *resource.RetryError {
+func CheckForRetryableError(err error) *retry.RetryError {
 	switch errCode := err.(type) {
 	case golangsdk.ErrDefault500:
-		return resource.RetryableError(err)
+		return retry.RetryableError(err)
 	case golangsdk.ErrUnexpectedResponseCode:
 		switch errCode.Actual {
 		case 409, 503:
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		default:
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 	default:
-		return resource.NonRetryableError(err)
+		return retry.NonRetryableError(err)
 	}
 }
 
 func WaitOrderComplete(ctx context.Context, client *golangsdk.ServiceClient, orderId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"2", "3", "6"}, // 2: Pending refund 3: Processing; 6: Pending payment.
 		Target:       []string{"5"},           // 5: Completed.
 		Refresh:      refreshOrderStatusFunc(client, orderId),
@@ -169,7 +168,7 @@ func WaitOrderComplete(ctx context.Context, client *golangsdk.ServiceClient, ord
 	return nil
 }
 
-func refreshOrderStatusFunc(client *golangsdk.ServiceClient, orderId string) resource.StateRefreshFunc {
+func refreshOrderStatusFunc(client *golangsdk.ServiceClient, orderId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		r, err := orders.Get(client, orderId).Extract()
 		if err != nil {
@@ -184,7 +183,7 @@ func refreshOrderStatusFunc(client *golangsdk.ServiceClient, orderId string) res
 // resources may not be generated when the order is not completed.
 func WaitOrderResourceComplete(ctx context.Context, client *golangsdk.ServiceClient, orderId string,
 	timeout time.Duration) (string, error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"DONE"},
 		Refresh:      refreshOrderResourceStatusFunc(client, orderId),
@@ -201,7 +200,7 @@ func WaitOrderResourceComplete(ctx context.Context, client *golangsdk.ServiceCli
 	return r.ResourceId, nil
 }
 
-func refreshOrderResourceStatusFunc(client *golangsdk.ServiceClient, orderId string) resource.StateRefreshFunc {
+func refreshOrderResourceStatusFunc(client *golangsdk.ServiceClient, orderId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		if strings.TrimSpace(orderId) == "" {
 			return nil, "ERROR", fmt.Errorf("order id is empty")
@@ -226,7 +225,7 @@ func refreshOrderResourceStatusFunc(client *golangsdk.ServiceClient, orderId str
 // resources may not be generated when the order is not completed.
 func WaitOrderAllResourceComplete(ctx context.Context, client *golangsdk.ServiceClient, orderId string,
 	timeout time.Duration) (string, error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"DONE"},
 		Refresh:      refreshOrderAllResourceStatusFunc(client, orderId),
@@ -243,7 +242,7 @@ func WaitOrderAllResourceComplete(ctx context.Context, client *golangsdk.Service
 	return r.ResourceId, nil
 }
 
-func refreshOrderAllResourceStatusFunc(client *golangsdk.ServiceClient, orderId string) resource.StateRefreshFunc {
+func refreshOrderAllResourceStatusFunc(client *golangsdk.ServiceClient, orderId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		if strings.TrimSpace(orderId) == "" {
 			return nil, "ERROR", fmt.Errorf("order id is empty")
@@ -263,30 +262,9 @@ func refreshOrderAllResourceStatusFunc(client *golangsdk.ServiceClient, orderId 
 }
 
 func CaseInsensitiveFunc() schema.SchemaDiffSuppressFunc {
-	return func(k, old, new string, d *schema.ResourceData) bool {
-		return strings.EqualFold(old, new)
+	return func(_, oldVal, newVal string, _ *schema.ResourceData) bool {
+		return strings.EqualFold(oldVal, newVal)
 	}
-}
-
-// GetAutoPay is a method to return whether order is auto pay according to the user input.
-// auto_pay parameter inputs and returns:
-//
-//	false: false
-//	true, empty: true
-//
-// Before using this function, make sure the parameter behavior is auto pay (the default value is "true").
-func GetAutoPay(d *schema.ResourceData) string {
-	if val, ok := d.GetOk("auto_pay"); ok && val.(string) == "false" {
-		return "false"
-	}
-	return "true"
-}
-
-func UpdateAutoRenew(c *golangsdk.ServiceClient, enabled, resourceId string) error {
-	if enabled == "true" {
-		return resources.EnableAutoRenew(c, resourceId)
-	}
-	return resources.DisableAutoRenew(c, resourceId)
 }
 
 func HasFilledOpt(d *schema.ResourceData, param string) bool {
@@ -305,7 +283,7 @@ type RetryContextWithWaitForStateParam struct {
 	// The func that need to be retried
 	RetryFunc RetryFunc
 	// The wait func when the retry which returned by the retry func is true
-	WaitFunc resource.StateRefreshFunc
+	WaitFunc retry.StateRefreshFunc
 	// The target of the wait func
 	WaitTarget []string
 	// The pending of the wait func
@@ -323,13 +301,13 @@ type RetryContextWithWaitForStateParam struct {
 // if the retry of the return is true, the RetryFunc will be retried, and the WaitFunc will be called if it is not nil
 // if the retry of the return is false, the retry will be ended and the error of the retry func will be returned
 func RetryContextWithWaitForState(param *RetryContextWithWaitForStateParam) (interface{}, error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"retryable"},
 		Target:       []string{"success"},
 		Timeout:      param.Timeout,
 		PollInterval: param.PollInterval,
 		Refresh: func() (interface{}, string, error) {
-			res, retry, err := param.RetryFunc()
+			res, shouldRetry, err := param.RetryFunc()
 			if err == nil {
 				if res != nil {
 					return res, "success", nil
@@ -339,12 +317,12 @@ func RetryContextWithWaitForState(param *RetryContextWithWaitForStateParam) (int
 				return "", "success", nil
 			}
 
-			if !retry {
+			if !shouldRetry {
 				return nil, "quit", err
 			}
 
 			if param.WaitFunc != nil {
-				stateConf := &resource.StateChangeConf{
+				stateConf := &retry.StateChangeConf{
 					Target:       param.WaitTarget,
 					Pending:      param.WaitPending,
 					Refresh:      param.WaitFunc,
@@ -376,31 +354,7 @@ func GetEipsbyAddresses(client *golangsdk.ServiceClient, addresses []string, eps
 
 	allEips, err := eips.ExtractPublicIPs(pages)
 	if err != nil {
-		return nil, fmtp.Errorf("Unable to retrieve eips: %s ", err)
+		return nil, fmt.Errorf("unable to retrieve eips: %s ", err)
 	}
 	return allEips, nil
-}
-
-// GetResourceIDsByOrder returns resource IDs from an order.
-func GetResourceIDsByOrder(client *golangsdk.ServiceClient, orderId string, onlyMainResource int) ([]string, error) {
-	if strings.TrimSpace(orderId) == "" {
-		return nil, fmt.Errorf("order id is empty")
-	}
-	listOpts := resources.ListOpts{
-		OrderId:          orderId,
-		OnlyMainResource: onlyMainResource,
-	}
-	resp, err := resources.List(client, listOpts)
-	if err != nil {
-		return nil, fmt.Errorf("error getting order (%s) details: %s", orderId, err)
-	}
-	if resp == nil || resp.TotalCount < 1 {
-		return nil, fmt.Errorf("error getting order (%s) details: response empty", orderId)
-	}
-
-	rst := make([]string, len(resp.Resources))
-	for i, v := range resp.Resources {
-		rst[i] = v.ResourceId
-	}
-	return rst, nil
 }

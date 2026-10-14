@@ -329,11 +329,11 @@ func dataSourceCfwAttackLogsRead(_ context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error retrieving CFW attack logs: %s", err)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	var mErr *multierror.Error
 	mErr = multierror.Append(
@@ -444,7 +444,7 @@ func buildCfwAttackLogQueryParams(d *schema.ResourceData, cfg *config.Config) (s
 }
 
 func flattenListAttackLogs(resp []interface{}) []interface{} {
-	if resp == nil {
+	if len(resp) == 0 {
 		return nil
 	}
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -177,7 +177,7 @@ func resourceCacheRefreshCreate(ctx context.Context, d *schema.ResourceData, met
 
 func waitingForCacheCreateCompleted(ctx context.Context, client *golangsdk.ServiceClient, id string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -236,7 +236,7 @@ func GetCacheDetailById(client *golangsdk.ServiceClient, id string) (interface{}
 				Method:    "GET",
 				URL:       "/v1.0/cdn/historytasks/{history_tasks_id}/detail",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the cache detail (%s) does not exist", id)),
+				Body:      fmt.Appendf(nil, "the cache detail (%s) does not exist", id),
 			},
 		}
 	}

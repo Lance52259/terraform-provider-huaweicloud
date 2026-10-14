@@ -112,12 +112,12 @@ The following arguments are supported:
 
 * `subnet_id` - (Required, String, NonUpdatable) Specifies the network ID of VPC subnet to which the instance belongs.
 
-* `security_group_id` - (Optional, String, NonUpdatable) Specifies the security group ID to which the instance belongs.
+* `security_group_id` - (Optional, String) Specifies the security group ID to which the instance belongs.
   If the `port` parameter is specified, please ensure that the TCP ports in the inbound rule of security group
   includes the `100` ports starting with the database port.
   (For example, if the database port is `8,000`, the TCP port must include the range from `8,000` to `8,100`.)
 
-* `port` - (Optional, String, NonUpdatable) Specifies the port information. Defaults to `8,000`.
+* `port` - (Optional, String) Specifies the port information. Defaults to `8,000`.
   The valid values are as follows:
   + `2,378` to `2,380`
   + `4999` to `5,000`
@@ -131,12 +131,15 @@ The following arguments are supported:
 * `configuration_id` - (Optional, String) Specifies the parameter template ID.
   Changing this parameter will create a new resource.
 
-* `sharding_num` - (Optional, Int) Specifies the sharding number.  
+* `alias` - (Optional, String) Specifies the alias of the instance.
+
+* `sharding_num` - (Optional, Int) Specifies the sharding number.
   The valid value is range form `1` to `9`.
 
-* `coordinator_num` - (Optional, Int) Specifies the coordinator number.  
-  The valid value is range form `1` to `9`.
+* `coordinator_num` - (Optional, Int) Specifies the coordinator number.
+  The valid value is range from `1` to `9`.
   The value must not be greater than twice value of `sharding_num`.
+  When reduce the value, the delete nodes ids should be specified by `delete_coordinator_node_id_list`.
 
 * `replica_num` - (Optional, Int, NonUpdatable) The replica number. The valid values are `2` and `3`.
   Double replicas are only available for specific users and supports only instance versions are v1.3.0 or later.
@@ -172,6 +175,12 @@ The following arguments are supported:
 * `parameters` - (Optional, List) Specifies an array of one or more parameters to be set to the instance after launched.
   The [parameters](#parameters_struct) structure is documented below.
 
+* `auto_scaling` - (Optional, List) Specifies the instance storage autoscaling policy.
+  The [auto_scaling](#auto_scaling_struct) structure is documented below.
+
+* `kms_tde_switch` - (Optional, List) Specifies the enabled transparent data encryption.
+  The [kms_tde_switch](#kms_tde_switch_struct) structure is documented below.
+
 * `mysql_compatibility_port` - (Optional, String) Specifies the port for MySQL compatibility. Value range: **0** or
   **1024** to **39989**.
   + The following ports are used by the system and cannot be used: **2378**, **2379**, **2380**, **2400**, **4999**,
@@ -184,17 +193,40 @@ The following arguments are supported:
 * `advance_features` - (Optional, List) Specifies the advanced features.
   The [advance_features](#advance_features_struct) structure is documented below.
 
-* `charging_mode` - (Optional, String, NonUpdatable) Specifies the charging mode of opengauss instance.
-  The valid values are as follows:
+* `wdr_snapshot_status` - (Optional, String) Specifies the WDR snapshot status. Value options:
+  + **ON**: WDR snapshot is enabled.
+  + **OFF**: WDR snapshot is disabled.
+
+* `asp_status` - (Optional, String) Specifies the ASP generation status. Value options:
+  + **ON**: ASP generation is enabled.
+  + **OFF**: ASP generation is disabled.
+
+* `error_log_switch_status` - (Optional, String) Specifies whether error log collection is enabled. The value can be:
+  + **ON**: enabled
+  + **OFF**: disabled
+
+* `dn_node_deploy_mode` - (Optional, String) Specifies the DN node deployment model of a distributed instance. Value options:
+  + **primary_standby**: 1 primary + 2 standby
+  + **primary_standby_log**: 1 primary + 1 standby + 1 log instance
+
+* `delete_coordinator_node_id_list` - (Optional, List) Specifies the IDs of coordinator nodes to be deleted.
+  `coordinator_num` should be modified simultaneously when the value is modified.
+
+* `expansion_parameters` - (Optional, String) Specifies the key-value pair of the parameter name and value.
+  The parameter format is a JSON string.
+
+  -> This parameter is valid and available when the `ha.mode` is set to **enterprise**.
+
+* `charging_mode` - (Optional, String) Specifies the charging mode of GaussDB instance. The valid values are as follows:
   + **prePaid**: the yearly/monthly billing mode.
   + **postPaid**: the pay-per-use billing mode.
 
   Defaults to **postPaid**.
 
-* `period_unit` - (Optional, String, NonUpdatable) Specifies the charging period unit of opengauss instance.
+* `period_unit` - (Optional, String) Specifies the charging period unit of GaussDB instance.
   Valid values are **month** and **year**. This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
-* `period` - (Optional, Int, NonUpdatable) Specifies the charging period of opengauss instance.
+* `period` - (Optional, Int) Specifies the charging period of GaussDB instance.
   If `period_unit` is set to **month**, the value ranges from 1 to 9.
   If `period_unit` is set to **year**, the value ranges from 1 to 5.
   This parameter is mandatory if `charging_mode` is set to **prePaid**.
@@ -254,6 +286,29 @@ The `parameters` block supports:
 
 * `value` - (Required, String) Specifies the value of the parameter.
 
+<a name="auto_scaling_struct"></a>
+The `auto_scaling` block supports:
+
+* `switch_option` - (Required, Bool) Specifies whether to enable or disable storage autoscaling.
+
+* `limit_volume_size` - (Required, Int) Specifies the maximum storage that can be automatically scaled to.
+
+* `trigger_available_percent` - (Required, Int) Specifies Percentage of available storage. The storage will be
+  automatically scaled up if the available storage drops to or below the value of this parameter.
+
+* `step_size` - (Optional, Int) Specifies the scaling step when the storage is scaled by fixed size.
+
+* `step_percent` - (Optional, Int) Specifies the scaling step when the storage is scaled by percentage.
+
+<a name="kms_tde_switch_struct"></a>
+The `kms_tde_switch` block supports:
+
+* `kms_tde_key_id` - (Required, String) Specifies the id of the KMS master key.
+
+* `kms_project_name` - (Required, String) Specifies the name of a resource space.
+
+* `kms_tde_status` - (Required, String) Specifies the status of TDE.
+
 <a name="advance_features_struct"></a>
 The `advance_features` block supports:
 
@@ -283,19 +338,20 @@ In addition to all arguments above, the following attributes are exported:
 
 * `balance_status` - Indicates whether the host load is balanced due to a primary/standby switchover.
 
-* `error_log_switch_status` - Indicates whether error log collection is enabled. The value can be:
-  + **ON**: enabled
-  + **OFF**: disabled
-
 * `maintenance_window` - Indicates the maintenance window.
 
 * `nodes` - Indicates the instance nodes information. Structure is documented below.
+
+* `auto_scaling` - Indicates the instance storage autoscaling policy.
+  The [auto_scaling](#auto_scaling_attribute) structure is documented below.
 
 The `nodes` block contains:
 
 * `id` - Indicates the node ID.
 
 * `name` - Indicates the node name.
+
+* `component_names` - Indicates the component information on the node.
 
 * `role` - Indicates the node role.
   + **master**.
@@ -307,7 +363,18 @@ The `nodes` block contains:
 
 * `private_ip` - Indicates the private IP address of the node.
 
+* `data_ip` - Indicates the data IP address of the node.
+
 * `public_ip` - Indicates the EIP that has been bound.
+
+<a name="auto_scaling_attribute"></a>
+The `auto_scaling` block supports:
+
+* `min_volume_size` - Indicates the minimum storage that can be automatically scaled to.
+
+* `max_volume_size` - Indicates the maximum storage that the system can provide for the instance.
+
+* `percents` - Indicates the percentages of available storage that you can choose from.
 
 ## Timeouts
 
@@ -327,8 +394,9 @@ $ terraform import huaweicloud_gaussdb_opengauss_instance.test <id>
 
 Note that the imported state may not be identical to your resource definition, due to the attribute missing from the
 API response. The missing attributes include: `password`, `ha.0.mode`, `ha.0.instance_mode`, `configuration_id`,
-`disk_encryption_id`, `enable_force_switch`, `enable_single_float_ip`, `parameters`, `period_unit`, `period` and
-`auto_renew`. It is generally recommended running `terraform plan` after importing a GaussDB OpenGauss instance. You can
+`disk_encryption_id`, `enable_force_switch`, `enable_single_float_ip`, `parameters`, `alias`, `expansion_parameters`,
+`period_unit`, `period` and `auto_renew`.
+It is generally recommended running `terraform plan` after importing a GaussDB OpenGauss instance. You can
 then decide if changes should be applied to the GaussDB OpenGauss instance, or the resource definition should be updated
 to align with the GaussDB OpenGauss instance. Also you can ignore changes as below.
 
@@ -338,8 +406,8 @@ resource "huaweicloud_gaussdb_opengauss_instance" "test" {
 
   lifecycle {
     ignore_changes = [
-      password, configuration_id, disk_encryption_id, enable_force_switch, enable_single_float_ip, parameters, period_unit,
-      period, auto_renew,
+      password, configuration_id, disk_encryption_id, enable_force_switch, enable_single_float_ip, parameters, alias,
+      expansion_parameters, period_unit,  period, auto_renew,
     ]
   }
 }

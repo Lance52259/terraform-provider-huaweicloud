@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -278,14 +278,14 @@ func GetInstanceById(client *golangsdk.ServiceClient, instanceId string) (interf
 				Method:    "GET",
 				URL:       "/v1/{project_id}/instances/{instance_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the instance (%s) has been moved to the recycle bin", instanceId)),
+				Body:      fmt.Appendf(nil, "the instance (%s) has been moved to the recycle bin", instanceId),
 			},
 		}
 	}
 	return respBody, nil
 }
 
-func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) resource.StateRefreshFunc {
+func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetInstanceById(client, instanceId)
 		if err != nil {
@@ -349,7 +349,7 @@ func resourceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta in
 		log.Printf("[WARN] Unable to refresh the origin values: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, instanceId, []string{"RUNNING"}),
@@ -371,7 +371,8 @@ func orderSpecsBySpecsOrderOrigin(specs, specsOrigin []interface{}) []interface{
 	}
 
 	sortedSpecs := make([]interface{}, 0, len(specs))
-	specsCopy := specs
+	specsCopy := make([]interface{}, len(specs))
+	copy(specsCopy, specs)
 	for copyIndex, spec := range specsCopy {
 		specCode := utils.PathSearch("spec_code", spec, "").(string)
 		for originIndex, specOrigin := range specsOrigin {
@@ -382,6 +383,7 @@ func orderSpecsBySpecsOrderOrigin(specs, specsOrigin []interface{}) []interface{
 			// Retain additional specification configurations from the remote service and these will not be sorted.
 			specsCopy = append(specsCopy[:copyIndex], specsCopy[copyIndex+1:]...)
 			specsOrigin = append(specsOrigin[:originIndex], specsOrigin[originIndex+1:]...)
+			break
 		}
 	}
 	sortedSpecs = append(sortedSpecs, specsCopy...)
@@ -495,7 +497,7 @@ func updateInstanceSpecs(ctx context.Context, client *golangsdk.ServiceClient, d
 		return fmt.Errorf("error updating instance (%s) specs: %s", instanceId, err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      instanceStateRefreshFunc(client, d.Id(), []string{"RUNNING"}),
@@ -603,7 +605,7 @@ func resourceInstanceDelete(ctx context.Context, d *schema.ResourceData, meta in
 		return common.CheckDeletedDiag(d, err, "error deleting instance")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: instanceStateRefreshFunc(client, instanceId, nil),

@@ -2,16 +2,18 @@ package elb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
+
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
@@ -428,7 +430,7 @@ func resourceL7PolicyV3Create(ctx context.Context, d *schema.ResourceData, meta 
 	}
 	policyId := utils.PathSearch("l7policy.id", createARespBody, "").(string)
 	if policyId == "" {
-		return diag.Errorf("error creating ELB L7 policy: ID is not found in API response")
+		return diag.FromErr(errors.New("error creating ELB L7 policy: ID is not found in API response"))
 	}
 
 	d.SetId(policyId)
@@ -950,7 +952,7 @@ func resourceL7PolicyV3Delete(ctx context.Context, d *schema.ResourceData, meta 
 
 func waitForL7Policy(ctx context.Context, client *golangsdk.ServiceClient, id string, target string,
 	pending []string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{target},
 		Pending:      pending,
 		Refresh:      resourceL7PolicyRefreshFunc(client, id),
@@ -975,7 +977,7 @@ func waitForL7Policy(ctx context.Context, client *golangsdk.ServiceClient, id st
 	return nil
 }
 
-func resourceL7PolicyRefreshFunc(client *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func resourceL7PolicyRefreshFunc(client *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		policy, err := getL7Policy(client, id)
 		if err != nil {

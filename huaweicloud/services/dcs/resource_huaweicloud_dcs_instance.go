@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -19,6 +19,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -64,6 +65,7 @@ var (
 // @API DCS POST /v2/{project_id}/instances/{instance_id}/resize
 // @API DCS POST /v3/{project_id}/instances/{instance_id}/tags/action
 // @API DCS POST /v2/{project_id}/instances/{instance_id}/resources/subnet
+// @API DCS PUT /v2/{project_id}/instances/{instance_id}/available-zones
 // @API EPS POST /v1.0/enterprise-projects/{enterprise_project_id}/resources-migrat
 // @API DCS DELETE /v2/{project_id}/instances/{instance_id}
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
@@ -588,6 +590,7 @@ func autoScalingSchema() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceDcsInstancesCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1288,6 +1291,7 @@ func generateParametersMap(redisConfig []interface{}) map[string]interface{} {
 	return parametersMap
 }
 
+// nolint:gocyclo
 func resourceDcsInstancesUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1436,7 +1440,7 @@ func resourceDcsInstancesUpdate(ctx context.Context, d *schema.ResourceData, met
 		if err != nil {
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the instance (%s): %s", d.Id(), err)
 		}
 	}
@@ -1867,7 +1871,10 @@ func updateTransparentClientIpEnable(ctx context.Context, d *schema.ResourceData
 }
 
 func buildUpdateTransparentClientIpEnableBodyParams(d *schema.ResourceData) map[string]interface{} {
-	transparentClientIpEnable, _ := strconv.ParseBool(d.Get("transparent_client_ip_enable").(string))
+	transparentClientIpEnable, err := strconv.ParseBool(d.Get("transparent_client_ip_enable").(string))
+	if err != nil {
+		log.Printf("[WARN] error parsing 'transparent_client_ip_enable' field to Boolean: %s", err)
+	}
 	bodyParams := map[string]interface{}{
 		"transparent_client_ip_enable": transparentClientIpEnable,
 	}
@@ -1989,8 +1996,8 @@ func resourceDcsInstancesDelete(ctx context.Context, d *schema.ResourceData, met
 	if d.Get("charging_mode").(string) == chargeModePrePaid {
 		retryFunc := func() (interface{}, bool, error) {
 			err = common.UnsubscribePrePaidResource(d, cfg, []string{d.Id()})
-			retry, err := handleOperationError(err)
-			return nil, retry, err
+			shouldRetry, err := handleOperationError(err)
+			return nil, shouldRetry, err
 		}
 		_, err = common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 			Ctx:          ctx,
@@ -2012,7 +2019,7 @@ func resourceDcsInstancesDelete(ctx context.Context, d *schema.ResourceData, met
 	}
 
 	// Waiting to delete success
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING", "PENDING"},
 		Target:       []string{"DELETED"},
 		Refresh:      refreshDcsInstanceState(client, d.Id()),
@@ -2041,8 +2048,8 @@ func deleteDcsInstance(ctx context.Context, d *schema.ResourceData, client *gola
 
 	retryFunc := func() (interface{}, bool, error) {
 		_, err := client.Request("DELETE", deletePath, &deleteOpt)
-		retry, err := handleOperationError(err)
-		return nil, retry, err
+		shouldRetry, err := handleOperationError(err)
+		return nil, shouldRetry, err
 	}
 	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
 		Ctx:          ctx,

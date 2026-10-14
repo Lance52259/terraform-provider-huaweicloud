@@ -175,11 +175,11 @@ func resourceDisasterRecoveryTasksRead(_ context.Context, d *schema.ResourceData
 		return diag.Errorf("error parsing DWS disaster recoveries: %s", err)
 	}
 
-	uuid, err := uuid.GenerateUUID()
+	randomUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		return diag.Errorf("unable to generate ID: %s", err)
 	}
-	d.SetId(uuid)
+	d.SetId(randomUUID)
 
 	disasterList := utils.PathSearch("disaster_recovery", respBody, make([]interface{}, 0)).([]interface{})
 	mErr := multierror.Append(
@@ -191,7 +191,7 @@ func resourceDisasterRecoveryTasksRead(_ context.Context, d *schema.ResourceData
 }
 
 func flattenDisasterRecoveryTasks(resp []interface{}) []interface{} {
-	if resp == nil {
+	if len(resp) == 0 {
 		return nil
 	}
 	rst := make([]interface{}, 0, len(resp))

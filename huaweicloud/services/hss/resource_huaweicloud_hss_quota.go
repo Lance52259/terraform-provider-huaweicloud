@@ -14,13 +14,14 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -319,7 +320,7 @@ func resourceQuotaUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
 
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), quotaId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), quotaId); err != nil {
 			return diag.Errorf("error updating the auto_renew of the HSS quota (%s): %s", quotaId, err)
 		}
 	}
@@ -420,7 +421,7 @@ func resourceQuotaDelete(ctx context.Context, d *schema.ResourceData, meta inter
 
 func waitingForQuotaDeleted(ctx context.Context, client *golangsdk.ServiceClient, epsId, quotaId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

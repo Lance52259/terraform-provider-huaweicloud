@@ -1375,7 +1375,10 @@ func resourceFunctionCreate(ctx context.Context, d *schema.ResourceData, meta in
 	if strNum, ok := d.GetOk("max_instance_num"); ok {
 		// If the maximum number of instances is omitted (after type conversion, the value is zero), means this feature
 		// is disabled.
-		maxInstanceNum, _ := strconv.Atoi(strNum.(string))
+		maxInstanceNum, err := strconv.Atoi(strNum.(string))
+		if err != nil {
+			log.Printf("[WARN] failed to parse max instance num: %s", err)
+		}
 		err = updateFunctionMaxInstanceNum(client, funcUrnWithoutVersion, maxInstanceNum)
 		if err != nil {
 			return diag.FromErr(err)
@@ -1458,6 +1461,7 @@ func orderMountsByMountsOrderOrigin(mounts, mountsOrderOrigin []interface{}) []i
 			sortedMounts = append(sortedMounts, mountsCopy[index])
 			// Remove the processed mount configuration from the remote mounts array.
 			mountsCopy = append(mountsCopy[:index], mountsCopy[index+1:]...)
+			break
 		}
 	}
 
@@ -1841,7 +1845,7 @@ func resourceFunctionRead(_ context.Context, d *schema.ResourceData, meta interf
 	versionConfig, err := flattenFunctionVersions(client, funcUrnWithoutVersion)
 	if err != nil {
 		// Not all regions support the version related API calls.
-		log.Printf("[ERROR] Unable to parsing the function versions: %s", err)
+		log.Printf("[WARN] Unable to parsing the function versions: %s", err)
 	}
 	mErr = multierror.Append(mErr, d.Set("versions", versionConfig))
 
@@ -1936,7 +1940,10 @@ func resourceFunctionUpdate(ctx context.Context, d *schema.ResourceData, meta in
 	if d.HasChange("max_instance_num") {
 		// If the maximum number of instances is omitted (after type conversion, the value is zero), means this feature
 		// is disabled.
-		maxInstanceNum, _ := strconv.Atoi(d.Get("max_instance_num").(string))
+		maxInstanceNum, err := strconv.Atoi(d.Get("max_instance_num").(string))
+		if err != nil {
+			log.Printf("[WARN] failed to parse 'max_instance_num': %s", err)
+		}
 		err = updateFunctionMaxInstanceNum(client, funcUrnWithoutVersion, maxInstanceNum)
 		if err != nil {
 			return diag.FromErr(err)

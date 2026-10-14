@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -931,19 +931,19 @@ func buildConfigurationStructure(configs []interface{}) (instances.Configuration
 		return instances.Configuration{}, nil
 	}
 
-	config := configs[0].(map[string]interface{})
-	probe, err := buildProbeStructure(config["probe"].([]interface{}))
+	cfg := configs[0].(map[string]interface{})
+	probe, err := buildProbeStructure(cfg["probe"].([]interface{}))
 	if err != nil {
 		return instances.Configuration{}, err
 	}
 
 	return instances.Configuration{
-		EnvVariables:          buildEnvVariables(config["env_variable"].(*schema.Set)),
-		Storages:              buildStoragesList(config["storage"].(*schema.Set)),
-		Strategy:              buildStrategyStructure(config["strategy"].([]interface{})),
-		Lifecycle:             buildLifecycleStructure(config["lifecycle"].([]interface{})),
-		LogCollectionPolicies: buildLogCollectionPoliciesStructure(config["log_collection_policy"].(*schema.Set)),
-		Scheduler:             buildSchedulerStructure(config["scheduler"].([]interface{})),
+		EnvVariables:          buildEnvVariables(cfg["env_variable"].(*schema.Set)),
+		Storages:              buildStoragesList(cfg["storage"].(*schema.Set)),
+		Strategy:              buildStrategyStructure(cfg["strategy"].([]interface{})),
+		Lifecycle:             buildLifecycleStructure(cfg["lifecycle"].([]interface{})),
+		LogCollectionPolicies: buildLogCollectionPoliciesStructure(cfg["log_collection_policy"].(*schema.Set)),
+		Scheduler:             buildSchedulerStructure(cfg["scheduler"].([]interface{})),
 		Probe:                 probe,
 	}, nil
 }
@@ -994,8 +994,8 @@ func buildInstanceCreateOpts(d *schema.ResourceData) (instances.CreateOpts, erro
 }
 
 func resourceComponentInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	client, err := config.ServiceStageV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	client, err := cfg.ServiceStageV2Client(cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating ServiceStage v2 client: %s", err)
 	}
@@ -1016,7 +1016,7 @@ func resourceComponentInstanceCreate(ctx context.Context, d *schema.ResourceData
 	d.SetId(resp.InstanceId)
 
 	log.Printf("[DEBUG] Waiting for the component instance to become running, the instance ID is %s.", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      componentInstanceRefreshFunc(client, resp.JobId),
@@ -1089,7 +1089,10 @@ func flattenReferResources(resources []instances.ReferResource) (result []map[st
 		params := make(map[string]interface{})
 		for k, v := range val.Parameters {
 			if _, ok := v.([]interface{}); ok {
-				jsonByte, _ := json.Marshal(v.([]interface{}))
+				jsonByte, err := json.Marshal(v.([]interface{}))
+				if err != nil {
+					log.Printf("[ERROR] error marshaling component instance value: %s", err)
+				}
 				params[k] = string(jsonByte)
 				continue
 			}
@@ -1415,9 +1418,9 @@ func flattenExternalAccesses(accesses []instances.ExternalAccessResp) []map[stri
 }
 
 func resourceComponentInstanceRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.ServiceStageV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ServiceStageV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating ServiceStage v2 client: %s", err)
 	}
@@ -1474,9 +1477,9 @@ func buildInstanceUpdateOpts(d *schema.ResourceData) (instances.UpdateOpts, erro
 }
 
 func resourceComponentInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.ServiceStageV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ServiceStageV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating ServiceStage v2 client: %s", err)
 	}
@@ -1495,7 +1498,7 @@ func resourceComponentInstanceUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	log.Printf("[DEBUG] Waiting for the component instance to become running, the instance ID is %s.", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      componentInstanceRefreshFunc(client, resp.JobId),
@@ -1513,9 +1516,9 @@ func resourceComponentInstanceUpdate(ctx context.Context, d *schema.ResourceData
 }
 
 func resourceComponentInstanceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.ServiceStageV2Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ServiceStageV2Client(region)
 	if err != nil {
 		return diag.Errorf("error creating ServiceStage v2 client: %s", err)
 	}
@@ -1528,7 +1531,7 @@ func resourceComponentInstanceDelete(ctx context.Context, d *schema.ResourceData
 	}
 
 	log.Printf("[DEBUG] Waiting for the component instance to become deleted, the instance ID is %s.", d.Id())
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING"},
 		Target:       []string{"SUCCEEDED"},
 		Refresh:      componentInstanceRefreshFunc(client, resp.JobId),
@@ -1545,7 +1548,7 @@ func resourceComponentInstanceDelete(ctx context.Context, d *schema.ResourceData
 	return nil
 }
 
-func componentInstanceRefreshFunc(c *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func componentInstanceRefreshFunc(c *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		opt := jobs.ListOpts{
 			Limit: 50,

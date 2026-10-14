@@ -1,6 +1,9 @@
 package deprecated
 
 import (
+	"fmt"
+	"log"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -12,8 +15,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func ResourceVBSBackupPolicyV2() *schema.Resource {
@@ -117,23 +118,23 @@ func ResourceVBSBackupPolicyV2() *schema.Resource {
 }
 
 func resourceVBSBackupPolicyV2Create(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 
 	if err != nil {
-		return fmtp.Errorf("Error creating Huaweicloud VBS client: %s", err)
+		return fmt.Errorf("error creating VBS client: %s", err)
 	}
 
 	_, isExist1 := d.GetOk("frequency")
 	_, isExist2 := d.GetOk("week_frequency")
 	if !isExist1 && !isExist2 {
-		return fmtp.Errorf("either frequency or week_frequency must be specified")
+		return fmt.Errorf("either frequency or week_frequency must be specified")
 	}
 
 	_, isExist1 = d.GetOk("rentention_num")
 	_, isExist2 = d.GetOk("rentention_day")
 	if !isExist1 && !isExist2 {
-		return fmtp.Errorf("either rentention_num or rentention_day must be specified")
+		return fmt.Errorf("either rentention_num or rentention_day must be specified")
 	}
 
 	weeks, err := buildWeekFrequencyResource(d)
@@ -158,7 +159,7 @@ func resourceVBSBackupPolicyV2Create(d *schema.ResourceData, meta interface{}) e
 	create, err := policies.Create(vbsClient, createOpts).Extract()
 
 	if err != nil {
-		return fmtp.Errorf("Error creating Huaweicloud Backup Policy: %s", err)
+		return fmt.Errorf("error creating backup policy: %s", err)
 	}
 	d.SetId(create.ID)
 
@@ -172,35 +173,33 @@ func resourceVBSBackupPolicyV2Create(d *schema.ResourceData, meta interface{}) e
 
 		_, err := policies.Associate(vbsClient, opts).ExtractResource()
 		if err != nil {
-			return fmtp.Errorf("Error associate volumes to VBS backup policy %s: %s",
+			return fmt.Errorf("error associate volumes to VBS backup policy %s: %s",
 				d.Id(), err)
 		}
 	}
 
 	return resourceVBSBackupPolicyV2Read(d, meta)
-
 }
 
 func resourceVBSBackupPolicyV2Read(d *schema.ResourceData, meta interface{}) error {
-
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating Huaweicloud VBS client: %s", err)
+		return fmt.Errorf("error creating VBS client: %s", err)
 	}
 
 	PolicyOpts := policies.ListOpts{ID: d.Id()}
-	policies, err := policies.List(vbsClient, PolicyOpts)
+	policyList, err := policies.List(vbsClient, PolicyOpts)
 	if err != nil {
 		if _, ok := err.(golangsdk.ErrDefault404); ok {
 			d.SetId("")
 			return nil
 		}
 
-		return fmtp.Errorf("Error retrieving Huaweicloud Backup Policy: %s", err)
+		return fmt.Errorf("error retrieving backup policy: %s", err)
 	}
 
-	n := policies[0]
+	n := policyList[0]
 
 	d.Set("name", n.Name)
 	d.Set("start_time", n.ScheduledPolicy.StartTime)
@@ -212,16 +211,16 @@ func resourceVBSBackupPolicyV2Read(d *schema.ResourceData, meta interface{}) err
 	d.Set("status", n.ScheduledPolicy.Status)
 	d.Set("policy_resource_count", n.ResourceCount)
 
-	tags, err := tags.Get(vbsClient, d.Id()).Extract()
+	resourceTags, err := tags.Get(vbsClient, d.Id()).Extract()
 
 	if err != nil {
 		if _, ok := err.(golangsdk.ErrDefault404); ok {
 			return nil
 		}
-		return fmtp.Errorf("Error retrieving Huaweicloud Backup Policy Tags: %s", err)
+		return fmt.Errorf("error retrieving backup policy tags: %s", err)
 	}
 	var tagList []map[string]interface{}
-	for _, v := range tags.Tags {
+	for _, v := range resourceTags.Tags {
 		tag := make(map[string]interface{})
 		tag["key"] = v.Key
 		tag["value"] = v.Value
@@ -229,28 +228,29 @@ func resourceVBSBackupPolicyV2Read(d *schema.ResourceData, meta interface{}) err
 		tagList = append(tagList, tag)
 	}
 	if err := d.Set("tags", tagList); err != nil {
-		return fmtp.Errorf("[DEBUG] Error saving tags to state for Huaweicloud backup policy (%s): %s", d.Id(), err)
+		return fmt.Errorf("error saving tags to state for backup policy (%s): %s", d.Id(), err)
 	}
 	return nil
 }
 
+// nolint:gocyclo
 func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error updating Huaweicloud VBS client: %s", err)
+		return fmt.Errorf("error updating VBS client: %s", err)
 	}
 
 	_, isExist1 := d.GetOk("frequency")
 	_, isExist2 := d.GetOk("week_frequency")
 	if !isExist1 && !isExist2 {
-		return fmtp.Errorf("either frequency or week_frequency must be specified")
+		return fmt.Errorf("either frequency or week_frequency must be specified")
 	}
 
 	_, isExist1 = d.GetOk("rentention_num")
 	_, isExist2 = d.GetOk("rentention_day")
 	if !isExist1 && !isExist2 {
-		return fmtp.Errorf("either rentention_num or rentention_day must be specified")
+		return fmt.Errorf("either rentention_num or rentention_day must be specified")
 	}
 
 	frequency := d.Get("frequency").(int)
@@ -266,7 +266,7 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 		updateOpts.ScheduledPolicy.WeekFrequency = weeks
 	}
 
-	//lintignore:R019
+	// lintignore:R019
 	if d.HasChanges("name", "start_time", "retain_first_backup", "rentention_num",
 		"rentention_day", "status", "frequency", "week_frequency") {
 		if d.HasChange("name") {
@@ -290,7 +290,7 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 
 		_, err = policies.Update(vbsClient, d.Id(), updateOpts).Extract()
 		if err != nil {
-			return fmtp.Errorf("Error updating Huaweicloud backup policy: %s", err)
+			return fmt.Errorf("error updating backup policy: %s", err)
 		}
 	}
 	if d.HasChange("tags") {
@@ -298,20 +298,20 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 		deleteopts := tags.BatchOpts{Action: tags.ActionDelete, Tags: oldTags.Tags}
 		deleteTags := tags.BatchAction(vbsClient, d.Id(), deleteopts)
 		if deleteTags.Err != nil {
-			return fmtp.Errorf("Error updating Huaweicloud backup policy tags: %s", deleteTags.Err)
+			return fmt.Errorf("error updating backup policy tags: %s", deleteTags.Err)
 		}
 
 		createTags := tags.BatchAction(vbsClient, d.Id(), tags.BatchOpts{Action: tags.ActionCreate, Tags: resourceVBSUpdateTagsV2(d)})
 		if createTags.Err != nil {
-			return fmtp.Errorf("Error updating Huaweicloud backup policy tags: %s", createTags.Err)
+			return fmt.Errorf("error updating backup policy tags: %s", createTags.Err)
 		}
 	}
 
 	if d.HasChange("resources") {
-		old, new := d.GetChange("resources")
+		oldVal, newVal := d.GetChange("resources")
 
 		// disassociate old volumes from backup policy
-		removeResources := buildDisassociateResource(old.([]interface{}))
+		removeResources := buildDisassociateResource(oldVal.([]interface{}))
 		if len(removeResources) > 0 {
 			opts := policies.DisassociateOpts{
 				Resources: removeResources,
@@ -319,13 +319,13 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 
 			_, err := policies.Disassociate(vbsClient, d.Id(), opts).ExtractResource()
 			if err != nil {
-				return fmtp.Errorf("Error disassociate volumes from VBS backup policy %s: %s",
+				return fmt.Errorf("error disassociate volumes from VBS backup policy %s: %s",
 					d.Id(), err)
 			}
 		}
 
 		// associate new volumes to backup policy
-		addResources := buildAssociateResource(new.([]interface{}))
+		addResources := buildAssociateResource(newVal.([]interface{}))
 		if len(addResources) > 0 {
 			opts := policies.AssociateOpts{
 				PolicyID:  d.Id(),
@@ -334,7 +334,7 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 
 			_, err := policies.Associate(vbsClient, opts).ExtractResource()
 			if err != nil {
-				return fmtp.Errorf("Error associate volumes to VBS backup policy %s: %s",
+				return fmt.Errorf("error associate volumes to VBS backup policy %s: %s",
 					d.Id(), err)
 			}
 		}
@@ -344,22 +344,21 @@ func resourceVBSBackupPolicyV2Update(d *schema.ResourceData, meta interface{}) e
 }
 
 func resourceVBSBackupPolicyV2Delete(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	vbsClient, err := config.VbsV2Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	vbsClient, err := cfg.VbsV2Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating Huaweicloud VBS client: %s", err)
+		return fmt.Errorf("error creating VBS client: %s", err)
 	}
 
-	delete := policies.Delete(vbsClient, d.Id())
-	if delete.Err != nil {
+	respBody := policies.Delete(vbsClient, d.Id())
+	if respBody.Err != nil {
 		if _, ok := err.(golangsdk.ErrDefault404); ok {
-			logp.Printf("[INFO] Successfully deleted Huaweicloud VBS Backup Policy %s", d.Id())
-
+			log.Printf("[INFO] Successfully deleted VBS Backup Policy %s", d.Id())
 		}
 		if _, ok := err.(golangsdk.ErrDefault409); ok {
-			logp.Printf("[INFO] Error deleting Huaweicloud VBS Backup Policy %s", d.Id())
+			log.Printf("[INFO] Error deleting VBS Backup Policy %s", d.Id())
 		}
-		logp.Printf("[INFO] Successfully deleted Huaweicloud VBS Backup Policy %s", d.Id())
+		log.Printf("[INFO] Successfully deleted VBS Backup Policy %s", d.Id())
 	}
 
 	d.SetId("")
@@ -368,15 +367,15 @@ func resourceVBSBackupPolicyV2Delete(d *schema.ResourceData, meta interface{}) e
 
 func resourceVBSTagsV2(d *schema.ResourceData) []policies.Tag {
 	rawTags := d.Get("tags").(*schema.Set).List()
-	tags := make([]policies.Tag, len(rawTags))
+	tagList := make([]policies.Tag, len(rawTags))
 	for i, raw := range rawTags {
 		rawMap := raw.(map[string]interface{})
-		tags[i] = policies.Tag{
+		tagList[i] = policies.Tag{
 			Key:   rawMap["key"].(string),
 			Value: rawMap["value"].(string),
 		}
 	}
-	return tags
+	return tagList
 }
 
 func resourceVBSUpdateTagsV2(d *schema.ResourceData) []tags.Tag {
@@ -419,19 +418,12 @@ func buildWeekFrequencyResource(d *schema.ResourceData) ([]string, error) {
 
 	weekRaws := d.Get("week_frequency").([]interface{})
 	for _, wf := range weekRaws {
-		found := false
-		for _, value := range validateList {
-			if wf.(string) == value {
-				found = true
-				break
-			}
-		}
-
-		if found {
-			weeks = append(weeks, wf.(string))
+		week := wf.(string)
+		if slices.Contains(validateList, week) {
+			weeks = append(weeks, week)
 		} else {
-			return nil, fmtp.Errorf("expected item of week_frequency to be one of %v, got %s",
-				validateList, wf.(string))
+			return nil, fmt.Errorf("expected item of week_frequency to be one of %v, got %s",
+				validateList, week)
 		}
 	}
 	return weeks, nil

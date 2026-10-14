@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -21,6 +21,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -491,7 +492,7 @@ func resourceLoadBalancerCopyUpdate(ctx context.Context, d *schema.ResourceData,
 			return diag.FromErr(err)
 		}
 	} else if d.HasChange("auto_renew") {
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the load-balancer (%s): %s", d.Id(), err)
 		}
 	}
@@ -665,11 +666,17 @@ func buildUpdateLoadBalancerCopyParamsBodyParams(d *schema.ResourceData) map[str
 		params["ipv6_vip_address"] = d.Get("ipv6_address")
 	}
 	if d.HasChange("cross_vpc_backend") {
-		crossVpcBackend, _ := strconv.ParseBool(d.Get("cross_vpc_backend").(string))
+		crossVpcBackend, err := strconv.ParseBool(d.Get("cross_vpc_backend").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'cross_vpc_backend' field to Boolean: %s", err)
+		}
 		params["ip_target_enable"] = crossVpcBackend
 	}
 	if d.HasChange("deletion_protection_enable") {
-		deletionProtectionEnable, _ := strconv.ParseBool(d.Get("deletion_protection_enable").(string))
+		deletionProtectionEnable, err := strconv.ParseBool(d.Get("deletion_protection_enable").(string))
+		if err != nil {
+			log.Printf("[WARN] error parsing 'deletion_protection_enable' field to Boolean: %s", err)
+		}
 		params["deletion_protection_enable"] = deletionProtectionEnable
 	}
 	if d.Get("loadbalancer_type") != "gateway" || d.HasChange("ipv4_subnet_id") {
@@ -833,7 +840,7 @@ func deleteLoadBalancerForce(client *golangsdk.ServiceClient, id string) error {
 }
 
 func waitForLoadBalancer(ctx context.Context, client *golangsdk.ServiceClient, id, target string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Target:       []string{target},
 		Refresh:      resourceLoadBalancerRefreshFunc(client, id),
 		Timeout:      timeout,
@@ -845,7 +852,7 @@ func waitForLoadBalancer(ctx context.Context, client *golangsdk.ServiceClient, i
 	return nil
 }
 
-func resourceLoadBalancerRefreshFunc(client *golangsdk.ServiceClient, id string) resource.StateRefreshFunc {
+func resourceLoadBalancerRefreshFunc(client *golangsdk.ServiceClient, id string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getRespBody, err := getLoadBalancer(client, id)
 		if err != nil {
@@ -881,7 +888,7 @@ func getLoadBalancer(client *golangsdk.ServiceClient, id string) (interface{}, e
 }
 
 func checkLoadBalancerJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING"},
 		Target:       []string{"COMPLETE", "SUCCESS"},
 		Refresh:      loadBalancerJobStatusRefreshFunc(client, jobID),
@@ -894,7 +901,7 @@ func checkLoadBalancerJobFinish(ctx context.Context, client *golangsdk.ServiceCl
 	return nil
 }
 
-func loadBalancerJobStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func loadBalancerJobStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			httpUrl = "v3/{project_id}/elb/jobs/{job_id}"

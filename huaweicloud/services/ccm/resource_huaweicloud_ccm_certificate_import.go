@@ -51,30 +51,35 @@ func ResourceCertificateImport() *schema.Resource {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
+				Sensitive:        true,
 				DiffSuppressFunc: utils.SuppressNewLineDiffs,
 			},
 			"certificate": {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
+				Sensitive:        true,
 				DiffSuppressFunc: utils.SuppressNewLineDiffs,
 			},
 			"certificate_chain": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
+				Sensitive:        true,
 				DiffSuppressFunc: utils.SuppressNewLineDiffs,
 			},
 			"enc_certificate": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
+				Sensitive:        true,
 				DiffSuppressFunc: utils.SuppressNewLineDiffs,
 			},
 			"enc_private_key": {
 				Type:             schema.TypeString,
 				Optional:         true,
 				ForceNew:         true,
+				Sensitive:        true,
 				DiffSuppressFunc: utils.SuppressNewLineDiffs,
 			},
 			"target": {
@@ -279,7 +284,10 @@ func resourceCertificateImportUpdate(ctx context.Context, d *schema.ResourceData
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	oldPushCert, _ := parsePushCertificateToMap(oldVal.([]interface{}))
+	oldPushCert, err := parsePushCertificateToMap(oldVal.([]interface{}))
+	if err != nil {
+		log.Printf("[ERROR] error parsing old push certificate: %s", err)
+	}
 
 	// extract the new push service
 	pushOptArrays, err := buildUpdatePushOpts(newPushCert, oldPushCert)

@@ -14,7 +14,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -127,21 +127,21 @@ func BackupBackupDatabaseSchema() *schema.Resource {
 }
 
 func resourceBackupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// createBackup: create a RDS backup.
 	var (
 		createBackupHttpUrl = "v3/{project_id}/backups"
 		createBackupProduct = "rds"
 	)
-	createBackupClient, err := config.NewServiceClient(createBackupProduct, region)
+	createBackupClient, err := cfg.NewServiceClient(createBackupProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Backup Client: %s", err)
 	}
 
 	createBackupPath := createBackupClient.Endpoint + createBackupHttpUrl
-	createBackupPath = strings.Replace(createBackupPath, "{project_id}", createBackupClient.ProjectID, -1)
+	createBackupPath = strings.ReplaceAll(createBackupPath, "{project_id}", createBackupClient.ProjectID)
 
 	createBackupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -149,16 +149,16 @@ func resourceBackupCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			200,
 		},
 	}
-	createBackupOpt.JSONBody = utils.RemoveNil(buildCreateBackupBodyParams(d, config))
+	createBackupOpt.JSONBody = utils.RemoveNil(buildCreateBackupBodyParams(d))
 	var createBackupResp *http.Response
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutCreate), func() *retry.RetryError {
 		createBackupResp, err = createBackupClient.Request("POST", createBackupPath, &createBackupOpt)
 		retryable, err := handleMultiOperationsError(err)
 		if retryable {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
 		if err != nil {
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 		return nil
 	})
@@ -184,7 +184,7 @@ func resourceBackupCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	return resourceBackupRead(ctx, d, meta)
 }
 
-func buildCreateBackupBodyParams(d *schema.ResourceData, config *config.Config) map[string]interface{} {
+func buildCreateBackupBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"name":        utils.ValueIgnoreEmpty(d.Get("name")),
 		"instance_id": utils.ValueIgnoreEmpty(d.Get("instance_id")),
@@ -226,27 +226,27 @@ func buildCreateBackupWaitingQueryParams(d *schema.ResourceData) string {
 }
 
 func createBackupWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// createBackupWaiting: missing operation notes
 			var (
 				createBackupWaitingHttpUrl = "v3/{project_id}/backups"
 				createBackupWaitingProduct = "rds"
 			)
-			createBackupWaitingClient, err := config.NewServiceClient(createBackupWaitingProduct, region)
+			createBackupWaitingClient, err := cfg.NewServiceClient(createBackupWaitingProduct, region)
 			if err != nil {
 				return nil, "ERROR", fmt.Errorf("error creating Backup Client: %s", err)
 			}
 
 			createBackupWaitingPath := createBackupWaitingClient.Endpoint + createBackupWaitingHttpUrl
-			createBackupWaitingPath = strings.Replace(createBackupWaitingPath, "{project_id}", createBackupWaitingClient.ProjectID, -1)
+			createBackupWaitingPath = strings.ReplaceAll(createBackupWaitingPath, "{project_id}", createBackupWaitingClient.ProjectID)
 
 			createBackupWaitingqueryParams := buildCreateBackupWaitingQueryParams(d)
-			createBackupWaitingPath = createBackupWaitingPath + createBackupWaitingqueryParams
+			createBackupWaitingPath += createBackupWaitingqueryParams
 
 			createBackupWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -268,15 +268,14 @@ func createBackupWaitingForStateCompleted(ctx context.Context, d *schema.Resourc
 				return nil, "ERROR", fmt.Errorf("error parse %s from response body", `backups[0].status`)
 			}
 
-			if utils.StrSliceContains(strings.Split(`FAILED`, ","), status) {
+			switch status {
+			case "FAILED":
 				return createBackupWaitingRespBody, status, nil
-			}
-
-			if utils.StrSliceContains(strings.Split(`COMPLETED`, ","), status) {
+			case "COMPLETED":
 				return createBackupWaitingRespBody, "COMPLETED", nil
+			default:
+				return createBackupWaitingRespBody, "PENDING", nil
 			}
-
-			return createBackupWaitingRespBody, "PENDING", nil
 		},
 		Timeout:      t,
 		Delay:        30 * time.Second,
@@ -286,9 +285,9 @@ func createBackupWaitingForStateCompleted(ctx context.Context, d *schema.Resourc
 	return err
 }
 
-func resourceBackupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+func resourceBackupRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	var mErr *multierror.Error
 
@@ -297,16 +296,16 @@ func resourceBackupRead(ctx context.Context, d *schema.ResourceData, meta interf
 		getBackupHttpUrl = "v3/{project_id}/backups"
 		getBackupProduct = "rds"
 	)
-	getBackupClient, err := config.NewServiceClient(getBackupProduct, region)
+	getBackupClient, err := cfg.NewServiceClient(getBackupProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Backup Client: %s", err)
 	}
 
 	getBackupPath := getBackupClient.Endpoint + getBackupHttpUrl
-	getBackupPath = strings.Replace(getBackupPath, "{project_id}", getBackupClient.ProjectID, -1)
+	getBackupPath = strings.ReplaceAll(getBackupPath, "{project_id}", getBackupClient.ProjectID)
 
 	getBackupqueryParams := buildGetBackupQueryParams(d)
-	getBackupPath = getBackupPath + getBackupqueryParams
+	getBackupPath += getBackupqueryParams
 
 	getBackupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -376,22 +375,22 @@ func resourceBackupUpdate(_ context.Context, _ *schema.ResourceData, _ interface
 }
 
 func resourceBackupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
 
 	// deleteBackup: missing operation notes
 	var (
 		deleteBackupHttpUrl = "v3/{project_id}/backups/{id}"
 		deleteBackupProduct = "rds"
 	)
-	deleteBackupClient, err := config.NewServiceClient(deleteBackupProduct, region)
+	deleteBackupClient, err := cfg.NewServiceClient(deleteBackupProduct, region)
 	if err != nil {
 		return diag.Errorf("error creating Backup Client: %s", err)
 	}
 
 	deleteBackupPath := deleteBackupClient.Endpoint + deleteBackupHttpUrl
-	deleteBackupPath = strings.Replace(deleteBackupPath, "{project_id}", deleteBackupClient.ProjectID, -1)
-	deleteBackupPath = strings.Replace(deleteBackupPath, "{id}", d.Id(), -1)
+	deleteBackupPath = strings.ReplaceAll(deleteBackupPath, "{project_id}", deleteBackupClient.ProjectID)
+	deleteBackupPath = strings.ReplaceAll(deleteBackupPath, "{id}", d.Id())
 
 	deleteBackupOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
@@ -399,14 +398,14 @@ func resourceBackupDelete(ctx context.Context, d *schema.ResourceData, meta inte
 			200,
 		},
 	}
-	err = resource.RetryContext(ctx, d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
+	err = retry.RetryContext(ctx, d.Timeout(schema.TimeoutDelete), func() *retry.RetryError {
 		_, err = deleteBackupClient.Request("DELETE", deleteBackupPath, &deleteBackupOpt)
 		retryable, err := handleMultiOperationsError(err)
 		if retryable {
-			return resource.RetryableError(err)
+			return retry.RetryableError(err)
 		}
 		if err != nil {
-			return resource.NonRetryableError(err)
+			return retry.NonRetryableError(err)
 		}
 		return nil
 	})
@@ -436,27 +435,27 @@ func buildDeleteBackupWaitingQueryParams(d *schema.ResourceData) string {
 }
 
 func deleteBackupWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
-			config := meta.(*config.Config)
-			region := config.GetRegion(d)
+			cfg := meta.(*config.Config)
+			region := cfg.GetRegion(d)
 			// deleteBackupWaiting: missing operation notes
 			var (
 				deleteBackupWaitingHttpUrl = "v3/{project_id}/backups"
 				deleteBackupWaitingProduct = "rds"
 			)
-			deleteBackupWaitingClient, err := config.NewServiceClient(deleteBackupWaitingProduct, region)
+			deleteBackupWaitingClient, err := cfg.NewServiceClient(deleteBackupWaitingProduct, region)
 			if err != nil {
 				return nil, "ERROR", fmt.Errorf("error creating Backup Client: %s", err)
 			}
 
 			deleteBackupWaitingPath := deleteBackupWaitingClient.Endpoint + deleteBackupWaitingHttpUrl
-			deleteBackupWaitingPath = strings.Replace(deleteBackupWaitingPath, "{project_id}", deleteBackupWaitingClient.ProjectID, -1)
+			deleteBackupWaitingPath = strings.ReplaceAll(deleteBackupWaitingPath, "{project_id}", deleteBackupWaitingClient.ProjectID)
 
 			deleteBackupWaitingqueryParams := buildDeleteBackupWaitingQueryParams(d)
-			deleteBackupWaitingPath = deleteBackupWaitingPath + deleteBackupWaitingqueryParams
+			deleteBackupWaitingPath += deleteBackupWaitingqueryParams
 
 			deleteBackupWaitingOpt := golangsdk.RequestOpts{
 				KeepResponseBody: true,
@@ -480,15 +479,14 @@ func deleteBackupWaitingForStateCompleted(ctx context.Context, d *schema.Resourc
 			}
 			statusRaw := utils.PathSearch(`total_count`, deleteBackupWaitingRespBody, nil)
 			status := fmt.Sprintf("%v", statusRaw)
-			if utils.StrSliceContains(strings.Split(`1`, ","), status) {
+			switch status {
+			case "1":
 				return deleteBackupWaitingRespBody, "PENDING", nil
-			}
-
-			if utils.StrSliceContains(strings.Split(`0`, ","), status) {
+			case "0":
 				return deleteBackupWaitingRespBody, "COMPLETED", nil
+			default:
+				return deleteBackupWaitingRespBody, status, nil
 			}
-
-			return deleteBackupWaitingRespBody, status, nil
 		},
 		Timeout:      t,
 		Delay:        30 * time.Second,
@@ -498,14 +496,14 @@ func deleteBackupWaitingForStateCompleted(ctx context.Context, d *schema.Resourc
 	return err
 }
 
-func backupImportState(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+func backupImportState(_ context.Context, d *schema.ResourceData, _ interface{}) ([]*schema.ResourceData, error) {
 	parts := strings.SplitN(d.Id(), "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid format specified for import id, must be <instance_id>/<backup_id>")
 	}
 	instanceId := parts[0]
-	backup_id := parts[1]
-	d.SetId(backup_id)
+	backupId := parts[1]
+	d.SetId(backupId)
 	d.Set("instance_id", instanceId)
 	return []*schema.ResourceData{d}, nil
 }

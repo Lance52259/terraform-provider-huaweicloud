@@ -8,8 +8,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 
@@ -18,7 +19,13 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-var landingZoneNonUpdatableParams = []string{"home_region", "organization_structure_type", "deny_ungoverned_regions", "kms_key_id", "organization_structure_type"}
+var landingZoneNonUpdatableParams = []string{
+	"home_region",
+	"organization_structure_type",
+	"deny_ungoverned_regions",
+	"kms_key_id",
+	"organization_structure_type",
+}
 
 // @API RGC POST /v1/landing-zone/setup
 // @API RGC GET /v1/landing-zone/status
@@ -98,12 +105,14 @@ func ResourceLandingZone() *schema.Resource {
 										Optional: true,
 									},
 									"phone": {
-										Type:     schema.TypeString,
-										Optional: true,
+										Type:      schema.TypeString,
+										Optional:  true,
+										Sensitive: true,
 									},
 									"account_email": {
-										Type:     schema.TypeString,
-										Optional: true,
+										Type:      schema.TypeString,
+										Optional:  true,
+										Sensitive: true,
 									},
 								},
 							},
@@ -142,8 +151,9 @@ func ResourceLandingZone() *schema.Resource {
 				Default:  "STANDARD",
 			},
 			"identity_store_email": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"identity_center_status": {
 				Type:     schema.TypeString,
@@ -176,6 +186,19 @@ func ResourceLandingZone() *schema.Resource {
 			"deployed_version": {
 				Type:     schema.TypeString,
 				Computed: true,
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{
+						Internal: true,
+					},
+				),
 			},
 		},
 	}
@@ -227,7 +250,7 @@ func resourceLandingZoneCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	d.SetId(generateUUID)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"in_progress"},
 		Target:       []string{"succeeded"},
 		Refresh:      landingZoneStateRefreshFunc(setupLandingZoneClient),
@@ -312,7 +335,7 @@ func resourceLandingZoneUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error update landing zone: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"in_progress"},
 		Target:       []string{"succeeded"},
 		Refresh:      landingZoneStateRefreshFunc(updateLandingZoneClient),
@@ -355,7 +378,7 @@ func resourceLandingZoneDelete(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error delete landing zone: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"in_progress"},
 		Target:       []string{"succeeded"},
 		Refresh:      landingZoneStateRefreshFunc(deleteLandingZoneClient),
@@ -386,6 +409,9 @@ func filterOrganizationStructureEmptyValue(bodyParams map[string]interface{}) {
 
 		for _, account := range accounts {
 			accountMap := account.(map[string]interface{})
+			if accountMap["account_id"] == "" {
+				delete(accountMap, "account_id")
+			}
 
 			if accountMap["account_email"] == "" {
 				delete(accountMap, "account_email")
@@ -468,7 +494,7 @@ func buildLoggingBucketBodyParams(loggingBucket interface{}) map[string]interfac
 	return bodyParams
 }
 
-func landingZoneStateRefreshFunc(client *golangsdk.ServiceClient) resource.StateRefreshFunc {
+func landingZoneStateRefreshFunc(client *golangsdk.ServiceClient) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getLandingZoneStatusHttpUrl := "v1/landing-zone/status"
 		getLandingZoneStatusPath := client.Endpoint + getLandingZoneStatusHttpUrl

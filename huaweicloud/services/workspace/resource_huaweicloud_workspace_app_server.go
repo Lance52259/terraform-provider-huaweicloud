@@ -10,13 +10,14 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -241,7 +242,7 @@ func buildCreatePeriodTypeParam(periodUnit string) interface{} {
 func parseAutoRenewValue(autoRenew string) bool {
 	result, err := strconv.ParseBool(autoRenew)
 	if err != nil {
-		log.Printf("[ERROR] unable to convert auto_renew to bool value")
+		log.Printf("[WARN] unable to convert auto_renew to bool value")
 		return false
 	}
 	return result
@@ -330,7 +331,7 @@ func waitForPrePaidServerComplete(ctx context.Context, cfg *config.Config, regio
 
 func waitForAppServerJobCompleted(ctx context.Context, client *golangsdk.ServiceClient, timeout time.Duration, jobId string) (interface{},
 	error) {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"RUNNING"},
 		Target:       []string{"SUCCESS"},
 		Refresh:      refreshAppServerJobStatusFunc(client, jobId),
@@ -343,7 +344,7 @@ func waitForAppServerJobCompleted(ctx context.Context, client *golangsdk.Service
 	return serverResp, err
 }
 
-func refreshAppServerJobStatusFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func refreshAppServerJobStatusFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		httpUrl := "v2/{project_id}/job/{job_id}"
 		getJobPath := client.Endpoint + httpUrl
@@ -363,7 +364,7 @@ func refreshAppServerJobStatusFunc(client *golangsdk.ServiceClient, jobId string
 			return resp, "ERROR", err
 		}
 
-		return respBody, utils.PathSearch("status", respBody, nil).(string), nil
+		return respBody, utils.PathSearch("status", respBody, "").(string), nil
 	}
 }
 
@@ -466,7 +467,7 @@ func resourceAppServerUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		if err != nil {
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), serverId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), serverId); err != nil {
 			return diag.Errorf("error updating the auto-renew of the server (%s): %s", serverId, err)
 		}
 	}
@@ -568,7 +569,7 @@ func deleteAppServerById(ctx context.Context, client *golangsdk.ServiceClient, s
 }
 
 func waitingForServerDeleteCompleted(ctx context.Context, client *golangsdk.ServiceClient, serverId string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

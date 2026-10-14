@@ -270,6 +270,7 @@ func resourceChannelMemberGroupRead(_ context.Context, d *schema.ResourceData, m
 	}
 
 	mErr := multierror.Append(
+		d.Set("region", region),
 		d.Set("name", utils.PathSearch("member_group_name", memberGroup, nil)),
 		d.Set("description", utils.PathSearch("member_group_remark", memberGroup, nil)),
 		d.Set("weight", utils.PathSearch("member_group_weight", memberGroup, nil)),
@@ -327,9 +328,12 @@ func resourceChannelMemberGroupUpdate(ctx context.Context, d *schema.ResourceDat
 		return diag.Errorf("error creating APIG client: %s", err)
 	}
 
-	err = updateChannelMemberGroup(client, instanceId, vpcChannelId, memberGroupId, d)
-	if err != nil {
-		return diag.Errorf("error updating member group (%s): %s", memberGroupId, err)
+	// Skip the update request when only enable_force_new is changed.
+	if d.HasChangeExcept("enable_force_new") {
+		err = updateChannelMemberGroup(client, instanceId, vpcChannelId, memberGroupId, d)
+		if err != nil {
+			return diag.Errorf("error updating member group (%s): %s", memberGroupId, err)
+		}
 	}
 
 	return resourceChannelMemberGroupRead(ctx, d, meta)

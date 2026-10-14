@@ -14,7 +14,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -214,11 +214,12 @@ func ResourceGateway() *schema.Resource {
 				RequiredWith: []string{"access_private_ip_1"},
 			},
 			"certificate": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Computed: true,
-				MaxItems: 1,
-				Elem:     gatewayCertificateSchema(),
+				Type:      schema.TypeList,
+				Optional:  true,
+				Computed:  true,
+				Sensitive: true,
+				MaxItems:  1,
+				Elem:      gatewayCertificateSchema(),
 			},
 			"tags": common.TagsSchema(),
 			"delete_eip_on_termination": {
@@ -273,20 +274,24 @@ func gatewayCertificateSchema() *schema.Resource {
 				Required: true,
 			},
 			"private_key": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"certificate_chain": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"enc_certificate": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"enc_private_key": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"certificate_id": {
 				Type:     schema.TypeString,
@@ -574,7 +579,7 @@ func buildCreateGatewayEIPChildBody(d *schema.ResourceData, param string) map[st
 
 func waitingForGatewayCertificateStateCompleted(ctx context.Context, d *schema.ResourceData,
 	client *golangsdk.ServiceClient, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"BINDING"},
 		Target:       []string{"BOUND"},
 		Refresh:      waitForGatewayCertificate(client, d),
@@ -586,7 +591,7 @@ func waitingForGatewayCertificateStateCompleted(ctx context.Context, d *schema.R
 	return err
 }
 
-func waitForGatewayCertificate(client *golangsdk.ServiceClient, d *schema.ResourceData) resource.StateRefreshFunc {
+func waitForGatewayCertificate(client *golangsdk.ServiceClient, d *schema.ResourceData) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getGatewayCertificateHttpUrl := "v5/{project_id}/vpn-gateways/{gateway_id}/certificate"
 		certificateContent := d.Get("certificate").([]interface{})
@@ -616,14 +621,14 @@ func waitForGatewayCertificate(client *golangsdk.ServiceClient, d *schema.Resour
 		}
 
 		certificate := utils.PathSearch("certificate", body, nil)
-		status := utils.PathSearch("certificate.status", body, nil).(string)
+		status := utils.PathSearch("certificate.status", body, "").(string)
 
 		return certificate, status, nil
 	}
 }
 
 func createGatewayWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -986,7 +991,7 @@ func buildUpdateGatewayVpnGatewayChildBody(d *schema.ResourceData) map[string]in
 }
 
 func updateGatewayWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -1138,7 +1143,7 @@ func disassociateEip(cfg *config.Config, region string, eipIDs map[string]struct
 }
 
 func deleteGatewayWaitingForStateCompleted(ctx context.Context, d *schema.ResourceData, meta interface{}, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

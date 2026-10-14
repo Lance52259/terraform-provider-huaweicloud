@@ -10,13 +10,14 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -25,6 +26,7 @@ var devServerNotExistCode = "ModelArts.6404" // DevServer does not exist.
 // @API ModelArts POST /v1/{project_id}/dev-servers
 // @API ModelArts GET /v1/{project_id}/dev-servers
 // @API ModelArts GET /v1/{project_id}/dev-servers/{id}
+// @API ModelArts PUT /v1/{project_id}/dev-servers/{id}
 // @API ModelArts DELETE /v1/{project_id}/dev-servers/{id}
 func ResourceDevServer() *schema.Resource {
 	return &schema.Resource{
@@ -51,14 +53,20 @@ func ResourceDevServer() *schema.Resource {
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `The name of the DevServer.`,
 			},
-			"flavor": {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: `The flavor of the DevServer.`,
+			"resource_flavor": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				Description: utils.SchemaDesc(
+					`The resource flavor of the DevServer.`,
+					utils.SchemaDescInput{
+						Required: true,
+					},
+				),
+				ExactlyOneOf: []string{"flavor"},
 			},
 			"architecture": {
 				Type:        schema.TypeString,
@@ -192,6 +200,21 @@ func ResourceDevServer() *schema.Resource {
 				Computed:    true,
 				Description: `The creation time of the DevServer, in RFC3339 format.`,
 			},
+
+			// Deprecated parameters.
+			"flavor": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				Description: utils.SchemaDesc(
+					`The flavor of the DevServer.`,
+					utils.SchemaDescInput{
+						Required:   true,
+						Deprecated: true,
+					},
+				),
+			},
 		},
 	}
 }
@@ -199,7 +222,7 @@ func ResourceDevServer() *schema.Resource {
 func buildCreateDevServerBodyParams(d *schema.ResourceData, epsId string) map[string]interface{} {
 	params := map[string]interface{}{
 		"name":                  d.Get("name"),
-		"flavor":                d.Get("flavor"),
+		"resource_flavor":       utils.ValueIgnoreEmpty(d.Get("resource_flavor")),
 		"network":               buildDevServerNetwork(d),
 		"image_id":              d.Get("image_id"),
 		"server_type":           utils.ValueIgnoreEmpty(d.Get("type")),
@@ -210,6 +233,8 @@ func buildCreateDevServerBodyParams(d *schema.ResourceData, epsId string) map[st
 		"enterprise_project_id": utils.ValueIgnoreEmpty(epsId),
 		"key_pair_name":         utils.ValueIgnoreEmpty(d.Get("key_pair_name")),
 		"userdata":              utils.ValueIgnoreEmpty(d.Get("user_data")),
+		// Deprecated parameters.
+		"flavor": utils.ValueIgnoreEmpty(d.Get("flavor")),
 	}
 
 	if d.Get("charging_mode").(string) == "PRE_PAID" {
@@ -253,7 +278,7 @@ func buildPrepaidOptionsBodyParams(d *schema.ResourceData) map[string]interface{
 func parseAutoRenewValue(autoRenew string) bool {
 	result, err := strconv.ParseBool(autoRenew)
 	if err != nil {
-		log.Printf("[ERROR] unable to convert auto_renew to bool value")
+		log.Printf("[WARN] unable to convert auto_renew to bool value")
 		return false
 	}
 	return result
@@ -321,7 +346,7 @@ func resourceDevServerCreate(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func waitForDevServerCreated(ctx context.Context, client *golangsdk.ServiceClient, timeout time.Duration, devServerId string) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshDevServerStatusFunc(client, devServerId, []string{"RUNNING"}),
@@ -334,18 +359,28 @@ func waitForDevServerCreated(ctx context.Context, client *golangsdk.ServiceClien
 	return err
 }
 
-func refreshDevServerStatusFunc(client *golangsdk.ServiceClient, serverId string, targets []string) resource.StateRefreshFunc {
+func refreshDevServerStatusFunc(client *golangsdk.ServiceClient, serverId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetDevServerById(client, serverId)
 		if err != nil {
-			if _, ok := err.(golangsdk.ErrDefault404); ok {
+			if _, ok := err.(golangsdk.ErrDefault404); ok && len(targets) < 1 {
 				return "deleted", "DELETED", nil
 			}
 			return nil, "ERROR", err
 		}
 
 		status := utils.PathSearch("status", respBody, "").(string)
-		if utils.StrSliceContains([]string{"CREATE_FAILED", "ERROR", "DELETE_FAILED"}, status) {
+		unexpectedStatuses := []string{
+			"CREATE_FAILED",
+			"ERROR",
+			"DELETE_FAILED",
+			"START_FAILED",
+			"STOP_FAILED",
+			"REBOOT_FAILED",
+			"CHANGINGOS_FAILED",
+			"REINSTALLINGOS_FAILED",
+		}
+		if utils.StrSliceContains(unexpectedStatuses, status) {
 			return respBody, "ERROR", fmt.Errorf("unexpected status (%s)", status)
 		}
 
@@ -368,7 +403,7 @@ func waitForPrePaidDevServerComplete(ctx context.Context, client, bssClient *gol
 
 	// When DevServer creation fails, the `common.WaitOrderResourceComplete` method cannot obtain the resource ID.
 	// so the Devserver list query interface is called here.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -481,7 +516,7 @@ func resourceDevServerRead(_ context.Context, d *schema.ResourceData, meta inter
 	mErr := multierror.Append(
 		d.Set("region", region),
 		d.Set("name", utils.PathSearch("name", respBody, nil)),
-		d.Set("flavor", utils.PathSearch("flavor", respBody, nil)),
+		d.Set("resource_flavor", utils.PathSearch("resource_flavor", respBody, nil)),
 		d.Set("architecture", utils.PathSearch("image.arch", respBody, nil)),
 		d.Set("vpc_id", utils.PathSearch("vpc_id", respBody, nil)),
 		d.Set("image_id", utils.PathSearch("image.image_id", respBody, nil)),
@@ -490,26 +525,61 @@ func resourceDevServerRead(_ context.Context, d *schema.ResourceData, meta inter
 		d.Set("charging_mode", utils.PathSearch("charging_mode", respBody, nil)),
 		d.Set("created_at",
 			utils.FormatTimeStampRFC3339(int64(utils.PathSearch("create_at", respBody, float64(0)).(float64))/1000, false)),
+		// Deprecated parameters.
+		d.Set("flavor", utils.PathSearch("flavor", respBody, nil)),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
+func buildUpdateDevServerBodyParams(d *schema.ResourceData) map[string]interface{} {
+	return map[string]interface{}{
+		"name": d.Get("name"),
+	}
+}
+
+func updateDevServerName(client *golangsdk.ServiceClient, devServerId string, d *schema.ResourceData) error {
+	httpUrl := "v1/{project_id}/dev-servers/{id}"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{id}", devServerId)
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody:         buildUpdateDevServerBodyParams(d),
+	}
+
+	_, err := client.Request("PUT", updatePath, &updateOpt)
+	return err
+}
+
 func resourceDevServerUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var (
+		cfg         = meta.(*config.Config)
+		region      = cfg.GetRegion(d)
+		devServerId = d.Id()
+	)
+
+	if d.HasChange("name") {
+		client, err := cfg.NewServiceClient("modelarts", region)
+		if err != nil {
+			return diag.Errorf("error creating ModelArts client: %s", err)
+		}
+
+		if err = updateDevServerName(client, devServerId, d); err != nil {
+			return diag.Errorf("error updating the name of the DevServer (%s): %s", devServerId, err)
+		}
+	}
+
 	if d.HasChange("auto_renew") {
-		var (
-			cfg         = meta.(*config.Config)
-			region      = cfg.GetRegion(d)
-			devServerId = d.Id()
-		)
 		bssClient, err := cfg.NewServiceClient("bssv2", region)
 		if err != nil {
 			return diag.Errorf("error creating BSS client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), devServerId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), devServerId); err != nil {
 			return diag.Errorf("error updating the auto_renew of the DevServer (%s): %s", devServerId, err)
 		}
 	}
+
 	return resourceDevServerRead(ctx, d, meta)
 }
 
@@ -548,7 +618,7 @@ func resourceDevServerDelete(ctx context.Context, d *schema.ResourceData, meta i
 
 	err = waitForDevServerDeleted(ctx, client, devServerId, d.Timeout(schema.TimeoutDelete))
 	if err != nil {
-		diag.Errorf("error waiting for the DevServer (%s) deletion to complete: %s", devServerId, err)
+		return diag.Errorf("error waiting for the DevServer (%s) deletion to complete: %s", devServerId, err)
 	}
 
 	return nil
@@ -595,9 +665,9 @@ func deleteDevServerById(client *golangsdk.ServiceClient, devServerId string) er
 }
 
 func waitForDevServerDeleted(ctx context.Context, client *golangsdk.ServiceClient, devServerId string, timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"RUNNING", "DELETING"},
-		Target:       []string{"DELETED"},
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
 		Refresh:      refreshDevServerStatusFunc(client, devServerId, nil),
 		Timeout:      timeout,
 		Delay:        5 * time.Second,

@@ -2,6 +2,7 @@ package dli
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,12 +17,15 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func getDliFlinkJarJobResourceFunc(config *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := config.DliV1Client(acceptance.HW_REGION_NAME)
+func getDliFlinkJarJobResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+	client, err := cfg.DliV1Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Dli v1 client, err=%s", err)
 	}
-	jobId, _ := strconv.Atoi(state.Primary.ID)
+	jobId, err := strconv.Atoi(state.Primary.ID)
+	if err != nil {
+		log.Printf("[WARN] failed to parse DLI Flink Jar job ID: %s", err)
+	}
 	return flinkjob.Get(client, jobId)
 }
 

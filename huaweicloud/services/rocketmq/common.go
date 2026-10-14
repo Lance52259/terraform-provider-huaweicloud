@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
+
 	"github.com/chnsz/golangsdk"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
@@ -55,7 +56,7 @@ func getInstanceTaskById(client *golangsdk.ServiceClient, instanceId, taskId str
 	return utils.FlattenResponse(resp)
 }
 
-func refreshInstanceTaskStatus(client *golangsdk.ServiceClient, instanceID, taskId string) resource.StateRefreshFunc {
+func refreshInstanceTaskStatus(client *golangsdk.ServiceClient, instanceID, taskId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := getInstanceTaskById(client, instanceID, taskId)
 		if err != nil {
@@ -79,7 +80,7 @@ func refreshInstanceTaskStatus(client *golangsdk.ServiceClient, instanceID, task
 
 func waitForInstanceTaskStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId, taskId string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshInstanceTaskStatus(client, instanceId, taskId),
@@ -110,7 +111,7 @@ func getInstanceById(client *golangsdk.ServiceClient, instanceId string) (interf
 	return utils.FlattenResponse(resp)
 }
 
-func refreshInstanceStatus(client *golangsdk.ServiceClient, instanceId string, targets []string) resource.StateRefreshFunc {
+func refreshInstanceStatus(client *golangsdk.ServiceClient, instanceId string, targets []string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		instance, err := getInstanceById(client, instanceId)
 		if err != nil {
@@ -135,7 +136,7 @@ func refreshInstanceStatus(client *golangsdk.ServiceClient, instanceId string, t
 
 func waitForInstanceStatusCompleted(ctx context.Context, client *golangsdk.ServiceClient, instanceId string, targets []string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      refreshInstanceStatus(client, instanceId, targets),

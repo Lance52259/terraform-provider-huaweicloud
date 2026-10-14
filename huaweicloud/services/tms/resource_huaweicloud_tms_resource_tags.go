@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -81,10 +81,10 @@ func buildResourcesInfo(resources []interface{}) []tags.Resource {
 
 	result := make([]tags.Resource, len(resources))
 	for i, val := range resources {
-		resource := val.(map[string]interface{})
+		resourceMap := val.(map[string]interface{})
 		result[i] = tags.Resource{
-			ResourceType: resource["resource_type"].(string),
-			ResourceId:   resource["resource_id"].(string),
+			ResourceType: resourceMap["resource_type"].(string),
+			ResourceId:   resourceMap["resource_id"].(string),
 		}
 	}
 	return result
@@ -109,7 +109,7 @@ func waitingResourceTagsConfigCompleted(ctx context.Context, cfg *config.Config,
 		return fmt.Errorf("error creating TMS v2 client: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -215,11 +215,11 @@ func GetResourceTags(client *golangsdk.ServiceClient, d *schema.ResourceData) ([
 	// Check whether all tagged resources contain the expected tags correctly. If not, inconsistent tags information
 	// will be printed in the log.
 	for _, val := range resources {
-		resource := val.(map[string]interface{})
-		resourceId := resource["resource_id"].(string)
+		resourceMap := val.(map[string]interface{})
+		resourceId := resourceMap["resource_id"].(string)
 		opts := tags.QueryOpts{
 			ResourceId:   resourceId,
-			ResourceType: resource["resource_type"].(string),
+			ResourceType: resourceMap["resource_type"].(string),
 			ProjectId:    projectId,
 		}
 		resp, err := tags.Get(client, opts)
@@ -327,7 +327,7 @@ func waitingResourceTagsDeleteCompleted(ctx context.Context, cfg *config.Config,
 		return fmt.Errorf("error creating TMS v2 client: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

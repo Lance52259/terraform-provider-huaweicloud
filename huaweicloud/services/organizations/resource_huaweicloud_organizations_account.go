@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -80,6 +80,7 @@ func ResourceAccount() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 				Computed:    true,
+				Sensitive:   true,
 				Description: `The email address of the account.`,
 			},
 			"phone": {
@@ -87,6 +88,7 @@ func ResourceAccount() *schema.Resource {
 				Optional:    true,
 				ForceNew:    true,
 				Computed:    true,
+				Sensitive:   true,
 				Description: `The mobile number of the account.`,
 			},
 			"intl_number_prefix": {
@@ -154,7 +156,7 @@ func resourceAccountCreate(ctx context.Context, d *schema.ResourceData, meta int
 		return diag.Errorf("unable to find the account creation status ID from the API response")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      accountStateRefreshFunc(client, statusID),
@@ -191,7 +193,7 @@ func resourceAccountCreate(ctx context.Context, d *schema.ResourceData, meta int
 	return resourceAccountRead(ctx, d, meta)
 }
 
-func accountStateRefreshFunc(client *golangsdk.ServiceClient, accountStatusId string) resource.StateRefreshFunc {
+func accountStateRefreshFunc(client *golangsdk.ServiceClient, accountStatusId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		httpUrl := "v1/organizations/create-account-status/{create_account_status_id}"
 		getPath := client.Endpoint + httpUrl
@@ -263,7 +265,7 @@ func GetAccountInfoById(client *golangsdk.ServiceClient, accountId string) (inte
 				Method:    "GET",
 				URL:       "/v1/organizations/accounts/{account_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the account (%s) does not exist", accountId)),
+				Body:      fmt.Appendf(nil, "the account (%s) does not exist", accountId),
 			},
 		}
 	}

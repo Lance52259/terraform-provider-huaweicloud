@@ -19,9 +19,19 @@
                 "type": "string",
                 "computed": true
               },
+              "bucket_key_enabled": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "bucket_version": {
                 "type": "string",
                 "computed": true
+              },
+              "edge_location": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
               },
               "encryption": {
                 "type": "bool",
@@ -40,6 +50,16 @@
               },
               "id": {
                 "type": "string",
+                "computed": true
+              },
+              "ies_location": {
+                "type": "string",
+                "optional": true,
+                "forcenew": true
+              },
+              "kms_data_encryption": {
+                "type": "string",
+                "optional": true,
                 "computed": true
               },
               "kms_key_id": {

@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -362,6 +363,16 @@ func ResourceObsBucket() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"kms_data_encryption": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"bucket_key_enabled": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
 			"enterprise_project_id": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -373,7 +384,17 @@ func ResourceObsBucket() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
-
+			// Fields `ies_location` and `edge_location` only support in specified site.
+			"ies_location": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"edge_location": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"bucket_domain_name": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -386,10 +407,70 @@ func ResourceObsBucket() *schema.Resource {
 	}
 }
 
+func buildSideEncryptParam(d *schema.ResourceData) string {
+	if !d.Get("encryption").(bool) {
+		return ""
+	}
+
+	// For compatibility reasons, its default value is configured to be "kms".
+	sseAlgorithm := d.Get("sse_algorithm").(string)
+	if sseAlgorithm == "" {
+		return obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS
+	}
+
+	// Due to differences between the API and SDK, "AES256" needs to be converted to "obs".
+	if sseAlgorithm == "AES256" {
+		return "obs"
+	}
+
+	return sseAlgorithm
+}
+
+func buildSideDataEncryptParam(d *schema.ResourceData) string {
+	if !d.Get("encryption").(bool) {
+		return ""
+	}
+
+	// For compatibility reasons, its default value should be "AES256".
+	if v, ok := d.GetOk("kms_data_encryption"); ok {
+		return v.(string)
+	}
+
+	return "AES256"
+}
+
+func buildSideEncryptionKmsKeyIdParam(d *schema.ResourceData) string {
+	// For compatibility reasons, `kms_key_id` only participates in request construction under KMS type.
+	if buildSideEncryptParam(d) == obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS {
+		return d.Get("kms_key_id").(string)
+	}
+
+	return ""
+}
+
+func buildSideEncryptionBucketKeyEnabledParam(d *schema.ResourceData) string {
+	// For compatibility reasons, `bucket_key_enabled` only participates in request construction under KMS type.
+	if buildSideEncryptParam(d) == obs.DEFAULT_SSE_KMS_ENCRYPTION_OBS {
+		return d.Get("bucket_key_enabled").(string)
+	}
+
+	return ""
+}
+
+func buildKmsKeyProjectIdParam(d *schema.ResourceData) string {
+	// For compatibility reasons, `kms_key_project_id` only participates in request construction under KMS type.
+	// The `kms_key_project_id` field can only be configured if the `kms_key_id` field has a value.
+	if buildSideEncryptionKmsKeyIdParam(d) != "" {
+		return d.Get("kms_key_project_id").(string)
+	}
+
+	return ""
+}
+
 func resourceObsBucketCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
-	obsClient, err := conf.ObjectStorageClient(region)
+	obsClient, err := conf.ObjectStorageClientWithSignature(region)
 	if err != nil {
 		return diag.Errorf("Error creating OBS client: %s", err)
 	}
@@ -410,7 +491,16 @@ func resourceObsBucketCreate(ctx context.Context, d *schema.ResourceData, meta i
 	}
 
 	log.Printf("[DEBUG] OBS bucket create opts: %#v", opts)
-	_, err = obsClient.CreateBucket(opts)
+	_, err = obsClient.CreateBucket(
+		opts,
+		obs.WithCustomHeader("x-obs-server-side-encryption", buildSideEncryptParam(d)),
+		obs.WithCustomHeader("x-obs-server-side-data-encryption", buildSideDataEncryptParam(d)),
+		obs.WithCustomHeader("x-obs-server-side-encryption-kms-key-id", buildSideEncryptionKmsKeyIdParam(d)),
+		obs.WithCustomHeader("x-obs-server-side-encryption-bucket-key-enabled", buildSideEncryptionBucketKeyEnabledParam(d)),
+		obs.WithCustomHeader("x-obs-sse-kms-key-project-id", buildKmsKeyProjectIdParam(d)),
+		obs.WithCustomHeader("x-obs-ies-location", d.Get("ies_location").(string)),
+		obs.WithCustomHeader("x-obs-edge-location", d.Get("edge_location").(string)),
+	)
 	if err != nil {
 		return diag.FromErr(getObsError("Error creating bucket", bucket, err))
 	}
@@ -420,6 +510,7 @@ func resourceObsBucketCreate(ctx context.Context, d *schema.ResourceData, meta i
 	return resourceObsBucketUpdate(ctx, d, meta)
 }
 
+// nolint:gocyclo
 func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -468,7 +559,15 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
-	if d.HasChanges("encryption", "sse_algorithm", "kms_key_id", "kms_key_project_id") {
+	encryptionChangeFields := []string{
+		"encryption",
+		"sse_algorithm",
+		"kms_key_id",
+		"kms_key_project_id",
+		"kms_data_encryption",
+		"bucket_key_enabled",
+	}
+	if !d.IsNewResource() && d.HasChanges(encryptionChangeFields...) {
 		if err := resourceObsBucketEncryptionUpdate(conf, obsClientWithSignature, d); err != nil {
 			return diag.FromErr(err)
 		}
@@ -509,7 +608,6 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		if err := resourceObsBucketEnterpriseProjectIdUpdate(ctx, d, conf, obsClient, region); err != nil {
 			return diag.FromErr(err)
 		}
-
 	}
 
 	if d.HasChange("user_domain_names") {
@@ -521,6 +619,7 @@ func resourceObsBucketUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	return resourceObsBucketRead(ctx, d, meta)
 }
 
+// nolint:gocyclo
 func resourceObsBucketRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	conf := meta.(*config.Config)
 	region := conf.GetRegion(d)
@@ -779,7 +878,7 @@ func resourceObsBucketVersioningUpdate(obsClient *obs.ObsClient, d *schema.Resou
 	return nil
 }
 
-func resourceObsBucketEncryptionUpdate(config *config.Config, obsClient *obs.ObsClient, d *schema.ResourceData) error {
+func resourceObsBucketEncryptionUpdate(_ *config.Config, obsClient *obs.ObsClient, d *schema.ResourceData) error {
 	bucket := d.Get("bucket").(string)
 
 	if d.Get("encryption").(bool) {
@@ -796,6 +895,14 @@ func resourceObsBucketEncryptionUpdate(config *config.Config, obsClient *obs.Obs
 			if raw, ok := d.GetOk("kms_key_id"); ok {
 				input.KMSMasterKeyID = raw.(string)
 				input.ProjectID = d.Get("kms_key_project_id").(string)
+			}
+
+			if raw, ok := d.GetOk("kms_data_encryption"); ok {
+				input.KMSDataEncryption = raw.(string)
+			}
+
+			if raw, ok := d.GetOk("bucket_key_enabled"); ok {
+				input.BucketKeyEnabled = raw.(string) == "true"
 			}
 		}
 
@@ -857,9 +964,9 @@ func resourceObsBucketQuotaUpdate(obsClient *obs.ObsClient, d *schema.ResourceDa
 	}
 
 	return nil
-
 }
 
+// nolint:gocyclo
 func resourceObsBucketLifecycleUpdate(obsClient *obs.ObsClient, d *schema.ResourceData) error {
 	bucket := d.Get("bucket").(string)
 	lifecycleRules := d.Get("lifecycle_rule").([]interface{})
@@ -1100,7 +1207,7 @@ func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.R
 
 	// After the EPS service side updates enterprise project ID, it will take a few time to wait the OBS service
 	// read the data back into the database.
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Success"},
 		Refresh:      waitForOBSEnterpriseProjectIdChanged(obsClient, bucket, d.Get("enterprise_project_id").(string)),
@@ -1115,7 +1222,7 @@ func resourceObsBucketEnterpriseProjectIdUpdate(ctx context.Context, d *schema.R
 	return nil
 }
 
-func waitForOBSEnterpriseProjectIdChanged(obsClient *obs.ObsClient, bucket string, enterpriseProjectId string) resource.StateRefreshFunc {
+func waitForOBSEnterpriseProjectIdChanged(obsClient *obs.ObsClient, bucket string, enterpriseProjectId string) retry.StateRefreshFunc {
 	return func() (result interface{}, state string, err error) {
 		input := &obs.GetBucketMetadataInput{
 			Bucket: bucket,
@@ -1326,6 +1433,8 @@ func setObsBucketEncryption(obsClient *obs.ObsClient, d *schema.ResourceData) er
 					d.Set("kms_key_id", nil),
 					d.Set("kms_key_project_id", nil),
 					d.Set("sse_algorithm", nil),
+					d.Set("kms_data_encryption", nil),
+					d.Set("bucket_key_enabled", nil),
 				)
 				if mErr.ErrorOrNil() != nil {
 					return fmt.Errorf("error saving encryption of OBS bucket %s: %s", bucket, mErr)
@@ -1345,6 +1454,8 @@ func setObsBucketEncryption(obsClient *obs.ObsClient, d *schema.ResourceData) er
 			d.Set("kms_key_id", output.KMSMasterKeyID),
 			d.Set("kms_key_project_id", output.ProjectID),
 			d.Set("sse_algorithm", sseAlgorithm),
+			d.Set("kms_data_encryption", output.KMSDataEncryption),
+			d.Set("bucket_key_enabled", strconv.FormatBool(output.BucketKeyEnabled)),
 		)
 	} else {
 		mErr = multierror.Append(mErr,
@@ -1352,6 +1463,8 @@ func setObsBucketEncryption(obsClient *obs.ObsClient, d *schema.ResourceData) er
 			d.Set("kms_key_id", nil),
 			d.Set("kms_key_project_id", nil),
 			d.Set("sse_algorithm", nil),
+			d.Set("kms_data_encryption", nil),
+			d.Set("bucket_key_enabled", nil),
 		)
 	}
 	if mErr.ErrorOrNil() != nil {

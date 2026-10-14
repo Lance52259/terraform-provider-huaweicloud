@@ -60,7 +60,10 @@ var (
 	HW_ADMIN                               = os.Getenv("HW_ADMIN")
 	HW_IAM_V5                              = os.Getenv("HW_IAM_V5")
 	HW_IAM_SERVICE_LINKED_AGENCY_PRINCIPAL = os.Getenv("HW_IAM_SERVICE_LINKED_AGENCY_PRINCIPAL")
+	HW_PGP_PUBLIC_KEY                      = os.Getenv("HW_PGP_PUBLIC_KEY")
+	HW_PGP_PRIVATE_KEY                     = os.Getenv("HW_PGP_PRIVATE_KEY")
 	HW_RUNNER_PUBLIC_IPS                   = os.Getenv("HW_RUNNER_PUBLIC_IPS")
+	HW_RUNNER_PUBLIC_V6IPS                 = os.Getenv("HW_RUNNER_PUBLIC_V6IPS")
 
 	// CBR environment
 	HW_CBR_ECS_BACKUP_ID          = os.Getenv("HW_CBR_ECS_BACKUP_ID")          // The ECS backup ID.
@@ -77,7 +80,9 @@ var (
 	HW_CBR_DESTINATION_VAULT_ID   = os.Getenv("HW_CBR_DESTINATION_VAULT_ID")   // The destination vault ID.
 
 	HW_VPC_BANDWIDTH_ADDON_PACKAGE_ENABLED = os.Getenv("HW_VPC_BANDWIDTH_ADDON_PACKAGE_ENABLED")
+	HW_VPC_BANDWIDTH_NAME                  = os.Getenv("HW_VPC_BANDWIDTH_NAME")
 	HW_VPC_EIP_POOL_ENABLED                = os.Getenv("HW_VPC_EIP_POOL_ENABLED")
+	HW_VPC_EIP_PUBLICIP_POOL_ID            = os.Getenv("HW_VPC_EIP_PUBLICIP_POOL_ID")
 
 	HW_APIG_DEDICATED_INSTANCE_ID             = os.Getenv("HW_APIG_DEDICATED_INSTANCE_ID")
 	HW_APIG_DEDICATED_INSTANCE_USED_SUBNET_ID = os.Getenv("HW_APIG_DEDICATED_INSTANCE_USED_SUBNET_ID")
@@ -112,6 +117,8 @@ var (
 	HW_CNAD_ENABLE_FLAG       = os.Getenv("HW_CNAD_ENABLE_FLAG")
 	HW_CNAD_PROJECT_OBJECT_ID = os.Getenv("HW_CNAD_PROJECT_OBJECT_ID")
 
+	HW_OBS_AGENCY_NAME         = os.Getenv("HW_OBS_AGENCY_NAME")
+	HW_OBS_BUCKET_NAME         = os.Getenv("HW_OBS_BUCKET_NAME")
 	HW_OBS_DESTINATION_BUCKET  = os.Getenv("HW_OBS_DESTINATION_BUCKET")
 	HW_OBS_ENDPOINT            = os.Getenv("HW_OBS_ENDPOINT")
 	HW_OBS_OBJECT_STORAGE_PATH = os.Getenv("HW_OBS_OBJECT_STORAGE_PATH")
@@ -209,7 +216,6 @@ var (
 	HW_CDN_TARGET_DOMAIN_URLS = os.Getenv("HW_CDN_TARGET_DOMAIN_URLS")
 	HW_CDN_CERT_PATH          = os.Getenv("HW_CDN_CERT_PATH")
 	HW_CDN_PRIVATE_KEY_PATH   = os.Getenv("HW_CDN_PRIVATE_KEY_PATH")
-	HW_CDN_ENABLE_FLAG        = os.Getenv("HW_CDN_ENABLE_FLAG")
 	HW_CDN_TIMESTAMP          = os.Getenv("HW_CDN_TIMESTAMP")
 	HW_CDN_START_TIME         = os.Getenv("HW_CDN_START_TIME")
 	HW_CDN_END_TIME           = os.Getenv("HW_CDN_END_TIME")
@@ -268,22 +274,32 @@ var (
 	HW_BUILD_IMAGE_URL         = os.Getenv("HW_BUILD_IMAGE_URL")         // SWR Image URL for component deployment
 	HW_BUILD_IMAGE_URL_UPDATED = os.Getenv("HW_BUILD_IMAGE_URL_UPDATED") // SWR Image URL for component deployment update
 
-	HW_GAUSSDB_MYSQL_INSTANCE_ID               = os.Getenv("HW_GAUSSDB_MYSQL_INSTANCE_ID")
-	HW_GAUSSDB_MYSQL_NODE_ID                   = os.Getenv("HW_GAUSSDB_MYSQL_NODE_ID")
-	HW_GAUSSDB_MYSQL_DATABASE_NAME             = os.Getenv("HW_GAUSSDB_MYSQL_DATABASE_NAME")
-	HW_GAUSSDB_MYSQL_TABLE_NAME                = os.Getenv("HW_GAUSSDB_MYSQL_TABLE_NAME")
-	HW_GAUSSDB_MYSQL_INSTANCE_CONFIGURATION_ID = os.Getenv("HW_GAUSSDB_MYSQL_INSTANCE_CONFIGURATION_ID")
-	HW_GAUSSDB_MYSQL_BACKUP_BEGIN_TIME         = os.Getenv("HW_GAUSSDB_MYSQL_BACKUP_BEGIN_TIME")
-	HW_GAUSSDB_MYSQL_BACKUP_END_TIME           = os.Getenv("HW_GAUSSDB_MYSQL_BACKUP_END_TIME")
-	HW_GAUSSDB_MYSQL_JOB_ID                    = os.Getenv("HW_GAUSSDB_MYSQL_JOB_ID")
-	HW_GAUSSDB_MYSQL_START_TIME                = os.Getenv("HW_GAUSSDB_MYSQL_START_TIME")
-	HW_GAUSSDB_MYSQL_END_TIME                  = os.Getenv("HW_GAUSSDB_MYSQL_END_TIME")
+	HW_TAURUSDB_INSTANCE_ID               = os.Getenv("HW_TAURUSDB_INSTANCE_ID")
+	HW_TAURUSDB_HTAP_INSTANCE_ID          = os.Getenv("HW_TAURUSDB_HTAP_INSTANCE_ID")
+	HW_TAURUSDB_HTAP_NODE_ID              = os.Getenv("HW_TAURUSDB_HTAP_NODE_ID")
+	HW_TAURUSDB_NODE_ID                   = os.Getenv("HW_TAURUSDB_NODE_ID")
+	HW_TAURUSDB_NODE_SESSION_ID           = os.Getenv("HW_TAURUSDB_NODE_SESSION_ID")
+	HW_TAURUSDB_DATABASE_NAME             = os.Getenv("HW_TAURUSDB_DATABASE_NAME")
+	HW_TAURUSDB_TABLE_NAME                = os.Getenv("HW_TAURUSDB_TABLE_NAME")
+	HW_TAURUSDB_INSTANCE_CONFIGURATION_ID = os.Getenv("HW_TAURUSDB_INSTANCE_CONFIGURATION_ID")
+	HW_TAURUSDB_BACKUP_ID                 = os.Getenv("HW_TAURUSDB_BACKUP_ID")
+	HW_TAURUSDB_BACKUP_BEGIN_TIME         = os.Getenv("HW_TAURUSDB_BACKUP_BEGIN_TIME")
+	HW_TAURUSDB_BACKUP_END_TIME           = os.Getenv("HW_TAURUSDB_BACKUP_END_TIME")
+	HW_TAURUSDB_JOB_ID                    = os.Getenv("HW_TAURUSDB_JOB_ID")
+	HW_TAURUSDB_START_TIME                = os.Getenv("HW_TAURUSDB_START_TIME")
+	HW_TAURUSDB_END_TIME                  = os.Getenv("HW_TAURUSDB_END_TIME")
 
-	HW_GAUSSDB_OPENGAUSS_PARAMETER_TEMPLATE_ID = os.Getenv("HW_GAUSSDB_OPENGAUSS_PARAMETER_TEMPLATE_ID")
-	HW_GAUSSDB_OPENGAUSS_JOB_ID                = os.Getenv("HW_GAUSSDB_OPENGAUSS_JOB_ID")
-	HW_GAUSSDB_OPENGAUSS_INSTANCE_ID           = os.Getenv("HW_GAUSSDB_OPENGAUSS_INSTANCE_ID")
-	HW_GAUSSDB_OPENGAUSS_START_TIME            = os.Getenv("HW_GAUSSDB_OPENGAUSS_START_TIME")
-	HW_GAUSSDB_OPENGAUSS_END_TIME              = os.Getenv("HW_GAUSSDB_OPENGAUSS_END_TIME")
+	HW_GAUSSDB_PARAMETER_TEMPLATE_ID = os.Getenv("HW_GAUSSDB_PARAMETER_TEMPLATE_ID")
+	HW_GAUSSDB_JOB_ID                = os.Getenv("HW_GAUSSDB_JOB_ID")
+	HW_GAUSSDB_INSTANCE_ID           = os.Getenv("HW_GAUSSDB_INSTANCE_ID")
+	HW_GAUSSDB_START_TIME            = os.Getenv("HW_GAUSSDB_START_TIME")
+	HW_GAUSSDB_END_TIME              = os.Getenv("HW_GAUSSDB_END_TIME")
+	HW_GAUSSDB_SQL_EXEC_ID           = os.Getenv("HW_GAUSSDB_SQL_EXEC_ID")
+	HW_GAUSSDB_HBA_HISTORY_ID        = os.Getenv("HW_GAUSSDB_HBA_HISTORY_ID")
+	HW_GAUSSDB_SQL_ID                = os.Getenv("HW_GAUSSDB_SQL_ID")
+	HW_GAUSSDB_SESSION_ID            = os.Getenv("HW_GAUSSDB_SESSION_ID")
+	HW_GAUSSDB_BACKUP_ID             = os.Getenv("HW_GAUSSDB_BACKUP_ID")
+	HW_GAUSSDB_KMS_KEY_ID            = os.Getenv("HW_GAUSSDB_KMS_KEY_ID")
 
 	HW_VOD_WATERMARK_FILE   = os.Getenv("HW_VOD_WATERMARK_FILE")
 	HW_VOD_MEDIA_ASSET_FILE = os.Getenv("HW_VOD_MEDIA_ASSET_FILE")
@@ -417,8 +433,10 @@ var (
 	HW_IDENTITY_ORIGINAL_PASSWORD = os.Getenv("HW_IDENTITY_ORIGINAL_PASSWORD")
 	HW_IDENTITY_NEW_PASSWORD      = os.Getenv("HW_IDENTITY_NEW_PASSWORD")
 
-	HW_ER_TEST_ON     = os.Getenv("HW_ER_TEST_ON")     // Whether to run the ER related tests.
-	HW_ER_INSTANCE_ID = os.Getenv("HW_ER_INSTANCE_ID") // Whether to run the ER related tests.
+	HW_ER_INSTANCE_ID          = os.Getenv("HW_ER_INSTANCE_ID") // Whether to run the ER related tests.
+	HW_ER_ROUTE_POLICY_IDS     = os.Getenv("HW_ER_ROUTE_POLICY_IDS")
+	HW_ER_SHARED_INSTANCE_ID   = os.Getenv("HW_ER_SHARED_INSTANCE_ID")
+	HW_ER_SHARED_ATTACHMENT_ID = os.Getenv("HW_ER_SHARED_ATTACHMENT_ID")
 
 	// The OBS address where the HCL/JSON template archive (No variables) is located.
 	HW_RF_TEMPLATE_ARCHIVE_NO_VARS_URI = os.Getenv("HW_RF_TEMPLATE_ARCHIVE_NO_VARS_URI")
@@ -438,9 +456,32 @@ var (
 	HW_DC_GLOBAL_GATEWAY_ID_HAS_PEER_LINK = os.Getenv("HW_DC_GLOBAL_GATEWAY_ID_HAS_PEER_LINK")
 	HW_DC_CONNECT_GATEWAY_ID              = os.Getenv("HW_DC_CONNECT_GATEWAY_ID")
 	HW_GLOBAL_EIP_ID                      = os.Getenv("HW_GLOBAL_EIP_ID")
+	HW_GLOBAL_INTERNET_BANDWIDTH_ID       = os.Getenv("HW_GLOBAL_INTERNET_BANDWIDTH_ID")
+	HW_GLOBAL_EIP_SEGMENT_ID              = os.Getenv("HW_GLOBAL_EIP_SEGMENT_ID")
+	HW_GLOBAL_EIP_BANDWIDTH_ID            = os.Getenv("HW_GLOBAL_EIP_BANDWIDTH_ID")
+	HW_GLOBAL_EIP_SEGMENT_INSTANCE_ID     = os.Getenv("HW_GLOBAL_EIP_SEGMENT_INSTANCE_ID")
 
-	HW_DSC_INSTANCE_ID    = os.Getenv("HW_DSC_INSTANCE_ID")
-	HW_DSC_ALARM_TOPIC_ID = os.Getenv("HW_DSC_ALARM_TOPIC_ID")
+	HW_DSC_INSTANCE_ID              = os.Getenv("HW_DSC_INSTANCE_ID")
+	HW_DSC_ALARM_TOPIC_ID           = os.Getenv("HW_DSC_ALARM_TOPIC_ID")
+	HW_DSC_ASSET_ID                 = os.Getenv("HW_DSC_ASSET_ID")
+	HW_DSC_ENABLE_FLAG              = os.Getenv("HW_DSC_ENABLE_FLAG")
+	HW_DSC_DEVICE_ID                = os.Getenv("HW_DSC_DEVICE_ID")
+	HW_DSC_LABEL_ID                 = os.Getenv("HW_DSC_LABEL_ID")
+	HW_DSC_METADATA_TAG_NAME        = os.Getenv("HW_DSC_METADATA_TAG_NAME")
+	HW_DSC_METADATA_TAG_NAME_UPDATE = os.Getenv("HW_DSC_METADATA_TAG_NAME_UPDATE")
+	HW_DSC_TYPE_ID                  = os.Getenv("HW_DSC_TYPE_ID")
+	HW_DSC_SCAN_TEMPLATE_ID         = os.Getenv("HW_DSC_SCAN_TEMPLATE_ID")
+	HW_DSC_SCAN_JOB_ID              = os.Getenv("HW_DSC_SCAN_JOB_ID")
+	HW_DSC_SCAN_RULE_ID             = os.Getenv("HW_DSC_SCAN_RULE_ID")
+	HW_DSC_SECURITY_LEVEL_ID        = os.Getenv("HW_DSC_SECURITY_LEVEL_ID")
+	HW_DSC_SECURITY_LEVEL_ID_TARGET = os.Getenv("HW_DSC_SECURITY_LEVEL_ID_TARGET")
+	HW_DSC_OBS_ID                   = os.Getenv("HW_DSC_OBS_ID")
+	HW_DSC_RULE_IDS                 = os.Getenv("HW_DSC_RULE_IDS")
+	HW_DSC_DB_INSTANCE_ID           = os.Getenv("HW_DSC_DB_INSTANCE_ID")
+	HW_DSC_DB_ID                    = os.Getenv("HW_DSC_DB_ID")
+	HW_DSC_DB_TABLE_NAME            = os.Getenv("HW_DSC_DB_TABLE_NAME")
+	HW_DSC_BUCKET_ID                = os.Getenv("HW_DSC_BUCKET_ID")
+	HW_DSC_CLASSIFICATION_ID        = os.Getenv("HW_DSC_CLASSIFICATION_ID")
 
 	HW_EIP_ID      = os.Getenv("HW_EIP_ID")
 	HW_EIP_ADDRESS = os.Getenv("HW_EIP_ADDRESS")
@@ -455,6 +496,7 @@ var (
 
 	// The CFW instance ID
 	HW_CFW_INSTANCE_ID               = os.Getenv("HW_CFW_INSTANCE_ID")
+	HW_CFW_INSTANCE_IDS              = os.Getenv("HW_CFW_INSTANCE_IDS")
 	HW_CFW_SERVER_IP                 = os.Getenv("HW_CFW_SERVER_IP")
 	HW_CFW_REPORT_PROFILE_ID         = os.Getenv("HW_CFW_REPORT_PROFILE_ID")
 	HW_CFW_REPORT_ID                 = os.Getenv("HW_CFW_REPORT_ID")
@@ -476,11 +518,23 @@ var (
 	HW_CFW_SERVICE_GROUP_ID          = os.Getenv("HW_CFW_SERVICE_GROUP_ID")
 	HW_CFW_SERVICE_GROUP_MEMBER_ID   = os.Getenv("HW_CFW_SERVICE_GROUP_MEMBER_ID")
 
+	HW_DRS_COMPARE_JOB_ID               = os.Getenv("HW_DRS_COMPARE_JOB_ID")
+	HW_DRS_DB_PASSWORD                  = os.Getenv("HW_DRS_DB_PASSWORD")
+	HW_DRS_ENABLE_FLAG                  = os.Getenv("HW_DRS_ENABLE_FLAG")
+	HW_DRS_JOB_ID                       = os.Getenv("HW_DRS_JOB_ID")
+	HW_DRS_JOB_IDS                      = os.Getenv("HW_DRS_JOB_IDS")
+	HW_DRS_BACKUP_MIGRATION_INSTANCE_ID = os.Getenv("HW_DRS_BACKUP_MIGRATION_INSTANCE_ID")
+	HW_DRS_BACKUP_MIGRATION_BUCKET_NAME = os.Getenv("HW_DRS_BACKUP_MIGRATION_BUCKET_NAME")
+	HW_DRS_BACKUP_MIGRATION_BUCKET_PATH = os.Getenv("HW_DRS_BACKUP_MIGRATION_BUCKET_PATH")
+	HW_DRS_BACKUP_MIGRATION_FILE_NAME   = os.Getenv("HW_DRS_BACKUP_MIGRATION_FILE_NAME")
+
 	HW_CTS_START_TIME = os.Getenv("HW_CTS_START_TIME")
 	HW_CTS_END_TIME   = os.Getenv("HW_CTS_END_TIME")
 
 	// The cluster ID of the CCE
 	HW_CCE_CLUSTER_ID = os.Getenv("HW_CCE_CLUSTER_ID")
+	// The service account token of the CCE cluster
+	HW_CCE_CLUSTER_SERVICE_ACCOUNT_TOKEN = os.Getenv("HW_CCE_CLUSTER_SERVICE_ACCOUNT_TOKEN")
 	// The absolute chart path of the CCE
 	HW_CCE_CHART_PATH = os.Getenv("HW_CCE_CHART_PATH")
 	// The cluster name of the CCE
@@ -531,6 +585,8 @@ var (
 	HW_SECMASTER_INDICATOR_TYPE_ID_UPDATE = os.Getenv("HW_SECMASTER_INDICATOR_TYPE_ID_UPDATE")
 	HW_SECMASTER_METRIC_ID                = os.Getenv("HW_SECMASTER_METRIC_ID")
 	HW_SECMASTER_COMPONENT_VERSION_ID     = os.Getenv("HW_SECMASTER_COMPONENT_VERSION_ID")
+	HW_SECMASTER_ATTACH_ID                = os.Getenv("HW_SECMASTER_ATTACH_ID")
+	HW_SECMASTER_POLICY_ID                = os.Getenv("HW_SECMASTER_POLICY_ID")
 
 	// The SecMaster pipeline ID
 	HW_SECMASTER_PIPELINE_ID = os.Getenv("HW_SECMASTER_PIPELINE_ID")
@@ -538,12 +594,12 @@ var (
 	// The SecMaster playbook instance ID
 	HW_SECMASTER_INSTANCE_ID = os.Getenv("HW_SECMASTER_INSTANCE_ID")
 
+	// The SecMaster collector channel ID
+	HW_SECMASTER_CHANNEL_ID = os.Getenv("HW_SECMASTER_CHANNEL_ID")
+
 	// The ID and product ID to create a SecMaster post paid order
 	HW_SECMASTER_ORDER_ID   = os.Getenv("HW_SECMASTER_ORDER_ID")
 	HW_SECMASTER_PRODUCT_ID = os.Getenv("HW_SECMASTER_PRODUCT_ID")
-
-	// The flag of whether to create a SecMaster workspace
-	HW_SECMASTER_WORKSPACE = os.Getenv("HW_SECMASTER_WORKSPACE")
 
 	// The SecMaster playbook version ID
 	HW_SECMASTER_VERSION_ID = os.Getenv("HW_SECMASTER_VERSION_ID")
@@ -558,19 +614,41 @@ var (
 	HW_SECMASTER_FIELD_ID = os.Getenv("HW_SECMASTER_FIELD_ID")
 
 	// The SecMaster alert rule template ID
-	HW_SECMASTER_TEMPLATE_ID = os.Getenv("HW_SECMASTER_TEMPLATE_ID")
-	HW_SECMASTER_MAPPING_ID  = os.Getenv("HW_SECMASTER_MAPPING_ID")
-	HW_SECMASTER_PIPE_ID     = os.Getenv("HW_SECMASTER_PIPE_ID")
+	HW_SECMASTER_TEMPLATE_ID    = os.Getenv("HW_SECMASTER_TEMPLATE_ID")
+	HW_SECMASTER_MAPPING_ID     = os.Getenv("HW_SECMASTER_MAPPING_ID")
+	HW_SECMASTER_MAPPER_ID      = os.Getenv("HW_SECMASTER_MAPPER_ID")
+	HW_SECMASTER_MAPPER_TYPE_ID = os.Getenv("HW_SECMASTER_MAPPER_TYPE_ID")
+	HW_SECMASTER_PIPE_ID        = os.Getenv("HW_SECMASTER_PIPE_ID")
+
+	// The SecMaster data class ID
+	HW_SECMASTER_DATACLASS_ID = os.Getenv("HW_SECMASTER_DATACLASS_ID")
+
+	// The SecMaster type ID
+	HW_SECMASTER_TYPE_ID = os.Getenv("HW_SECMASTER_TYPE_ID")
 
 	// The SecMaster dataspace ID
 	HW_SECMASTER_DATASPACE_ID = os.Getenv("HW_SECMASTER_DATASPACE_ID")
 
-	HW_MODELARTS_HAS_SUBSCRIBE_MODEL                  = os.Getenv("HW_MODELARTS_HAS_SUBSCRIBE_MODEL")
-	HW_MODELARTS_USER_LOGIN_PASSWORD                  = os.Getenv("HW_MODELARTS_USER_LOGIN_PASSWORD")
-	HW_MODELARTS_DEVSERVER_FLAVOR                     = os.Getenv("HW_MODELARTS_DEVSERVER_FLAVOR")
-	HW_MODELARTS_DEVSERVER_IMAGE_ID                   = os.Getenv("HW_MODELARTS_DEVSERVER_IMAGE_ID")
-	HW_MODELARTS_RESOURCE_POOL_NAME                   = os.Getenv("HW_MODELARTS_RESOURCE_POOL_NAME")
-	HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME = os.Getenv("HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME")
+	// The SecMaster node ID
+	HW_SECMASTER_NODE_ID = os.Getenv("HW_SECMASTER_NODE_ID")
+
+	HW_MODELARTS_ALGORITHM_ENGINE_ID                         = os.Getenv("HW_MODELARTS_ALGORITHM_ENGINE_ID")
+	HW_MODELARTS_ALGORITHM_ENGINE_NAME                       = os.Getenv("HW_MODELARTS_ALGORITHM_ENGINE_NAME")
+	HW_MODELARTS_ALGORITHM_IMAGE_URL                         = os.Getenv("HW_MODELARTS_ALGORITHM_IMAGE_URL")
+	HW_MODELARTS_TRAINING_JOB_PUBLIC_RESOURCE_POOL_FLAVOR_ID = os.Getenv("HW_MODELARTS_TRAINING_JOB_PUBLIC_RESOURCE_POOL_FLAVOR_ID")
+	HW_MODELARTS_HAS_SUBSCRIBE_MODEL                         = os.Getenv("HW_MODELARTS_HAS_SUBSCRIBE_MODEL")
+	HW_MODELARTS_USER_LOGIN_PASSWORD                         = os.Getenv("HW_MODELARTS_USER_LOGIN_PASSWORD")
+	HW_MODELARTS_DEVSERVER_FLAVOR                            = os.Getenv("HW_MODELARTS_DEVSERVER_FLAVOR")
+	HW_MODELARTS_DEVSERVER_IMAGE_ID                          = os.Getenv("HW_MODELARTS_DEVSERVER_IMAGE_ID")
+	HW_MODELARTS_RESOURCE_POOL_IDS                           = os.Getenv("HW_MODELARTS_RESOURCE_POOL_IDS")
+	HW_MODELARTS_RESOURCE_POOL_NAME                          = os.Getenv("HW_MODELARTS_RESOURCE_POOL_NAME")
+	HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME        = os.Getenv("HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME")
+	HW_MODELARTS_RESOURCE_POOL_QUOTA_NAME                    = os.Getenv("HW_MODELARTS_RESOURCE_POOL_QUOTA_NAME")
+	HW_MODELARTS_WORKFLOW_ID                                 = os.Getenv("HW_MODELARTS_WORKFLOW_ID")
+	HW_MODELARTS_WORKFLOW_SUBSCRIPTION_ID                    = os.Getenv("HW_MODELARTS_WORKFLOW_SUBSCRIPTION_ID")
+	HW_MODELARTS_WORKFLOW_ITEM_VERSION_ID                    = os.Getenv("HW_MODELARTS_WORKFLOW_ITEM_VERSION_ID")
+	HW_MODELARTS_NETWORK_NAME                                = os.Getenv("HW_MODELARTS_NETWORK_NAME")
+	HW_MODELARTS_SUBNET_ID                                   = os.Getenv("HW_MODELARTS_SUBNET_ID")
 
 	HW_AOM_ALARM_EVENT_SN                        = os.Getenv("HW_AOM_ALARM_EVENT_SN")
 	HW_AOM_INSTALLER_AGENT_ID                    = os.Getenv("HW_AOM_INSTALLER_AGENT_ID")
@@ -653,18 +731,19 @@ var (
 	HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD = os.Getenv("HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD")
 	HW_CSE_NACOS_MICROSERVICE_ENGINE_ID       = os.Getenv("HW_CSE_NACOS_MICROSERVICE_ENGINE_ID")
 
-	HW_CSS_LOCAL_DISK_FLAVOR  = os.Getenv("HW_CSS_LOCAL_DISK_FLAVOR")
-	HW_CSS_ELB_AGENCY         = os.Getenv("HW_CSS_ELB_AGENCY")
-	HW_CSS_UPGRADE_AGENCY     = os.Getenv("HW_CSS_UPGRADE_AGENCY")
-	HW_CSS_LOW_ENGINE_VERSION = os.Getenv("HW_CSS_LOW_ENGINE_VERSION")
-	HW_CSS_TARGET_IMAGE_ID    = os.Getenv("HW_CSS_TARGET_IMAGE_ID")
-	HW_CSS_REPLACE_AGENCY     = os.Getenv("HW_CSS_REPLACE_AGENCY")
-	HW_CSS_DATASTORE_ID       = os.Getenv("HW_CSS_DATASTORE_ID")
-	HW_CSS_AZ_MIGRATE_AGENCY  = os.Getenv("HW_CSS_AZ_MIGRATE_AGENCY")
-	HW_CSS_CLUSTER_ID         = os.Getenv("HW_CSS_CLUSTER_ID")
+	HW_CSS_LOCAL_DISK_FLAVOR   = os.Getenv("HW_CSS_LOCAL_DISK_FLAVOR")
+	HW_CSS_ELB_AGENCY          = os.Getenv("HW_CSS_ELB_AGENCY")
+	HW_CSS_UPGRADE_AGENCY      = os.Getenv("HW_CSS_UPGRADE_AGENCY")
+	HW_CSS_LOW_ENGINE_VERSION  = os.Getenv("HW_CSS_LOW_ENGINE_VERSION")
+	HW_CSS_TARGET_IMAGE_ID     = os.Getenv("HW_CSS_TARGET_IMAGE_ID")
+	HW_CSS_REPLACE_AGENCY      = os.Getenv("HW_CSS_REPLACE_AGENCY")
+	HW_CSS_DATASTORE_ID        = os.Getenv("HW_CSS_DATASTORE_ID")
+	HW_CSS_AZ_MIGRATE_AGENCY   = os.Getenv("HW_CSS_AZ_MIGRATE_AGENCY")
+	HW_CSS_CLUSTER_ID          = os.Getenv("HW_CSS_CLUSTER_ID")
+	HW_CSS_TARGET_CLUSTER_ID   = os.Getenv("HW_CSS_TARGET_CLUSTER_ID")
+	HW_CSS_LOGSTASH_CLUSTER_ID = os.Getenv("HW_CSS_LOGSTASH_CLUSTER_ID")
 
-	HW_CERT_BATCH_PUSH_ID     = os.Getenv("HW_CERT_BATCH_PUSH_ID")
-	HW_CERT_BATCH_PUSH_WAF_ID = os.Getenv("HW_CERT_BATCH_PUSH_WAF_ID")
+	HW_CERT_BATCH_PUSH_ID = os.Getenv("HW_CERT_BATCH_PUSH_ID")
 
 	HW_AS_SCALING_GROUP_ID         = os.Getenv("HW_AS_SCALING_GROUP_ID")
 	HW_AS_SCALING_CONFIGURATION_ID = os.Getenv("HW_AS_SCALING_CONFIGURATION_ID")
@@ -674,16 +753,21 @@ var (
 	HW_AS_LIFECYCLE_HOOK_NAME      = os.Getenv("HW_AS_LIFECYCLE_HOOK_NAME")
 
 	// Common
-	HW_DATAARTS_WORKSPACE_ID                               = os.Getenv("HW_DATAARTS_WORKSPACE_ID")
-	HW_DATAARTS_INSTANCE_ID                                = os.Getenv("HW_DATAARTS_INSTANCE_ID")
-	HW_DATAARTS_CDM_NAME                                   = os.Getenv("HW_DATAARTS_CDM_NAME")
-	HW_DATAARTS_MANAGER_ID                                 = os.Getenv("HW_DATAARTS_MANAGER_ID")
-	HW_DATAARTS_BIZ_CATALOG_ID                             = os.Getenv("HW_DATAARTS_BIZ_CATALOG_ID")
-	HW_DATAARTS_SUBJECT_ID                                 = os.Getenv("HW_DATAARTS_SUBJECT_ID")
-	HW_DATAARTS_ARCHITECTURE_USER_ID                       = os.Getenv("HW_DATAARTS_ARCHITECTURE_USER_ID")
-	HW_DATAARTS_ARCHITECTURE_USER_NAME                     = os.Getenv("HW_DATAARTS_ARCHITECTURE_USER_NAME")
-	HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID   = os.Getenv("HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID")
-	HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME = os.Getenv("HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME")
+	HW_DATAARTS_WORKSPACE_ID   = os.Getenv("HW_DATAARTS_WORKSPACE_ID")
+	HW_DATAARTS_INSTANCE_ID    = os.Getenv("HW_DATAARTS_INSTANCE_ID")
+	HW_DATAARTS_CDM_NAME       = os.Getenv("HW_DATAARTS_CDM_NAME")
+	HW_DATAARTS_MANAGER_ID     = os.Getenv("HW_DATAARTS_MANAGER_ID")
+	HW_DATAARTS_MODEL_ID       = os.Getenv("HW_DATAARTS_MODEL_ID")
+	HW_DATAARTS_BIZ_CATALOG_ID = os.Getenv("HW_DATAARTS_BIZ_CATALOG_ID")
+	HW_DATAARTS_SUBJECT_ID     = os.Getenv("HW_DATAARTS_SUBJECT_ID")
+	// Architecture
+	// The format of HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS is 'tag_id1|tag_name1,tag_id2|tag_name2', each tag is separated by the comma (,),
+	// and each key-value pair is separated by the pipe (|).
+	HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS = os.Getenv("HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS")
+	HW_DATAARTS_ARCHITECTURE_USER_ID          = os.Getenv("HW_DATAARTS_ARCHITECTURE_USER_ID")
+	HW_DATAARTS_ARCHITECTURE_USER_NAME        = os.Getenv("HW_DATAARTS_ARCHITECTURE_USER_NAME")
+	// The secrecy level non-UUID format IDs, multiple IDs separated by commas (,).
+	HW_DATAARTS_ARCHITECTURE_SECRECY_LEVEL_IDS = os.Getenv("HW_DATAARTS_ARCHITECTURE_SECRECY_LEVEL_IDS")
 	// Management Center
 	HW_DATAARTS_CONNECTION_ID   = os.Getenv("HW_DATAARTS_CONNECTION_ID")
 	HW_DATAARTS_CONNECTION_NAME = os.Getenv("HW_DATAARTS_CONNECTION_NAME")
@@ -692,27 +776,26 @@ var (
 	HW_DATAARTS_DLI_QUEUE_NAME      = os.Getenv("HW_DATAARTS_DLI_QUEUE_NAME")
 	HW_DATAARTS_INSTANCE_ID_IN_APIG = os.Getenv("HW_DATAARTS_INSTANCE_ID_IN_APIG")
 	// Security
-	HW_DATAARTS_SECURITY_DATA_CATEGORY_IDS             = os.Getenv("HW_DATAARTS_SECURITY_DATA_CATEGORY_IDS")
-	HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_ID   = os.Getenv("HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_ID")
-	HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_NAME = os.Getenv("HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_NAME")
+	HW_DATAARTS_SECURITY_DATA_CATEGORY_IDS                 = os.Getenv("HW_DATAARTS_SECURITY_DATA_CATEGORY_IDS")
+	HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_ID       = os.Getenv("HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_ID")
+	HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_NAME     = os.Getenv("HW_DATAARTS_SECURITY_BUILTIN_RECOGNITION_RULE_NAME")
+	HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID   = os.Getenv("HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID")
+	HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME = os.Getenv("HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME")
 
-	HW_ER_SHARED_INSTANCE_ID   = os.Getenv("HW_ER_SHARED_INSTANCE_ID")
-	HW_ER_SHARED_ATTACHMENT_ID = os.Getenv("HW_ER_SHARED_ATTACHMENT_ID")
+	HW_DAS_INSTANCE_IDS = os.Getenv("HW_DAS_INSTANCE_IDS")
 
 	HW_DEH_DEDICATED_HOST_ID = os.Getenv("HW_DEH_DEDICATED_HOST_ID")
 
-	HW_EVS_AVAILABILITY_ZONE_GPSSD2 = os.Getenv("HW_EVS_AVAILABILITY_ZONE_GPSSD2")
-	HW_EVS_AVAILABILITY_ZONE_ESSD2  = os.Getenv("HW_EVS_AVAILABILITY_ZONE_ESSD2")
-	HW_EVS_TRANSFER_ID              = os.Getenv("HW_EVS_TRANSFER_ID")
-	HW_EVS_TRANSFER_AUTH_KEY        = os.Getenv("HW_EVS_TRANSFER_AUTH_KEY")
-	HW_EVS_ENABLE_FLAG              = os.Getenv("HW_EVS_ENABLE_FLAG")
-	HW_EVS_VOLUME_ID                = os.Getenv("HW_EVS_VOLUME_ID")
-	HW_EVS_SERVER_ID                = os.Getenv("HW_EVS_SERVER_ID")
-	HW_EVS_VOLUME_NEW_SIZE          = os.Getenv("HW_EVS_VOLUME_NEW_SIZE")
-	HW_EVS_PREPAID_VOLUME_ID        = os.Getenv("HW_EVS_PREPAID_VOLUME_ID")
-	HW_EVS_PREPAID_VOLUME_NEW_SIZE  = os.Getenv("HW_EVS_PREPAID_VOLUME_NEW_SIZE")
-	HW_EVS_RECYCLE_BIN_ENABLE_FLAG  = os.Getenv("HW_EVS_RECYCLE_BIN_ENABLE_FLAG")
-	HW_EVS_RECYCLE_BIN_VOLUME_ID    = os.Getenv("HW_EVS_RECYCLE_BIN_VOLUME_ID")
+	HW_EVS_TRANSFER_ID             = os.Getenv("HW_EVS_TRANSFER_ID")
+	HW_EVS_TRANSFER_AUTH_KEY       = os.Getenv("HW_EVS_TRANSFER_AUTH_KEY")
+	HW_EVS_ENABLE_FLAG             = os.Getenv("HW_EVS_ENABLE_FLAG")
+	HW_EVS_VOLUME_ID               = os.Getenv("HW_EVS_VOLUME_ID")
+	HW_EVS_SERVER_ID               = os.Getenv("HW_EVS_SERVER_ID")
+	HW_EVS_VOLUME_NEW_SIZE         = os.Getenv("HW_EVS_VOLUME_NEW_SIZE")
+	HW_EVS_PREPAID_VOLUME_ID       = os.Getenv("HW_EVS_PREPAID_VOLUME_ID")
+	HW_EVS_PREPAID_VOLUME_NEW_SIZE = os.Getenv("HW_EVS_PREPAID_VOLUME_NEW_SIZE")
+	HW_EVS_RECYCLE_BIN_ENABLE_FLAG = os.Getenv("HW_EVS_RECYCLE_BIN_ENABLE_FLAG")
+	HW_EVS_RECYCLE_BIN_VOLUME_ID   = os.Getenv("HW_EVS_RECYCLE_BIN_VOLUME_ID")
 
 	HW_ECS_LAUNCH_TEMPLATE_ID = os.Getenv("HW_ECS_LAUNCH_TEMPLATE_ID")
 	HW_ECS_LAUNCH_GROUP_ID    = os.Getenv("HW_ECS_LAUNCH_GROUP_ID")
@@ -739,13 +822,21 @@ var (
 	// The OBS agency name list of the DWS data source. Using commas (,) to separate multiple names.
 	HW_DWS_OBS_AGENCY_NAMES = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
 
-	HW_DCS_ACCOUNT_WHITELIST = os.Getenv("HW_DCS_ACCOUNT_WHITELIST")
-	HW_DCS_INSTANCE_ID       = os.Getenv("HW_DCS_INSTANCE_ID")
-	HW_DCS_BEGIN_TIME        = os.Getenv("HW_DCS_BEGIN_TIME")
-	HW_DCS_END_TIME          = os.Getenv("HW_DCS_END_TIME")
-	HW_DCS_OBS_BUCKET_NAME   = os.Getenv("HW_DCS_OBS_BUCKET_NAME")
+	HW_DCS_INSTANCE_ID        = os.Getenv("HW_DCS_INSTANCE_ID")
+	HW_DCS_GROUP_ID           = os.Getenv("HW_DCS_GROUP_ID")
+	HW_DCS_BEGIN_TIME         = os.Getenv("HW_DCS_BEGIN_TIME")
+	HW_DCS_END_TIME           = os.Getenv("HW_DCS_END_TIME")
+	HW_DCS_OBS_BUCKET_NAME    = os.Getenv("HW_DCS_OBS_BUCKET_NAME")
+	HW_DCS_BACKUP_ID          = os.Getenv("HW_DCS_BACKUP_ID")
+	HW_DCS_BACKGROUND_TASK_ID = os.Getenv("HW_DCS_BACKGROUND_TASK_ID")
+	HW_DCS_CENTER_TASK_ID     = os.Getenv("HW_DCS_CENTER_TASK_ID")
+	HW_DCS_TASK_ID            = os.Getenv("HW_DCS_TASK_ID")
 
 	HW_ELB_GATEWAY_TYPE = os.Getenv("HW_ELB_GATEWAY_TYPE")
+
+	HW_GEMINIDB_MAPPING_ID = os.Getenv("HW_GEMINIDB_MAPPING_ID")
+	HW_GEMINIDB_NODE_ID    = os.Getenv("HW_GEMINIDB_NODE_ID")
+	HW_GEMINIDB_SESSION_ID = os.Getenv("HW_GEMINIDB_SESSION_ID")
 
 	HW_LTS_AGENCY_STREAM_NAME = os.Getenv("HW_LTS_AGENCY_STREAM_NAME")
 	HW_LTS_AGENCY_STREAM_ID   = os.Getenv("HW_LTS_AGENCY_STREAM_ID")
@@ -782,7 +873,6 @@ var (
 
 	HW_HSS_HOST_PROTECTION_HOST_ID            = os.Getenv("HW_HSS_HOST_PROTECTION_HOST_ID")
 	HW_HSS_POLICY_GROUP_ID                    = os.Getenv("HW_HSS_POLICY_GROUP_ID")
-	HW_HSS_HOST_PROTECTION_QUOTA_ID           = os.Getenv("HW_HSS_HOST_PROTECTION_QUOTA_ID")
 	HW_HSS_TARGET_POLICY_GROUP_ID             = os.Getenv("HW_HSS_TARGET_POLICY_GROUP_ID")
 	HW_HSS_DEFAULT_TARGET_POLICY_GROUP_ID     = os.Getenv("HW_HSS_DEFAULT_TARGET_POLICY_GROUP_ID")
 	HW_HSS_EVENT_ALARM_WHITE_LIST_EVENT_TYPE  = os.Getenv("HW_HSS_EVENT_ALARM_WHITE_LIST_EVENT_TYPE")
@@ -819,6 +909,7 @@ var (
 	HW_DDS_SESSION_ID                      = os.Getenv("HW_DDS_SESSION_ID")
 
 	HW_RDS_CROSS_REGION_BACKUP_INSTANCE_ID = os.Getenv("HW_RDS_CROSS_REGION_BACKUP_INSTANCE_ID")
+	HW_RDS_INSTANCE_FLAVOR                 = os.Getenv("HW_RDS_INSTANCE_FLAVOR")
 	HW_RDS_INSTANCE_ID                     = os.Getenv("HW_RDS_INSTANCE_ID")
 	HW_RDS_TARGET_INSTANCE_ID              = os.Getenv("HW_RDS_TARGET_INSTANCE_ID")
 	HW_RDS_TARGET_PROJECT_ID               = os.Getenv("HW_RDS_TARGET_PROJECT_ID")
@@ -835,16 +926,19 @@ var (
 	HW_RDS_INSTANT_JOB_ID                  = os.Getenv("HW_RDS_INSTANT_JOB_ID")
 	HW_RDS_SUBSCRIBER_INSTANCE_ID          = os.Getenv("HW_RDS_SUBSCRIBER_INSTANCE_ID")
 	HW_RDS_NODE_ID                         = os.Getenv("HW_RDS_NODE_ID")
+	HW_RDS_AGENT_JOB_ID                    = os.Getenv("HW_RDS_AGENT_JOB_ID")
 
 	HW_RFS_STACK_NAME             = os.Getenv("HW_RFS_STACK_NAME")
 	HW_RFS_STACK_SET_NAME         = os.Getenv("HW_RFS_STACK_SET_NAME")
 	HW_RFS_STACK_SET_OPERATION_ID = os.Getenv("HW_RFS_STACK_SET_OPERATION_ID")
 	HW_RFS_MODULE_NAME            = os.Getenv("HW_RFS_MODULE_NAME")
 	HW_RFS_MODULE_URI             = os.Getenv("HW_RFS_MODULE_URI")
+	HW_RFS_ENABLE_FLAG            = os.Getenv("HW_RFS_ENABLE_FLAG")
 
-	HW_DMS_KAFKA_INSTANCE_ID         = os.Getenv("HW_DMS_KAFKA_INSTANCE_ID")
-	HW_DMS_KAFKA_TOPIC_NAME          = os.Getenv("HW_DMS_KAFKA_TOPIC_NAME")
-	HW_DMS_KAFKA_CONSUMER_GROUP_NAME = os.Getenv("HW_DMS_KAFKA_CONSUMER_GROUP_NAME")
+	HW_DMS_KAFKA_INSTANCE_ID             = os.Getenv("HW_DMS_KAFKA_INSTANCE_ID")
+	HW_DMS_KAFKA_TOPIC_NAME              = os.Getenv("HW_DMS_KAFKA_TOPIC_NAME")
+	HW_DMS_KAFKA_CONSUMER_GROUP_NAME     = os.Getenv("HW_DMS_KAFKA_CONSUMER_GROUP_NAME")
+	HW_DMS_KAFKA_RECYCLE_BIN_INSTANCE_ID = os.Getenv("HW_DMS_KAFKA_RECYCLE_BIN_INSTANCE_ID")
 
 	HW_DMS_RABBITMQ_INSTANCE_ID             = os.Getenv("HW_DMS_RABBITMQ_INSTANCE_ID")
 	HW_DMS_RABBITMQ_RECYCLE_BIN_INSTANCE_ID = os.Getenv("HW_DMS_RABBITMQ_RECYCLE_BIN_INSTANCE_ID")
@@ -855,6 +949,7 @@ var (
 	// The list of dead letter message IDs. Using commas (,) to separate multiple IDs.
 	// At least one ID is required.
 	HW_DMS_ROCKETMQ_DEAD_LETTER_MESSAGE_IDs = os.Getenv("HW_DMS_ROCKETMQ_DEAD_LETTER_MESSAGE_IDs")
+	HW_DMS_ROCKETMQ_RECYCLE_BIN_INSTANCE_ID = os.Getenv("HW_DMS_ROCKETMQ_RECYCLE_BIN_INSTANCE_ID")
 
 	HW_SFS_TURBO_SHARE_ID                = os.Getenv("HW_SFS_TURBO_SHARE_ID")
 	HW_SFS_TURBO_BACKUP_ID               = os.Getenv("HW_SFS_TURBO_BACKUP_ID")
@@ -865,15 +960,22 @@ var (
 	HW_SFS_TURBO_AD_DOMAIN_DNS_SERVER_IP = os.Getenv("HW_SFS_TURBO_AD_DOMAIN_DNS_SERVER_IP")
 
 	HW_SMN_FLAG                 = os.Getenv("HW_SMN_FLAG")
+	HW_SMN_SUBSCRIBED_TOPIC_ID  = os.Getenv("HW_SMN_SUBSCRIBED_TOPIC_ID")
 	HW_SMN_SUBSCRIBED_TOPIC_URN = os.Getenv("HW_SMN_SUBSCRIBED_TOPIC_URN")
 	HW_SMN_SUBSCRIBE_ID         = os.Getenv("HW_SMN_SUBSCRIBE_ID")
 	HW_SMN_SUBSCRIBE_TOKEN      = os.Getenv("HW_SMN_SUBSCRIBE_TOKEN")
+	HW_SMN_TOPIC_URN            = os.Getenv("HW_SMN_TOPIC_URN")
 
 	HW_SERVICESTAGE_JAR_PKG_STORAGE_URLS = os.Getenv("HW_SERVICESTAGE_JAR_PKG_STORAGE_URLS")
 	HW_SERVICESTAGE_ZIP_STORAGE_URLS     = os.Getenv("HW_SERVICESTAGE_ZIP_STORAGE_URLS")
 
 	HW_DNS_ZONE_NAMES          = os.Getenv("HW_DNS_ZONE_NAMES")
 	HW_DNS_ZONE_RETRIEVAL_NAME = os.Getenv("HW_DNS_ZONE_RETRIEVAL_NAME")
+
+	HW_GEMINIDB_INSATNCE_ID = os.Getenv("HW_GEMINIDB_INSATNCE_ID")
+	HW_GEMINIDB_BACKUP_ID   = os.Getenv("HW_GEMINIDB_BACKUP_ID")
+	HW_GEMINIDB_CONFIG_ID   = os.Getenv("HW_GEMINIDB_CONFIG_ID")
+	HW_GEMINIDB_JOB_ID      = os.Getenv("HW_GEMINIDB_JOB_ID")
 )
 
 // TestAccProviders is a static map containing only the main provider instance.
@@ -1707,6 +1809,27 @@ func TestAccPreCheckAdminOnly(t *testing.T) {
 	}
 }
 
+// TestAccPreCheckPGPKeys skips the test when PGP key environment variables are not set.
+// Generate a dedicated test key pair (no passphrase) and export binary key packets as base64:
+//
+//	export GNUPGHOME="$(mktemp -d)" && chmod 700 "$GNUPGHOME"
+//	gpg --batch --passphrase '' --quick-generate-key \
+//	  'Terraform Provider Test <test@terraform.local>' rsa4096 sign,encrypt
+//	KEY_ID="$(gpg --list-keys --with-colons | awk -F: '/^pub/ {print $5; exit}')"
+//	export HW_PGP_PUBLIC_KEY="$(gpg --export "$KEY_ID" | base64 -w0)"
+//	export HW_PGP_PRIVATE_KEY="$(gpg --export-secret "$KEY_ID" | base64 -w0)"
+//
+// On macOS, replace `base64 -w0` with `base64`. Use throwaway keys only; do not commit them.
+// lintignore:AT003
+func TestAccPreCheckPGPKeys(t *testing.T) {
+	if HW_PGP_PUBLIC_KEY == "" {
+		t.Skip("HW_PGP_PUBLIC_KEY must be set for this acceptance test")
+	}
+	if HW_PGP_PRIVATE_KEY == "" {
+		t.Skip("HW_PGP_PRIVATE_KEY must be set for this acceptance test")
+	}
+}
+
 // lintignore:AT003
 func TestAccPreCheckIAMV5(t *testing.T) {
 	if HW_IAM_V5 == "" {
@@ -1725,6 +1848,13 @@ func TestAccPreCheckServiceLinkedAgencyPrincipal(t *testing.T) {
 func TestAccPreCheckRunnerPublicIPs(t *testing.T, min int) {
 	if HW_RUNNER_PUBLIC_IPS == "" || len(strings.Split(HW_RUNNER_PUBLIC_IPS, ",")) < min {
 		t.Skipf(`At least %d public IP(s) must be supported during the HW_RUNNER_PUBLIC_IPS, separated by commas (,).`, min)
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRunnerPublicV6IPs(t *testing.T, min int) {
+	if HW_RUNNER_PUBLIC_V6IPS == "" || len(strings.Split(HW_RUNNER_PUBLIC_V6IPS, ",")) < min {
+		t.Skipf(`At least %d public IP(s) must be supported during the HW_RUNNER_PUBLIC_V6IPS, separated by commas (,).`, min)
 	}
 }
 
@@ -1757,13 +1887,6 @@ func TestAccPreCheckDestProjectIds(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckProject(t *testing.T) {
-	if HW_ENTERPRISE_PROJECT_ID_TEST != "" {
-		t.Skip("This environment does not support project tests")
-	}
-}
-
-// lintignore:AT003
 func TestAccPreCheckOBS(t *testing.T) {
 	if HW_ACCESS_KEY == "" || HW_SECRET_KEY == "" {
 		t.Skip("HW_ACCESS_KEY and HW_SECRET_KEY must be set for OBS acceptance tests")
@@ -1771,9 +1894,23 @@ func TestAccPreCheckOBS(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckOBSBucketName(t *testing.T) {
+	if HW_OBS_BUCKET_NAME == "" {
+		t.Skip("HW_OBS_BUCKET_NAME must be set for the acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckOBSDestinationBucket(t *testing.T) {
 	if HW_OBS_DESTINATION_BUCKET == "" {
 		t.Skip("HW_OBS_DESTINATION_BUCKET must be set for OBS destination tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckOBSAgencyName(t *testing.T) {
+	if HW_OBS_AGENCY_NAME == "" {
+		t.Skip("HW_OBS_AGENCY_NAME must be set for OBS tests")
 	}
 }
 
@@ -1802,13 +1939,6 @@ func TestAccPreCheckOBSUserDomainNames(t *testing.T) {
 func TestAccPreCheckChargingMode(t *testing.T) {
 	if HW_CHARGING_MODE != "prePaid" {
 		t.Skip("This environment does not support prepaid tests")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckErSharedAttachmentAccepter(t *testing.T) {
-	if HW_ER_SHARED_INSTANCE_ID == "" || HW_ER_SHARED_ATTACHMENT_ID == "" {
-		t.Skip("HW_ER_SHARED_INSTANCE_ID and HW_ER_SHARED_ATTACHMENT_ID must be set for the acceptance test")
 	}
 }
 
@@ -1865,20 +1995,6 @@ func TestAccPreCheckEVSRecycleBinEnableFlag(t *testing.T) {
 func TestAccPreCheckEVSRecycleBinVolumeId(t *testing.T) {
 	if HW_EVS_RECYCLE_BIN_VOLUME_ID == "" {
 		t.Skip("HW_EVS_RECYCLE_BIN_VOLUME_ID must be set for acceptance tests")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckAvailabilityZoneGPSSD2(t *testing.T) {
-	if HW_EVS_AVAILABILITY_ZONE_GPSSD2 == "" {
-		t.Skip("If you want to change the QoS of a GPSSD2 type cloudvolume, you must specify an availability zone that supports GPSSD2 type under the current region")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckAvailabilityZoneESSD2(t *testing.T) {
-	if HW_EVS_AVAILABILITY_ZONE_ESSD2 == "" {
-		t.Skip("If you want to change the QoS of a ESSD2 type cloudvolume, you must specify an availability zone that supports ESSD2 type under the current region")
 	}
 }
 
@@ -1957,14 +2073,6 @@ func TestAccPreCheckRAM(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckRAMResourceShare(t *testing.T) {
-	if HW_RAM_SHARE_ACCOUNT_ID == "" || HW_RAM_SHARE_RESOURCE_URN == "" {
-		t.Skip("HW_RAM_SHARE_ACCOUNT_ID and HW_RAM_SHARE_RESOURCE_URN " +
-			"must be set for create ram resource tests.")
-	}
-}
-
-// lintignore:AT003
 func TestAccPreCheckRAMEnableFlag(t *testing.T) {
 	if HW_RAM_ENABLE_FLAG == "" {
 		t.Skip("Skip the RAM acceptance tests.")
@@ -1982,14 +2090,6 @@ func TestAccPreCheckRAMShareInvitationId(t *testing.T) {
 func TestAccPreCheckRAMShareId(t *testing.T) {
 	if HW_RAM_SHARE_ID == "" {
 		t.Skip("HW_RAM_SHARE_ID must be set for the acceptance tests.")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckRAMSharedPrincipalsQueryFields(t *testing.T) {
-	if HW_RAM_SHARE_ACCOUNT_ID == "" || HW_RAM_SHARE_RESOURCE_URN == "" {
-		t.Skip("HW_RAM_SHARE_ACCOUNT_ID and HW_RAM_SHARE_RESOURCE_URN " +
-			"must be set for RAM shared principals tests.")
 	}
 }
 
@@ -2235,94 +2335,163 @@ func TestAccPreCheckImageUrlUpdated(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlInstanceId(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_INSTANCE_ID == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_INSTANCE_ID must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBInstanceId(t *testing.T) {
+	if HW_TAURUSDB_INSTANCE_ID == "" {
+		t.Skip("HW_TAURUSDB_INSTANCE_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlNodeId(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_NODE_ID == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_NODE_ID must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBHtapInstanceId(t *testing.T) {
+	if HW_TAURUSDB_HTAP_INSTANCE_ID == "" {
+		t.Skip("HW_TAURUSDB_HTAP_INSTANCE_ID must be set for TaurusDB Htap acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlDatabaseName(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_DATABASE_NAME == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_DATABASE_NAME must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBHtapNodeId(t *testing.T) {
+	if HW_TAURUSDB_HTAP_NODE_ID == "" {
+		t.Skip("HW_TAURUSDB_HTAP_NODE_ID must be set for TaurusDB Htap acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlTableName(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_TABLE_NAME == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_TABLE_NAME must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBNodeId(t *testing.T) {
+	if HW_TAURUSDB_NODE_ID == "" {
+		t.Skip("HW_TAURUSDB_NODE_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlInstanceConfigurationId(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_INSTANCE_CONFIGURATION_ID == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_INSTANCE_CONFIGURATION_ID must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBNodeSessionId(t *testing.T) {
+	if HW_TAURUSDB_NODE_SESSION_ID == "" {
+		t.Skip("HW_TAURUSDB_NODE_SESSION_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlBackupBeginTime(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_BACKUP_BEGIN_TIME == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_BACKUP_BEGIN_TIME must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBDatabaseName(t *testing.T) {
+	if HW_TAURUSDB_DATABASE_NAME == "" {
+		t.Skip("HW_TAURUSDB_DATABASE_NAME must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlBackupEndTime(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_BACKUP_END_TIME == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_BACKUP_END_TIME must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBTableName(t *testing.T) {
+	if HW_TAURUSDB_TABLE_NAME == "" {
+		t.Skip("HW_TAURUSDB_TABLE_NAME must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlJobId(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_JOB_ID == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_JOB_ID must be set for GaussDB MySQL acceptance tests.")
+func TestAccPreCheckTaurusDBInstanceConfigurationId(t *testing.T) {
+	if HW_TAURUSDB_INSTANCE_CONFIGURATION_ID == "" {
+		t.Skip("HW_TAURUSDB_INSTANCE_CONFIGURATION_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBMysqlTimeRange(t *testing.T) {
-	if HW_GAUSSDB_MYSQL_START_TIME == "" || HW_GAUSSDB_MYSQL_END_TIME == "" {
-		t.Skip("HW_GAUSSDB_MYSQL_START_TIME and HW_GAUSSDB_MYSQL_END_TIME must be set for GaussDB MySQL acceptance tests")
+func TestAccPreCheckTaurusDBBackupId(t *testing.T) {
+	if HW_TAURUSDB_BACKUP_ID == "" {
+		t.Skip("HW_TAURUSDB_BACKUP_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBOpenGaussParameterTemplateId(t *testing.T) {
-	if HW_GAUSSDB_OPENGAUSS_PARAMETER_TEMPLATE_ID == "" {
-		t.Skip("HW_GAUSSDB_OPENGAUSS_PARAMETER_TEMPLATE_ID must be set for GaussDB OpenGauss acceptance tests")
+func TestAccPreCheckTaurusDBBackupBeginTime(t *testing.T) {
+	if HW_TAURUSDB_BACKUP_BEGIN_TIME == "" {
+		t.Skip("HW_TAURUSDB_BACKUP_BEGIN_TIME must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBOpenGaussJobId(t *testing.T) {
-	if HW_GAUSSDB_OPENGAUSS_JOB_ID == "" {
-		t.Skip("HW_GAUSSDB_OPENGAUSS_JOB_ID must be set for GaussDB OpenGauss acceptance tests")
+func TestAccPreCheckTaurusDBBackupEndTime(t *testing.T) {
+	if HW_TAURUSDB_BACKUP_END_TIME == "" {
+		t.Skip("HW_TAURUSDB_BACKUP_END_TIME must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBOpenGaussInstanceId(t *testing.T) {
-	if HW_GAUSSDB_OPENGAUSS_INSTANCE_ID == "" {
-		t.Skip("HW_GAUSSDB_OPENGAUSS_INSTANCE_ID must be set for GaussDB OpenGauss acceptance tests")
+func TestAccPreCheckTaurusDBJobId(t *testing.T) {
+	if HW_TAURUSDB_JOB_ID == "" {
+		t.Skip("HW_TAURUSDB_JOB_ID must be set for TaurusDB acceptance tests.")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckGaussDBOpenGaussTimeRange(t *testing.T) {
-	if HW_GAUSSDB_OPENGAUSS_START_TIME == "" || HW_GAUSSDB_OPENGAUSS_END_TIME == "" {
-		t.Skip("HW_GAUSSDB_OPENGAUSS_START_TIME and HW_GAUSSDB_OPENGAUSS_END_TIME must be set for GaussDB " +
-			"OpenGauss acceptance tests")
+func TestAccPreCheckTaurusDBTimeRange(t *testing.T) {
+	if HW_TAURUSDB_START_TIME == "" || HW_TAURUSDB_END_TIME == "" {
+		t.Skip("HW_TAURUSDB_START_TIME and HW_TAURUSDB_END_TIME must be set for TaurusDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBParameterTemplateId(t *testing.T) {
+	if HW_GAUSSDB_PARAMETER_TEMPLATE_ID == "" {
+		t.Skip("HW_GAUSSDB_PARAMETER_TEMPLATE_ID must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBJobId(t *testing.T) {
+	if HW_GAUSSDB_JOB_ID == "" {
+		t.Skip("HW_GAUSSDB_JOB_ID must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBInstanceId(t *testing.T) {
+	if HW_GAUSSDB_INSTANCE_ID == "" {
+		t.Skip("HW_GAUSSDB_INSTANCE_ID must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBSqlExecId(t *testing.T) {
+	if HW_GAUSSDB_SQL_EXEC_ID == "" {
+		t.Skip("HW_GAUSSDB_SQL_EXEC_ID must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBTimeRange(t *testing.T) {
+	if HW_GAUSSDB_START_TIME == "" || HW_GAUSSDB_END_TIME == "" {
+		t.Skip("HW_GAUSSDB_START_TIME and HW_GAUSSDB_END_TIME must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBHbaHistoryId(t *testing.T) {
+	if HW_GAUSSDB_HBA_HISTORY_ID == "" {
+		t.Skip("HW_GAUSSDB_HBA_HISTORY_ID must be set for GaussDB acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBSqlId(t *testing.T) {
+	if HW_GAUSSDB_SQL_ID == "" {
+		t.Skip("HW_GAUSSDB_SQL_ID must be set for GaussDB acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBSessionId(t *testing.T) {
+	if HW_GAUSSDB_SESSION_ID == "" {
+		t.Skip("HW_GAUSSDB_SESSION_ID must be set for GaussDB acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBBackupId(t *testing.T) {
+	if HW_GAUSSDB_BACKUP_ID == "" {
+		t.Skip("HW_GAUSSDB_BACKUP_ID must be set for GaussDB acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGaussDBKMSKeyId(t *testing.T) {
+	if HW_GAUSSDB_KMS_KEY_ID == "" {
+		t.Skip("HW_GAUSSDB_KMS_KEY_ID must be set for GaussDB acceptance tests")
 	}
 }
 
@@ -2736,16 +2905,23 @@ func TestAccPreCheckWorkspaceAppFileName(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckER(t *testing.T) {
-	if HW_ER_TEST_ON == "" {
-		t.Skip("Skip all ER acceptance tests.")
+func TestAccPreCheckERInstanceID(t *testing.T) {
+	if HW_ER_INSTANCE_ID == "" {
+		t.Skip("HW_ER_INSTANCE_ID must be set for this acceptance test")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckERInstanceID(t *testing.T) {
-	if HW_ER_INSTANCE_ID == "" {
-		t.Skip("HW_ER_INSTANCE_ID must be set for this acceptance test")
+func TestAccPreCheckERRoutePolicyIDs(t *testing.T, min int) {
+	if HW_ER_ROUTE_POLICY_IDS == "" || len(strings.Split(HW_ER_ROUTE_POLICY_IDS, ",")) < min {
+		t.Skipf("At least %d route policy IDs must be supported during the HW_ER_ROUTE_POLICY_IDS, separated by commas (,).", min)
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckErSharedAttachmentAccepter(t *testing.T) {
+	if HW_ER_SHARED_INSTANCE_ID == "" || HW_ER_SHARED_ATTACHMENT_ID == "" {
+		t.Skip("HW_ER_SHARED_INSTANCE_ID and HW_ER_SHARED_ATTACHMENT_ID must be set for the acceptance test")
 	}
 }
 
@@ -2796,6 +2972,34 @@ func TestAccPreCheckDcConnectGatewayId(t *testing.T) {
 func TestAccPreCheckGlobalEipId(t *testing.T) {
 	if HW_GLOBAL_EIP_ID == "" {
 		t.Skip("HW_GLOBAL_EIP_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGlobalInternetBandwidthId(t *testing.T) {
+	if HW_GLOBAL_INTERNET_BANDWIDTH_ID == "" {
+		t.Skip("HW_GLOBAL_INTERNET_BANDWIDTH_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGlobalEipSegmentId(t *testing.T) {
+	if HW_GLOBAL_EIP_SEGMENT_ID == "" {
+		t.Skip("HW_GLOBAL_EIP_SEGMENT_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGlobalEipBandwidthId(t *testing.T) {
+	if HW_GLOBAL_EIP_BANDWIDTH_ID == "" {
+		t.Skip("HW_GLOBAL_EIP_BANDWIDTH_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGlobalEipSegmentInstanceId(t *testing.T) {
+	if HW_GLOBAL_EIP_SEGMENT_INSTANCE_ID == "" {
+		t.Skip("HW_GLOBAL_EIP_SEGMENT_INSTANCE_ID must be set for this acceptance test")
 	}
 }
 
@@ -2859,6 +3063,77 @@ func TestAccPreCheckCesAlarmRuleWithTags(t *testing.T) {
 func TestAccPreCheckCfw(t *testing.T) {
 	if HW_CFW_INSTANCE_ID == "" {
 		t.Skip("HW_CFW_INSTANCE_ID must be set for CFW acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCfwIds(t *testing.T, min int) {
+	if HW_CFW_INSTANCE_IDS == "" || len(strings.Split(HW_CFW_INSTANCE_IDS, ",")) < min {
+		t.Skipf("At least %d instance IDs must be supported during the HW_CFW_INSTANCE_IDS, "+
+			"separated by commas (,).", min)
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsCompareJobId(t *testing.T) {
+	if HW_DRS_COMPARE_JOB_ID == "" {
+		t.Skip("HW_DRS_COMPARE_JOB_ID must be set for DRS acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsDbPassword(t *testing.T) {
+	if HW_DRS_DB_PASSWORD == "" {
+		t.Skip("HW_DRS_DB_PASSWORD must be set for DRS acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDRSEnableFlag(t *testing.T) {
+	if HW_DRS_ENABLE_FLAG == "" {
+		t.Skip("Skip the DRS acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsJobId(t *testing.T) {
+	if HW_DRS_JOB_ID == "" {
+		t.Skip("HW_DRS_JOB_ID must be set for DRS acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsJobIds(t *testing.T) {
+	if HW_DRS_JOB_IDS == "" {
+		t.Skip("HW_DRS_JOB_IDS must be set for DRS acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsBackupMigrationInstanceId(t *testing.T) {
+	if HW_DRS_BACKUP_MIGRATION_INSTANCE_ID == "" {
+		t.Skip("HW_DRS_BACKUP_MIGRATION_INSTANCE_ID must be set for DRS backup migration acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsBackupMigrationBucketName(t *testing.T) {
+	if HW_DRS_BACKUP_MIGRATION_BUCKET_NAME == "" {
+		t.Skip("HW_DRS_BACKUP_MIGRATION_BUCKET_NAME must be set for DRS backup migration acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsBackupMigrationBucketPath(t *testing.T) {
+	if HW_DRS_BACKUP_MIGRATION_BUCKET_PATH == "" {
+		t.Skip("HW_DRS_BACKUP_MIGRATION_BUCKET_PATH must be set for DRS backup migration acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDrsBackupMigrationFileName(t *testing.T) {
+	if HW_DRS_BACKUP_MIGRATION_FILE_NAME == "" {
+		t.Skip("HW_DRS_BACKUP_MIGRATION_FILE_NAME must be set for DRS backup migration acceptance tests")
 	}
 }
 
@@ -3003,6 +3278,13 @@ func TestAccPreCheckCceClusterId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckCceClusterServiceAccountToken(t *testing.T) {
+	if HW_CCE_CLUSTER_SERVICE_ACCOUNT_TOKEN == "" {
+		t.Skip("HW_CCE_CLUSTER_SERVICE_ACCOUNT_TOKEN must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckCceChartPath(t *testing.T) {
 	// HW_CCE_CHART_PATH is the absolute path of the chart package
 	if HW_CCE_CHART_PATH == "" {
@@ -3124,9 +3406,30 @@ func TestAccPreCheckSecMasterRDSAssetID(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckSecMasterPolicyID(t *testing.T) {
+	if HW_SECMASTER_POLICY_ID == "" {
+		t.Skip("HW_SECMASTER_POLICY_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSecMasterLayoutID(t *testing.T) {
 	if HW_SECMASTER_LAYOUT_ID == "" {
 		t.Skip("HW_SECMASTER_LAYOUT_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSecMasterDataClassID(t *testing.T) {
+	if HW_SECMASTER_DATACLASS_ID == "" {
+		t.Skip("HW_SECMASTER_DATACLASS_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSecMasterTypeID(t *testing.T) {
+	if HW_SECMASTER_TYPE_ID == "" {
+		t.Skip("HW_SECMASTER_TYPE_ID must be set for SecMaster acceptance tests")
 	}
 }
 
@@ -3152,6 +3455,13 @@ func TestAccPreCheckSecMasterInstanceID(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckSecMasterChannelID(t *testing.T) {
+	if HW_SECMASTER_CHANNEL_ID == "" {
+		t.Skip("HW_SECMASTER_CHANNEL_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSecMasterIndicatorTypeID(t *testing.T) {
 	if HW_SECMASTER_INDICATOR_TYPE_ID == "" {
 		t.Skip("HW_SECMASTER_INDICATOR_TYPE_ID must be set for SecMaster acceptance tests")
@@ -3162,13 +3472,6 @@ func TestAccPreCheckSecMasterIndicatorTypeID(t *testing.T) {
 func TestAccPreCheckSecMasterPostPaidOrder(t *testing.T) {
 	if HW_SECMASTER_ORDER_ID == "" || HW_SECMASTER_PRODUCT_ID == "" {
 		t.Skip("HW_SECMASTER_ORDER_ID and HW_SECMASTER_PRODUCT_ID must be set for SecMaster acceptance tests")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckSecMasterWorkspace(t *testing.T) {
-	if HW_SECMASTER_WORKSPACE == "" {
-		t.Skip("HW_SECMASTER_WORKSPACE must be set for SecMaster acceptance tests")
 	}
 }
 
@@ -3217,6 +3520,13 @@ func TestAccPreCheckSecMasterFieldId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckSecMasterAttachID(t *testing.T) {
+	if HW_SECMASTER_ATTACH_ID == "" {
+		t.Skip("HW_SECMASTER_ATTACH_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSecMasterTemplateId(t *testing.T) {
 	if HW_SECMASTER_TEMPLATE_ID == "" {
 		t.Skip("HW_SECMASTER_TEMPLATE_ID must be set for SecMaster acceptance tests")
@@ -3231,6 +3541,20 @@ func TestAccPreCheckSecMasterMappingId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckSecMasterMapperId(t *testing.T) {
+	if HW_SECMASTER_MAPPER_ID == "" {
+		t.Skip("HW_SECMASTER_MAPPER_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSecMasterMapperTypeId(t *testing.T) {
+	if HW_SECMASTER_MAPPER_TYPE_ID == "" {
+		t.Skip("HW_SECMASTER_MAPPER_TYPE_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckSecMasterPipeId(t *testing.T) {
 	if HW_SECMASTER_PIPE_ID == "" {
 		t.Skip("HW_SECMASTER_PIPE_ID must be set for SecMaster acceptance tests")
@@ -3241,6 +3565,13 @@ func TestAccPreCheckSecMasterPipeId(t *testing.T) {
 func TestAccPreCheckSecMasterDataspaceId(t *testing.T) {
 	if HW_SECMASTER_DATASPACE_ID == "" {
 		t.Skip("HW_SECMASTER_DATASPACE_ID must be set for SecMaster acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSecMasterNodeId(t *testing.T) {
+	if HW_SECMASTER_NODE_ID == "" {
+		t.Skip("HW_SECMASTER_NODE_ID must be set for SecMaster acceptance tests")
 	}
 }
 
@@ -3363,6 +3694,14 @@ func TestAccPreCheckModelartsDevServer(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckModelArtsResourcePoolIds(t *testing.T, min int) {
+	if HW_MODELARTS_RESOURCE_POOL_IDS == "" || len(strings.Split(HW_MODELARTS_RESOURCE_POOL_IDS, ",")) < min {
+		t.Skipf("At least %d ModelArts resource pool IDs must be supported during the HW_MODELARTS_RESOURCE_POOL_IDS, "+
+			"separated by commas (,).", min)
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckModelArtsResourcePoolName(t *testing.T) {
 	if HW_MODELARTS_RESOURCE_POOL_NAME == "" {
 		t.Skip("HW_MODELARTS_RESOURCE_POOL_NAME must be set for ModelArts resource pool acceptance test")
@@ -3373,6 +3712,62 @@ func TestAccPreCheckModelArtsResourcePoolName(t *testing.T) {
 func TestAccPreCheckModelArtsResourcePoolBatchResize(t *testing.T) {
 	if HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME == "" {
 		t.Skip("HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME must be set for ModelArts resource pool acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsResourcePoolQuotaName(t *testing.T) {
+	if HW_MODELARTS_RESOURCE_POOL_QUOTA_NAME == "" {
+		t.Skip("HW_MODELARTS_RESOURCE_POOL_QUOTA_NAME must be set for ModelArts resource pool acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsWorkflowId(t *testing.T) {
+	if HW_MODELARTS_WORKFLOW_ID == "" {
+		t.Skip("HW_MODELARTS_WORKFLOW_ID must be set for ModelArts acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsAlgorithm(t *testing.T) {
+	TestAccPreCheckModelArtsAlgorithmEngine(t)
+	TestAccPreCheckModelArtsAlgorithmImageUrl(t)
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsAlgorithmEngine(t *testing.T) {
+	if HW_MODELARTS_ALGORITHM_ENGINE_ID == "" || HW_MODELARTS_ALGORITHM_ENGINE_NAME == "" || HW_MODELARTS_ALGORITHM_IMAGE_URL == "" {
+		t.Skip("HW_MODELARTS_ALGORITHM_ENGINE_ID, HW_MODELARTS_ALGORITHM_ENGINE_NAME and HW_MODELARTS_ALGORITHM_IMAGE_URL must be set " +
+			"for ModelArts algorithm acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsAlgorithmImageUrl(t *testing.T) {
+	if HW_MODELARTS_ALGORITHM_IMAGE_URL == "" {
+		t.Skip("HW_MODELARTS_ALGORITHM_IMAGE_URL must be set for ModelArts algorithm acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsTrainingJobPublicResourcePoolFlavorID(t *testing.T) {
+	if HW_MODELARTS_TRAINING_JOB_PUBLIC_RESOURCE_POOL_FLAVOR_ID == "" {
+		t.Skip("HW_MODELARTS_TRAINING_JOB_PUBLIC_RESOURCE_POOL_FLAVOR_ID must be set for ModelArts training job acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsWorkflowSubscription(t *testing.T) {
+	if HW_MODELARTS_WORKFLOW_SUBSCRIPTION_ID == "" || HW_MODELARTS_WORKFLOW_ITEM_VERSION_ID == "" {
+		t.Skip("HW_MODELARTS_WORKFLOW_SUBSCRIPTION_ID and HW_MODELARTS_WORKFLOW_ITEM_VERSION_ID must be set for ModelArts Workflow acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckModelArtsNetworkAvailableSubnets(t *testing.T) {
+	if HW_MODELARTS_NETWORK_NAME == "" || HW_MODELARTS_SUBNET_ID == "" {
+		t.Skip("HW_MODELARTS_NETWORK_NAME and HW_MODELARTS_SUBNET_ID must be set for ModelArts the acceptance test")
 	}
 }
 
@@ -3796,13 +4191,6 @@ func TestAccPreCheckCERT(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckCDNDomainCertificates(t *testing.T) {
-	if HW_CDN_ENABLE_FLAG == "" {
-		t.Skip("Skip the CDN acceptance tests.")
-	}
-}
-
-// lintignore:AT003
 func TestAccPreCheckCDNIPAddresses(t *testing.T, n int) {
 	if len(strings.Split(HW_CDN_IP_ADDRESSES, ",")) < n {
 		t.Skipf("at lease %d IP address(es) for HW_CDN_IP_ADDRESSES must be set, separated by a comma (,)", n)
@@ -3883,6 +4271,20 @@ func TestAccPreCheckCSSUpgradeAgency(t *testing.T) {
 func TestAccPreCheckCSSClusterId(t *testing.T) {
 	if HW_CSS_CLUSTER_ID == "" {
 		t.Skip("HW_CSS_CLUSTER_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCSSLogStashClusterId(t *testing.T) {
+	if HW_CSS_LOGSTASH_CLUSTER_ID == "" {
+		t.Skip("HW_CSS_LOGSTASH_CLUSTER_ID must be set for the css logstash cluster acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCSSLogIngestionSetting(t *testing.T) {
+	if HW_CSS_CLUSTER_ID == "" || HW_CSS_TARGET_CLUSTER_ID == "" {
+		t.Skip("HW_CSS_CLUSTER_ID and HW_CSS_TARGET_CLUSTER_ID must be set for the acceptance test")
 	}
 }
 
@@ -3971,6 +4373,13 @@ func TestAccPreCheckDataArtsManagerID(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDataArtsModelID(t *testing.T) {
+	if HW_DATAARTS_MODEL_ID == "" {
+		t.Skip("HW_DATAARTS_MODEL_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDataArtsBizCatalogID(t *testing.T) {
 	if HW_DATAARTS_BIZ_CATALOG_ID == "" {
 		t.Skip("HW_DATAARTS_BIZ_CATALOG_ID must be set for the acceptance test")
@@ -4006,6 +4415,19 @@ func TestAccPreCheckDataArtsSubjectID(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDataArtsArchitectureTableModelTags(t *testing.T, min int) {
+	tags := HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS
+	if tags == "" || len(strings.Split(tags, ",")) < min {
+		t.Skipf("At least %d tag(s) must be supported during the HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS, separated by the commas (,)", min)
+	}
+
+	if !strings.Contains(tags, "|") {
+		t.Skipf("Invalid format of HW_DATAARTS_ARCHITECTURE_TABLE_MODEL_TAGS, want 'tag_id1|tag_name1,tag_id2|tag_name2' format, but got (%v)",
+			tags)
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDataArtsConnectionName(t *testing.T) {
 	if HW_DATAARTS_CONNECTION_NAME == "" {
 		t.Skip("HW_DATAARTS_CONNECTION_NAME must be set for the acceptance test")
@@ -4027,10 +4449,26 @@ func TestAccPreCheckDataArtsArchitectureReviewer(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDataArtsArchitectureSecrecyLevelIds(t *testing.T, min int) {
+	if HW_DATAARTS_ARCHITECTURE_SECRECY_LEVEL_IDS == "" || len(strings.Split(HW_DATAARTS_ARCHITECTURE_SECRECY_LEVEL_IDS, ",")) < min {
+		t.Skipf("At lease %d secrecy level ID(s) for HW_DATAARTS_ARCHITECTURE_SECRECY_LEVEL_IDS must be set, separated by the comma (,)", min)
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDataArtsSecurityPermissionSetMember(t *testing.T) {
 	if HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID == "" || HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME == "" {
 		t.Skip("HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_ID and HW_DATAARTS_SECURITY_PERMISSSIONSET_MEMBER_OBJECT_NAME " +
 			"must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDasInstanceIds(t *testing.T, min int) {
+	// The instance supports RDS, GaussDB, TaurusDB, DDM, DDS
+	if HW_DAS_INSTANCE_IDS == "" || len(strings.Split(HW_DAS_INSTANCE_IDS, ",")) < min {
+		t.Skipf("At least %d Instance IDs must be supported during the HW_DAS_INSTANCE_IDS, "+
+			"separated by commas (,).", min)
 	}
 }
 
@@ -4188,16 +4626,16 @@ func TestAccPreCheckDwsExtDataSourceAgencyNames(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckDCSAccountWhitelist(t *testing.T) {
-	if HW_DCS_ACCOUNT_WHITELIST == "" {
-		t.Skip("HW_DCS_ACCOUNT_WHITELIST must be set for the acceptance test")
+func TestAccPreCheckDCSInstanceID(t *testing.T) {
+	if HW_DCS_INSTANCE_ID == "" {
+		t.Skip("HW_DCS_INSTANCE_ID must be set for the acceptance test")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckDCSInstanceID(t *testing.T) {
-	if HW_DCS_INSTANCE_ID == "" {
-		t.Skip("HW_DCS_INSTANCE_ID must be set for the acceptance test")
+func TestAccPreCheckDcsGroupId(t *testing.T) {
+	if HW_DCS_GROUP_ID == "" {
+		t.Skip("HW_DCS_GROUP_ID must be set for the acceptance test")
 	}
 }
 
@@ -4216,6 +4654,34 @@ func TestAccPreCheckDcsObsBucketName(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDcsBackgroundTaskId(t *testing.T) {
+	if HW_DCS_BACKGROUND_TASK_ID == "" {
+		t.Skip("HW_DCS_BACKGROUND_TASK_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDcsCenterTaskId(t *testing.T) {
+	if HW_DCS_CENTER_TASK_ID == "" {
+		t.Skip("HW_DCS_CENTER_TASK_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDcsBackupId(t *testing.T) {
+	if HW_DCS_BACKUP_ID == "" {
+		t.Skip("HW_DCS_BACKUP_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDCSTaskId(t *testing.T) {
+	if HW_DCS_TASK_ID == "" {
+		t.Skip("HW_DCS_TASK_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckElbGatewayType(t *testing.T) {
 	if HW_ELB_GATEWAY_TYPE == "" {
 		t.Skip("HW_ELB_GATEWAY_TYPE must be set for the acceptance test")
@@ -4223,16 +4689,30 @@ func TestAccPreCheckElbGatewayType(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckCCMPushCertificateID(t *testing.T) {
-	if HW_CERT_BATCH_PUSH_ID == "" {
-		t.Skip("HW_CERT_BATCH_PUSH_ID must be set for the acceptance test")
+func TestAccPreCheckGeminiDBMappingId(t *testing.T) {
+	if HW_GEMINIDB_MAPPING_ID == "" {
+		t.Skip("HW_GEMINIDB_MAPPING_ID must be set for the acceptance test")
 	}
 }
 
 // lintignore:AT003
-func TestAccPreCheckCCMPushWAFInstance(t *testing.T) {
-	if HW_CERT_BATCH_PUSH_WAF_ID == "" {
-		t.Skip("HW_CERT_BATCH_PUSH_WAF_ID must be set for the acceptance test")
+func TestAccPreCheckGeminiDBNodeId(t *testing.T) {
+	if HW_GEMINIDB_NODE_ID == "" {
+		t.Skip("HW_GEMINIDB_NODE_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckGeminiDBSessionId(t *testing.T) {
+	if HW_GEMINIDB_SESSION_ID == "" {
+		t.Skip("HW_GEMINIDB_SESSION_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCCMPushCertificateID(t *testing.T) {
+	if HW_CERT_BATCH_PUSH_ID == "" {
+		t.Skip("HW_CERT_BATCH_PUSH_ID must be set for the acceptance test")
 	}
 }
 
@@ -4275,13 +4755,6 @@ func TestAccPreCheckHSSTargetPolicyGroupId(t *testing.T) {
 func TestAccPreCheckHSSDefaultTargetPolicyGroupId(t *testing.T) {
 	if HW_HSS_DEFAULT_TARGET_POLICY_GROUP_ID == "" {
 		t.Skip("HW_HSS_DEFAULT_TARGET_POLICY_GROUP_ID must be set for the acceptance test")
-	}
-}
-
-// lintignore:AT003
-func TestAccPreCheckHSSHostProtectionQuotaId(t *testing.T) {
-	if HW_HSS_HOST_PROTECTION_QUOTA_ID == "" {
-		t.Skip("HW_HSS_HOST_PROTECTION_QUOTA_ID must be set for the acceptance test")
 	}
 }
 
@@ -4568,6 +5041,13 @@ func TestAccPreCheckRdsNodeId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckRdsAgentJobId(t *testing.T) {
+	if HW_RDS_AGENT_JOB_ID == "" {
+		t.Skip("HW_RDS_AGENT_JOB_ID must be set for RDS acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckRfsStackName(t *testing.T) {
 	if HW_RFS_STACK_NAME == "" {
 		t.Skip("HW_RFS_STACK_NAME must be set for RFS acceptance tests")
@@ -4599,6 +5079,13 @@ func TestAccPreCheckRfsModuleName(t *testing.T) {
 func TestAccPreCheckRfsModuleURI(t *testing.T) {
 	if HW_RFS_MODULE_URI == "" {
 		t.Skip("HW_RFS_MODULE_URI must be set for RFS acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckRfsEnableFlag(t *testing.T) {
+	if HW_RFS_ENABLE_FLAG == "" {
+		t.Skip("HW_RFS_ENABLE_FLAG must be set for RFS acceptance tests")
 	}
 }
 
@@ -4652,6 +5139,13 @@ func TestAccPreCheckDMSKafkaConsumerGroupName(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDMSKafkaRecycleBinInstanceId(t *testing.T) {
+	if HW_DMS_KAFKA_RECYCLE_BIN_INSTANCE_ID == "" {
+		t.Skip("HW_DMS_KAFKA_RECYCLE_BIN_INSTANCE_ID must be set for Kafka recycle bin instance acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDMSRabbitMQInstanceId(t *testing.T) {
 	if HW_DMS_RABBITMQ_INSTANCE_ID == "" {
 		t.Skip("HW_DMS_RABBITMQ_INSTANCE_ID must be set for RabbitMQ acceptance tests")
@@ -4659,7 +5153,7 @@ func TestAccPreCheckDMSRabbitMQInstanceId(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckDMSRocketMQRecycleBinInstanceId(t *testing.T) {
+func TestAccPreCheckDMSRabbitMQRecycleBinInstanceId(t *testing.T) {
 	if HW_DMS_RABBITMQ_RECYCLE_BIN_INSTANCE_ID == "" {
 		t.Skip("HW_DMS_RABBITMQ_RECYCLE_BIN_INSTANCE_ID must be set for restoring RabbitMQ recycle bin instance acceptance tests")
 	}
@@ -4695,6 +5189,13 @@ func TestAccPreCheckDMSRocketMQDeadLetterMessageIDs(t *testing.T, min int) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDMSRocketMQRecycleBinInstanceId(t *testing.T) {
+	if HW_DMS_ROCKETMQ_RECYCLE_BIN_INSTANCE_ID == "" {
+		t.Skip("HW_DMS_ROCKETMQ_RECYCLE_BIN_INSTANCE_ID must be set for restoring RocketMQ recycle bin instance acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckAsDedicatedHostId(t *testing.T) {
 	if HW_DEDICATED_HOST_ID == "" {
 		t.Skip("HW_DEDICATED_HOST_ID must be set for the acceptance test")
@@ -4723,9 +5224,23 @@ func TestAccPreCheckVpcEipPoolEnabled(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckVpcEipPoolId(t *testing.T) {
+	if HW_VPC_EIP_PUBLICIP_POOL_ID == "" {
+		t.Skip("HW_VPC_EIP_PUBLICIP_POOL_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckVpcEipBandwidthAddOnPackageEnabled(t *testing.T) {
 	if HW_VPC_BANDWIDTH_ADDON_PACKAGE_ENABLED == "" {
 		t.Skip("HW_VPC_BANDWIDTH_ADDON_PACKAGE_ENABLED must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckVpcEipBandwidthName(t *testing.T) {
+	if HW_VPC_BANDWIDTH_NAME == "" {
+		t.Skip("HW_VPC_BANDWIDTH_NAME must be set for the acceptance test")
 	}
 }
 
@@ -4870,6 +5385,132 @@ func TestAccPrecheckDscInstance(t *testing.T) {
 func TestAccPrecheckDscAlarmTopicID(t *testing.T) {
 	if HW_DSC_ALARM_TOPIC_ID == "" {
 		t.Skip("HW_DSC_ALARM_TOPIC_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscAssetId(t *testing.T) {
+	if HW_DSC_ASSET_ID == "" {
+		t.Skip("HW_DSC_ASSET_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscEnableFlag(t *testing.T) {
+	if HW_DSC_ENABLE_FLAG == "" {
+		t.Skip("HW_DSC_ENABLE_FLAG must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscDeviceId(t *testing.T) {
+	if HW_DSC_DEVICE_ID == "" {
+		t.Skip("HW_DSC_DEVICE_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscLabelId(t *testing.T) {
+	if HW_DSC_LABEL_ID == "" {
+		t.Skip("HW_DSC_LABEL_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscMetadataTagName(t *testing.T) {
+	if HW_DSC_METADATA_TAG_NAME == "" || HW_DSC_METADATA_TAG_NAME_UPDATE == "" {
+		t.Skip("HW_DSC_METADATA_TAG_NAME and HW_DSC_METADATA_TAG_NAME_UPDATE must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscTypeId(t *testing.T) {
+	if HW_DSC_TYPE_ID == "" {
+		t.Skip("HW_DSC_TYPE_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDSCScanTemplateID(t *testing.T) {
+	if HW_DSC_SCAN_TEMPLATE_ID == "" {
+		t.Skip("HW_DSC_SCAN_TEMPLATE_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscScanJobId(t *testing.T) {
+	if HW_DSC_SCAN_JOB_ID == "" {
+		t.Skip("HW_DSC_SCAN_JOB_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscScanRuleId(t *testing.T) {
+	if HW_DSC_SCAN_RULE_ID == "" {
+		t.Skip("HW_DSC_SCAN_RULE_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscSecurityLevelId(t *testing.T) {
+	if HW_DSC_SECURITY_LEVEL_ID == "" {
+		t.Skip("HW_DSC_SECURITY_LEVEL_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscSecurityLevelIdTarget(t *testing.T) {
+	if HW_DSC_SECURITY_LEVEL_ID_TARGET == "" {
+		t.Skip("HW_DSC_SECURITY_LEVEL_ID_TARGET must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscObsId(t *testing.T) {
+	if HW_DSC_OBS_ID == "" {
+		t.Skip("HW_DSC_OBS_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscDbId(t *testing.T) {
+	if HW_DSC_DB_ID == "" {
+		t.Skip("HW_DSC_DB_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscDbTableName(t *testing.T) {
+	if HW_DSC_DB_TABLE_NAME == "" {
+		t.Skip("HW_DSC_DB_TABLE_NAME must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscBucketId(t *testing.T) {
+	if HW_DSC_BUCKET_ID == "" {
+		t.Skip("HW_DSC_BUCKET_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscRuleIds(t *testing.T) {
+	if HW_DSC_RULE_IDS == "" {
+		t.Skip("HW_DSC_RULE_IDS must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscDbInstanceId(t *testing.T) {
+	if HW_DSC_DB_INSTANCE_ID == "" {
+		t.Skip("HW_DSC_DB_INSTANCE_ID must be set for DSC acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDscClassificationId(t *testing.T) {
+	if HW_DSC_CLASSIFICATION_ID == "" {
+		t.Skip("HW_DSC_CLASSIFICATION_ID must be set for DSC acceptance tests")
 	}
 }
 
@@ -5059,6 +5700,13 @@ func TestAccPrecheckSmnFlag(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPrecheckSmnSubscribedTopicId(t *testing.T) {
+	if HW_SMN_SUBSCRIBED_TOPIC_ID == "" {
+		t.Skip("HW_SMN_SUBSCRIBED_TOPIC_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPrecheckSmnSubscribedTopicUrn(t *testing.T) {
 	if HW_SMN_SUBSCRIBED_TOPIC_URN == "" {
 		t.Skip("HW_SMN_SUBSCRIBED_TOPIC_URN must be set for the acceptance test")
@@ -5076,6 +5724,13 @@ func TestAccPrecheckSmnSubscribeId(t *testing.T) {
 func TestAccPrecheckSmnSubscribeToken(t *testing.T) {
 	if HW_SMN_SUBSCRIBE_TOKEN == "" {
 		t.Skip("HW_SMN_SUBSCRIBE_TOKEN must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSmnTopicUrn(t *testing.T) {
+	if HW_SMN_TOPIC_URN == "" {
+		t.Skip("HW_SMN_TOPIC_URN must be set for the acceptance test")
 	}
 }
 
@@ -5118,5 +5773,33 @@ func TestAccPreCheckDnsZoneRetrievalName(t *testing.T) {
 func TestAccPreCheckV3UserPassword(t *testing.T) {
 	if HW_IDENTITY_ORIGINAL_PASSWORD == "" || HW_IDENTITY_NEW_PASSWORD == "" {
 		t.Skipf("HW_IDENTITY_ORIGINAL_PASSWORD and HW_IDENTITY_NEW_PASSWORD must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccCheckGeminidbInstanceID(t *testing.T) {
+	if HW_GEMINIDB_INSATNCE_ID == "" {
+		t.Skip("HW_GEMINIDB_INSATNCE_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccCheckGeminidbBackupID(t *testing.T) {
+	if HW_GEMINIDB_BACKUP_ID == "" {
+		t.Skip("HW_GEMINIDB_BACKUP_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccCheckGeminidbConfigID(t *testing.T) {
+	if HW_GEMINIDB_CONFIG_ID == "" {
+		t.Skip("HW_GEMINIDB_CONFIG_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccCheckGeminidbJobID(t *testing.T) {
+	if HW_GEMINIDB_JOB_ID == "" {
+		t.Skip("HW_GEMINIDB_JOB_ID must be set for this acceptance test")
 	}
 }

@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -167,14 +167,14 @@ func resourceIpAddressGroupCreate(ctx context.Context, d *schema.ResourceData, m
 
 	//  call addIps to support more than 20 ip addresses
 	if val, ok := d.GetOk("ip_addresses"); ok {
-		err = addIps(ctx, d, meta, client, val.(*schema.Set).List())
+		err = addIps(ctx, d, client, val.(*schema.Set).List())
 		if err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if val, ok := d.GetOk("listeners"); ok {
-		err = associateListener(ctx, d, meta, client, val.(*schema.Set).List())
+		err = associateListener(ctx, d, client, val.(*schema.Set).List())
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -311,14 +311,14 @@ func resourceIpAddressGroupUpdate(ctx context.Context, d *schema.ResourceData, m
 		removeIpsRaw := oldIpsRaw.(*schema.Set).Difference(newIpsRaw.(*schema.Set))
 
 		if removeIpsRaw.Len() > 0 {
-			err = removeIps(ctx, d, meta, client, removeIpsRaw.List())
+			err = removeIps(ctx, d, client, removeIpsRaw.List())
 			if err != nil {
 				return diag.FromErr(err)
 			}
 		}
 
 		if addIpsRaw.Len() > 0 {
-			err = addIps(ctx, d, meta, client, addIpsRaw.List())
+			err = addIps(ctx, d, client, addIpsRaw.List())
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -338,7 +338,7 @@ func resourceIpAddressGroupUpdate(ctx context.Context, d *schema.ResourceData, m
 		}
 
 		if associateListenerRaw.Len() > 0 {
-			err = associateListener(ctx, d, meta, client, associateListenerRaw.List())
+			err = associateListener(ctx, d, client, associateListenerRaw.List())
 			if err != nil {
 				return diag.FromErr(err)
 			}
@@ -348,8 +348,7 @@ func resourceIpAddressGroupUpdate(ctx context.Context, d *schema.ResourceData, m
 	return resourceIpAddressGroupRead(ctx, d, meta)
 }
 
-func addIps(ctx context.Context, d *schema.ResourceData, meta interface{}, client *golangsdk.ServiceClient,
-	rawParams interface{}) error {
+func addIps(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, rawParams interface{}) error {
 	addIpsHttpUrl := "v1/ip-groups/{ip_group_id}/add-ips"
 	addIpsPath := client.Endpoint + addIpsHttpUrl
 	addIpsPath = strings.ReplaceAll(addIpsPath, "{ip_group_id}", d.Id())
@@ -396,8 +395,7 @@ func addIps(ctx context.Context, d *schema.ResourceData, meta interface{}, clien
 	return nil
 }
 
-func removeIps(ctx context.Context, d *schema.ResourceData, meta interface{}, client *golangsdk.ServiceClient,
-	rawParams interface{}) error {
+func removeIps(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, rawParams interface{}) error {
 	removeIpsHttpUrl := "v1/ip-groups/{ip_group_id}/remove-ips"
 	removeIpsPath := client.Endpoint + removeIpsHttpUrl
 	removeIpsPath = strings.ReplaceAll(removeIpsPath, "{ip_group_id}", d.Id())
@@ -410,7 +408,7 @@ func removeIps(ctx context.Context, d *schema.ResourceData, meta interface{}, cl
 		batchSize := 20
 		rst := make([]string, len(rawArray))
 		for i, v := range rawArray {
-			rst[i] = utils.PathSearch("cidr", v, nil).(string)
+			rst[i] = utils.PathSearch("cidr", v, "").(string)
 		}
 
 		for i := 0; i < len(rst); i += batchSize {
@@ -439,8 +437,7 @@ func removeIps(ctx context.Context, d *schema.ResourceData, meta interface{}, cl
 	return nil
 }
 
-func associateListener(ctx context.Context, d *schema.ResourceData, meta interface{}, client *golangsdk.ServiceClient,
-	rawParams interface{}) error {
+func associateListener(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, rawParams interface{}) error {
 	associateListenerHttpUrl := "v1/ip-groups/{ip_group_id}/associate-listener"
 	associateListenerPath := client.Endpoint + associateListenerHttpUrl
 	associateListenerPath = strings.ReplaceAll(associateListenerPath, "{ip_group_id}", d.Id())
@@ -536,7 +533,7 @@ func resourceIpAddressGroupDelete(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error deleting GA IP address group: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"DELETED"},
 		Refresh:      waitIpAddressGroupStatusRefreshFunc(client, ipGroupId, true),
@@ -550,7 +547,7 @@ func resourceIpAddressGroupDelete(ctx context.Context, d *schema.ResourceData, m
 }
 
 func waitingForStateCompleted(ctx context.Context, client *golangsdk.ServiceClient, ipGroupId string, t time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
 		Refresh:      waitIpAddressGroupStatusRefreshFunc(client, ipGroupId, false),
@@ -562,7 +559,7 @@ func waitingForStateCompleted(ctx context.Context, client *golangsdk.ServiceClie
 	return err
 }
 
-func waitIpAddressGroupStatusRefreshFunc(client *golangsdk.ServiceClient, ipGroupId string, isDelete bool) resource.StateRefreshFunc {
+func waitIpAddressGroupStatusRefreshFunc(client *golangsdk.ServiceClient, ipGroupId string, isDelete bool) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := getIpAddressGroupInfo(client, ipGroupId)
 		if err != nil {

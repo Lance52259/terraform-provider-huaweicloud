@@ -107,6 +107,8 @@ func TestAccRdsInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "private_dns_name_prefix", "terraformTest"),
 					resource.TestCheckResourceAttr(resourceName, "minor_version_auto_upgrade_enabled", "true"),
 					resource.TestCheckResourceAttrSet(resourceName, "private_dns_names.0"),
+					resource.TestCheckResourceAttrSet(resourceName, "auto_scaling.#"),
+					resource.TestCheckResourceAttrSet(resourceName, "auto_scaling.0.status"),
 				),
 			},
 			{
@@ -139,6 +141,7 @@ func TestAccRdsInstance_basic(t *testing.T) {
 					"db",
 					"status",
 					"slow_log_show_original_status",
+					"default_backup_method",
 				},
 			},
 		},
@@ -722,8 +725,7 @@ func TestAccRdsInstance_flexus(t *testing.T) {
 	})
 }
 
-func testAccRdsInstance_base() string {
-	return fmt.Sprintf(`
+const testAccRdsInstance_base = `
 data "huaweicloud_availability_zones" "test" {}
 
 data "huaweicloud_vpc" "test" {
@@ -737,8 +739,7 @@ data "huaweicloud_vpc_subnet" "test" {
 data "huaweicloud_networking_secgroup" "test" {
   name = "default"
 }
-`)
-}
+`
 
 func testAccRdsInstance_basic(name string) string {
 	return fmt.Sprintf(`
@@ -758,6 +759,7 @@ resource "huaweicloud_rds_instance" "test" {
   private_dns_name_prefix            = "terraformTest"
   slow_log_show_original_status      = "on"
   minor_version_auto_upgrade_enabled = true
+  default_backup_method              = "PHYSICALBACKUP"
 
   db {
     type    = "PostgreSQL"
@@ -778,7 +780,7 @@ resource "huaweicloud_rds_instance" "test" {
     foo = "bar"
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 // name, volume.size, backup_strategy, flavor, tags and password will be updated
@@ -805,6 +807,7 @@ resource "huaweicloud_rds_instance" "test" {
   private_dns_name_prefix            = "terraformTestUpdate"
   slow_log_show_original_status      = "off"
   minor_version_auto_upgrade_enabled = false
+  default_backup_method              = "EBACKUP"
 
   db {
     password = "Huangwei!120521"
@@ -826,7 +829,7 @@ resource "huaweicloud_rds_instance" "test" {
     foo  = "bar_updated"
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_ha(name string) string {
@@ -867,7 +870,7 @@ resource "huaweicloud_rds_instance" "test" {
     foo = "bar"
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_ha_update(name string) string {
@@ -908,7 +911,7 @@ resource "huaweicloud_rds_instance" "test" {
     foo = "bar"
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 // if the instance flavor has been changed, then a temp instance will be kept for 12 hours,
@@ -965,7 +968,7 @@ resource "huaweicloud_rds_instance" "test" {
     value = "2000"
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_mysql_step2(name string) string {
@@ -1022,7 +1025,7 @@ resource "huaweicloud_rds_instance" "test" {
     value = "14"
   }
 }
-`, testAccRdsInstance_base(), testAccRdsConfig_basic(name), name)
+`, testAccRdsInstance_base, testAccRdsConfig_basic(name), name)
 }
 
 func testAccRdsInstance_mysql_step3(name string) string {
@@ -1070,7 +1073,7 @@ resource "huaweicloud_rds_instance" "test" {
     value = "14"
   }
 }
-`, testAccRdsInstance_base(), testAccRdsConfig_basic(name), name)
+`, testAccRdsInstance_base, testAccRdsConfig_basic(name), name)
 }
 
 func testAccRdsInstance_mysql_power_action(name, action string, status []string) string {
@@ -1113,7 +1116,7 @@ resource "huaweicloud_rds_instance" "test" {
 output "instance_status_contains" {
   value = contains(split(",", "%[4]s"), huaweicloud_rds_instance.test.status)
 }
-`, testAccRdsInstance_base(), name, action, strings.Join(status, ","))
+`, testAccRdsInstance_base, name, action, strings.Join(status, ","))
 }
 
 func testAccRdsInstance_sqlserver(name string) string {
@@ -1136,13 +1139,14 @@ data "huaweicloud_rds_flavors" "test" {
 }
 
 resource "huaweicloud_rds_instance" "test" {
-  depends_on        = [huaweicloud_networking_secgroup_rule.ingress]
-  name              = "%[2]s"
-  flavor            = data.huaweicloud_rds_flavors.test.flavors[0].name
-  security_group_id = data.huaweicloud_networking_secgroup.test.id
-  subnet_id         = data.huaweicloud_vpc_subnet.test.id
-  vpc_id            = data.huaweicloud_vpc.test.id
-  tde_enabled       = true
+  depends_on              = [huaweicloud_networking_secgroup_rule.ingress]
+  name                    = "%[2]s"
+  flavor                  = data.huaweicloud_rds_flavors.test.flavors[0].name
+  security_group_id       = data.huaweicloud_networking_secgroup.test.id
+  subnet_id               = data.huaweicloud_vpc_subnet.test.id
+  vpc_id                  = data.huaweicloud_vpc.test.id
+  tde_enabled             = true
+  delete_backup_selection = false
 
   availability_zone = [
     data.huaweicloud_availability_zones.test.names[0],
@@ -1160,7 +1164,7 @@ resource "huaweicloud_rds_instance" "test" {
     size = 40
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_sqlserver_update(name string) string {
@@ -1183,12 +1187,14 @@ data "huaweicloud_rds_flavors" "test" {
 }
 
 resource "huaweicloud_rds_instance" "test" {
-  depends_on        = [huaweicloud_networking_secgroup_rule.ingress]
-  name              = "%[2]s"
-  flavor            = data.huaweicloud_rds_flavors.test.flavors[0].name
-  security_group_id = data.huaweicloud_networking_secgroup.test.id
-  subnet_id         = data.huaweicloud_vpc_subnet.test.id
-  vpc_id            = data.huaweicloud_vpc.test.id
+  depends_on              = [huaweicloud_networking_secgroup_rule.ingress]
+  name                    = "%[2]s"
+  flavor                  = data.huaweicloud_rds_flavors.test.flavors[0].name
+  security_group_id       = data.huaweicloud_networking_secgroup.test.id
+  subnet_id               = data.huaweicloud_vpc_subnet.test.id
+  vpc_id                  = data.huaweicloud_vpc.test.id
+  collation               = "Chinese_PRC_CI_AI"
+  delete_backup_selection = true
 
   availability_zone = [
     data.huaweicloud_availability_zones.test.names[0],
@@ -1202,11 +1208,11 @@ resource "huaweicloud_rds_instance" "test" {
   }
 
   volume {
-    type = "ULTRAHIGH"
+    type = "CLOUDSSD"
     size = 40
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_sqlserver_msdtcHosts_base(name string) string {
@@ -1246,7 +1252,7 @@ data "huaweicloud_images_image" "test" {
   name        = "Ubuntu 18.04 server 64bit"
   most_recent = true
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_sqlserver_msdtcHosts(name string) string {
@@ -1396,7 +1402,7 @@ resource "huaweicloud_rds_instance" "test" {
     ]
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_prePaid(name string) string {
@@ -1457,7 +1463,7 @@ resource "huaweicloud_rds_instance" "test" {
   period        = 1
   auto_renew    = true
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_prePaid_update(name string) string {
@@ -1513,7 +1519,7 @@ resource "huaweicloud_rds_instance" "test" {
   period        = 1
   auto_renew    = false
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_restore_mysql(name string) string {
@@ -1656,7 +1662,7 @@ resource "huaweicloud_rds_instance" "test" {
     size = 50
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_change_billing_mode_to_prepaid_update(name string) string {
@@ -1697,7 +1703,7 @@ resource "huaweicloud_rds_instance" "test" {
   period        = 1
   auto_renew    = true
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_single_to_ha(name string) string {
@@ -1726,7 +1732,7 @@ resource "huaweicloud_rds_instance" "test" {
     size = 50
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_single_to_ha_update(name string) string {
@@ -1755,7 +1761,7 @@ resource "huaweicloud_rds_instance" "test" {
     size = 50
   }
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_flexus(name string) string {
@@ -1796,7 +1802,7 @@ resource "huaweicloud_rds_instance" "test" {
   period        = 1
   auto_renew    = true
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }
 
 func testAccRdsInstance_flexus_update(name string) string {
@@ -1836,5 +1842,5 @@ resource "huaweicloud_rds_instance" "test" {
   period        = 1
   auto_renew    = true
 }
-`, testAccRdsInstance_base(), name)
+`, testAccRdsInstance_base, name)
 }

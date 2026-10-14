@@ -15,7 +15,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-// @API Secmaster POST /v1/{project_id}/workspaces/{workspace_id}/sa/reports/emails/search
+// @API SecMaster POST /v1/{project_id}/workspaces/{workspace_id}/sa/reports/emails/search
 func DataSourceReportsEmails() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceReportsEmailsRead,
@@ -31,8 +31,9 @@ func DataSourceReportsEmails() *schema.Resource {
 				Required: true,
 			},
 			"email_address": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
 			"emails": {
 				Type:     schema.TypeList,
@@ -40,8 +41,9 @@ func DataSourceReportsEmails() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"report_address": {
-							Type:     schema.TypeString,
-							Computed: true,
+							Type:      schema.TypeString,
+							Computed:  true,
+							Sensitive: true,
 						},
 						"email_status": {
 							Type:     schema.TypeBool,

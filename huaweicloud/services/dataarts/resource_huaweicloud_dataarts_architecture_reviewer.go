@@ -21,7 +21,7 @@ var workspaceIdNotFound = "DLG.0818"
 // @API DataArtsStudio POST /v2/{project_id}/design/approvals/users
 // @API DataArtsStudio GET /v2/{project_id}/design/approvals/users
 // @API DataArtsStudio DELETE /v2/{project_id}/design/approvals/users
-func ResourceDataArtsArchitectureReviewer() *schema.Resource {
+func ResourceArchitectureReviewer() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceArchitectureReviewerCreate,
 		ReadContext:   resourceArchitectureReviewerRead,
@@ -54,14 +54,16 @@ func ResourceDataArtsArchitectureReviewer() *schema.Resource {
 				ForceNew: true,
 			},
 			"email": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				Sensitive: true,
 			},
 			"phone_number": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:      schema.TypeString,
+				Optional:  true,
+				ForceNew:  true,
+				Sensitive: true,
 			},
 			"reviewer_id": {
 				Type:     schema.TypeString,

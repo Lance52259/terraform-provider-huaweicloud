@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -20,6 +20,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -693,6 +694,7 @@ func flattenInstancePublicIp(respBody interface{}) interface{} {
 	return nil
 }
 
+// nolint:gocyclo
 func resourceBmsInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -753,7 +755,7 @@ func resourceBmsInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if err != nil {
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), instanceId); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), instanceId); err != nil {
 			return diag.Errorf("error updating the auto-renew of the instance (%s): %s", instanceId, err)
 		}
 	}
@@ -1261,7 +1263,7 @@ func resourceBmsInstanceDelete(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("error unsubscribing BMS server: %s", err)
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Deleting", "ACTIVE", "SHUTOFF"},
 		Target:       []string{"DELETED"},
 		Refresh:      waitForBmsInstanceDelete(client, d.Id()),
@@ -1311,7 +1313,7 @@ func buildGetEipByAddressQueryParams(address string) string {
 	return fmt.Sprintf("?enterprise_project_id=all_granted_eps&public_ip_address=%s", address)
 }
 
-func waitForBmsInstanceDelete(client *golangsdk.ServiceClient, serverId string) resource.StateRefreshFunc {
+func waitForBmsInstanceDelete(client *golangsdk.ServiceClient, serverId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		getRespBody, err := getInstance(client, serverId)
 		if err != nil {

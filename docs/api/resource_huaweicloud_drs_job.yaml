@@ -58,6 +58,9 @@ paths:
     /v3/{project_id}/jobs/cluster/batch-connection:
         POST:
             tag: DRS
+    /v5/{project_id}/job/{job_id}/change-to-period:
+        POST:
+            tag: DRS
     /v5/{project_id}/jobs/{job_id}:
         PUT:
             tag: DRS

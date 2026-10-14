@@ -9,6 +9,15 @@
                 "type": "string",
                 "optional": true
               },
+              "auto_renew": {
+                "type": "string",
+                "optional": true
+              },
+              "charging_mode": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "created_at": {
                 "type": "string",
                 "computed": true
@@ -73,6 +82,7 @@
               "master_az": {
                 "type": "string",
                 "optional": true,
+                "computed": true,
                 "forcenew": true
               },
               "master_job_id": {
@@ -125,6 +135,14 @@
                 "type": "string",
                 "optional": true
               },
+              "period": {
+                "type": "number",
+                "optional": true
+              },
+              "period_unit": {
+                "type": "string",
+                "optional": true
+              },
               "private_ip": {
                 "type": "string",
                 "computed": true
@@ -148,6 +166,7 @@
               "slave_az": {
                 "type": "string",
                 "optional": true,
+                "computed": true,
                 "forcenew": true
               },
               "slave_job_id": {
@@ -264,6 +283,7 @@
                     },
                     "security_group_id": {
                       "type": "string",
+                      "optional": true,
                       "computed": true
                     },
                     "ssl_cert_check_sum": {
@@ -274,7 +294,8 @@
                     "ssl_cert_key": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "ssl_cert_name": {
                       "type": "string",
@@ -284,7 +305,8 @@
                     "ssl_cert_password": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "ssl_enabled": {
                       "type": "bool",
@@ -331,7 +353,8 @@
                           "key_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "key_store_key": {
                             "type": "string",
@@ -346,7 +369,8 @@
                           "key_store_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "sasl_mechanism": {
                             "type": "string",
@@ -371,7 +395,8 @@
                           "trust_store_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "type": {
                             "type": "string",
@@ -565,6 +590,7 @@
                     },
                     "security_group_id": {
                       "type": "string",
+                      "optional": true,
                       "computed": true
                     },
                     "ssl_cert_check_sum": {
@@ -575,7 +601,8 @@
                     "ssl_cert_key": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "ssl_cert_name": {
                       "type": "string",
@@ -585,7 +612,8 @@
                     "ssl_cert_password": {
                       "type": "string",
                       "optional": true,
-                      "forcenew": true
+                      "forcenew": true,
+                      "sensitive": true
                     },
                     "ssl_enabled": {
                       "type": "bool",
@@ -632,7 +660,8 @@
                           "key_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "key_store_key": {
                             "type": "string",
@@ -647,7 +676,8 @@
                           "key_store_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "sasl_mechanism": {
                             "type": "string",
@@ -672,7 +702,8 @@
                           "trust_store_password": {
                             "type": "string",
                             "optional": true,
-                            "forcenew": true
+                            "forcenew": true,
+                            "sensitive": true
                           },
                           "type": {
                             "type": "string",

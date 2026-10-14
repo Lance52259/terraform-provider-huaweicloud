@@ -1,13 +1,15 @@
 package deprecated
 
 import (
+	"errors"
+	"fmt"
+	"log"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk/openstack/csbs/v1/policies"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/fmtp"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils/logp"
 )
 
 func DataSourceCSBSBackupPolicyV1() *schema.Resource {
@@ -129,10 +131,10 @@ func DataSourceCSBSBackupPolicyV1() *schema.Resource {
 }
 
 func dataSourceCSBSBackupPolicyV1Read(d *schema.ResourceData, meta interface{}) error {
-	config := meta.(*config.Config)
-	policyClient, err := config.CsbsV1Client(config.GetRegion(d))
+	cfg := meta.(*config.Config)
+	policyClient, err := cfg.CsbsV1Client(cfg.GetRegion(d))
 	if err != nil {
-		return fmtp.Errorf("Error creating csbs client: %s", err)
+		return fmt.Errorf("error creating csbs client: %s", err)
 	}
 
 	listOpts := policies.ListOpts{
@@ -144,22 +146,20 @@ func dataSourceCSBSBackupPolicyV1Read(d *schema.ResourceData, meta interface{}) 
 	refinedPolicies, err := policies.List(policyClient, listOpts)
 
 	if err != nil {
-		return fmtp.Errorf("Unable to retrieve backup policies: %s", err)
+		return fmt.Errorf("unable to retrieve backup policies: %s", err)
 	}
 
 	if len(refinedPolicies) < 1 {
-		return fmtp.Errorf("Your query returned no results. " +
-			"Please change your search criteria and try again.")
+		return errors.New("your query returned no results, please change your search criteria and try again")
 	}
 
 	if len(refinedPolicies) > 1 {
-		return fmtp.Errorf("Your query returned more than one result." +
-			" Please try a more specific search criteria")
+		return errors.New("your query returned more than one result, please try a more specific search criteria")
 	}
 
 	backupPolicy := refinedPolicies[0]
 
-	logp.Printf("[INFO] Retrieved backup policy %s using given filter", backupPolicy.ID)
+	log.Printf("[INFO] Retrieved backup policy %s using given filter", backupPolicy.ID)
 
 	d.SetId(backupPolicy.ID)
 
@@ -178,7 +178,7 @@ func dataSourceCSBSBackupPolicyV1Read(d *schema.ResourceData, meta interface{}) 
 	d.Set("description", backupPolicy.Description)
 	d.Set("provider_id", backupPolicy.ProviderId)
 
-	d.Set("region", config.GetRegion(d))
+	d.Set("region", cfg.GetRegion(d))
 
 	return nil
 }

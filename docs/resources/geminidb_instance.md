@@ -55,6 +55,11 @@ resource "huaweicloud_geminidb_instance" "test" {
     foo = "bar"
     key = "value"
   }
+
+  parameters {
+    name  = "AuthFailLockTime"
+    value = "6"
+  }
 }
 ```
 
@@ -129,6 +134,90 @@ The following arguments are supported:
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the instance.
 
+* `parameters` - (Optional, List) Specify an array of one or more parameters to be set to the GeminiDB instance after
+  launched. You can check on console to see which parameters supported. Structure is documented below.
+
+* `switch_option` - (Optional, String) Specifies whether the autoscaling is enabled.
+  The valid values are as follows:
+  + **on**: Storage autoscaling is enabled.
+  + **off**: Storage autoscaling is disabled.
+
+* `policy` - (Optional, List) Specifies the autoscaling policy for storage space.
+  The [policy](#policy_struct) structure is documented below.
+
+-> 1. The parameters `switch_option` and `policy` are used to configuration autoscaling policy for GeminiDB instance.
+  <br/>2. the `policy` supports update only when the `switch_option` is set to **on**.
+  <br/>3. Currently, only **GeminiDB Cassandra** and **GeminiDB Redis** instances are supported.
+
+* `second_level_monitoring_enabled` - (Optional, String) Specifies whether second-level monitoring is enabled.
+  The valid values are **true** and **false**.
+
+  -> Currently, only for a proxy cluster GeminiDB Redis instances with `4` or more CPUs can be configuration.
+
+* `config_ips` - (Optional, List) Specifies the list of IP addresses and CIDR blocks for which password-free
+  configurations need to be set.
+  If the list is empty, the password-free configurations are cleared.
+
+  -> This parameter is valid and available for **GeminiDB Redis** instance.
+
+* `lb_ip_address` - (Optional, String) Specifies the load balancer IP address.
+
+  -> This parameter is valid and available for **GeminiDB Influx** and **GeminiDB Redis** instances.
+    The instances across subnets are not supported.
+
+* `bucket_name` - (Optional, String) Specifies the OBS bucket name.
+
+* `data_export_switch` - (Optional, String) Specifies the instance data export switch.
+  The valid values are as follows:
+  + **open**
+  + **close**
+
+-> 1. The parameters `bucket_name` and `data_export_switch` are used to configuration instance data export.
+  <br/>2. Currently, only the performance-enhanced GeminiDB Influx instance is supported.
+
+* `cold_storage_size` - (Optional, Int) Specifies the size of the cold storage, in GB.
+  The valid value ranges from `500` to `100,000`.
+
+  -> 1. The parameter `cold_storage_size` is used to configuration cold storage.
+  <br/>2. Currently, only the single-node GeminiDB Influx instance is supported.
+
+* `maintenance_start_time` - (Optional, String) Specifies the instance maintenance start time.
+
+* `maintenance_end_time` - (Optional, String) Specifies the instance maintenance end time.
+
+-> 1. The parameters `maintenance_start_time` and `maintenance_end_time` value must be a valid UTC time exactly
+  on the hour in the **HH:MM** format. e.g. **02:00**.
+  <br/>2. The `maintenance_end_time` is `4` hours later than the `maintenance_start_time`. e.g.
+  If the `maintenance_start_time` value is **02:00**, the `maintenance_end_time` value must be **06:00**.
+  <br/>3. The parameters `maintenance_start_time` and `maintenance_end_time` must be used together.
+
+* `node_switch_option` - (Optional, Bool) Specifies whether the switch for automatically adding nodes is enabled.
+  The valid values are **true** and **false**.
+
+  -> The node auto expansion policy is only supported GeminiDB Cassandra instance, and the instance CPU
+    need to greater than `2`.
+
+* `overload_node_threshold` - (Optional, Int) Specifies the percentage of overloaded nodes.
+  The value ranges from `1` to `100`.
+  For example, if there are three nodes in the current instance and the policy needs to be triggered
+  when a threshold is reached for two of them, the value can be 67% (= 2/3; rounded up).
+
+* `cpu_threshold` - (Optional, Int) Specifies the CPU usage of nodes for which autoscaling is triggered.
+  The value ranges from `1` to `100`. Defaults to `80`.
+
+* `mem_threshold` - (Optional, Int) Specifies the memory usage of nodes for which autoscaling is triggered.
+  The value ranges from `1` to `100`. Defaults to `80`.
+
+* `step` - (Optional, Int) Specifies the number of nodes to be added each time.
+  The maximum value cannot exceed the upper limit of nodes that can be added. Defaults to `3`.
+
+* `node_limit` - (Optional, Int) Specifies the maximum number of nodes that can be automatically added.
+  The maximum value cannot exceed the upper limit of nodes that can be added to the current instance.
+  The default value is the maximum number of nodes that can be added to the current instance.
+
+* `access_control` - (Optional, List) Specifies the access control for Load Balancer.
+  The [access_control](#access_control_struct) structure is documented below.
+
 * `delete_node_list` - (Optional, List) Specifies the ID of the nodes to be deleted. Make sure that the node
   can be deleted. This parameter can not be specified when add nodes. When delete nodes, if this parameter is specified,
   then the nodes specified by this parameter will be deleted, and id this parameter is not transferred, the nodes will be
@@ -146,6 +235,13 @@ The following arguments are supported:
   This parameter is mandatory if `charging_mode` is set to **prePaid**.
 
 * `auto_renew` - (Optional, String) Specifies whether auto-renew is enabled. Valid values are **true** and **false**.
+
+The `parameters` block supports:
+
+* `name` - (Required, String) Specifies the parameter name. Some of them needs the instance to be restarted
+  to take effect.
+
+* `value` - (Required, String) Specifies the parameter value.
 
 <a name="datastore_struct"></a>
 The `datastore` block supports:
@@ -221,6 +317,55 @@ The `availability_zone_detail` block supports:
 * `secondary_availability_zone` - (Required, String, NonUpdatable) Specifies the standby AZ, which must be a single AZ
   and be different from the primary AZ.
 
+<a name="policy_struct"></a>
+The `policy` block supports:
+
+* `threshold` - (Optional, Int) Specifies the threshold for triggering autoscaling.
+  + For GeminiDB Cassandra instances, the value can be `80`, `85`, or `90`, and the default value is `90`.
+  + For GeminiDB Redis instances, the value can be `60`, `65`, `70`, `75`, `80`, `85`, or `90`, and the
+  default value is `80`.
+
+* `step` - (Optional, Int) Specifies the autoscaling step (s%).
+  + For GeminiDB Cassandra instances, the value can be `10`, `15`, or `20`, and the default value is `10`.
+  After autoscaling is enabled, storage space will increase by s% automatically.
+  + For GeminiDB Redis instances, the value can be `10`, `15`, or `20`, and the default value is `20`.
+  When the storage usage is greater than 98%: If the total storage is less than 600 GB, the storage usage
+  after autoscaling (used storage space/total storage space) will be less than 85%. If the total storage is greater
+  than or equal to 600 GB, the system automatically scales up the storage space by over 90 GB.
+  + For GeminiDB Cassandra instances, if the autoscaling step is not a multiple of 10, round it up.
+  The value after the decimal point is rounded. The minimum step is 100 GB by default.
+  + For GeminiDB Redis instances, the value after the decimal point is rounded. The minimum step is 1 GB by default.
+  + If there is insufficient balance in your account, the autoscaling may failed for yearly/monthly instances.
+
+* `size` - (Optional, Int) Specifies the storage limit in GB that autoscaling can increase storage space to.
+  + For GeminiDB Cassandra instances, the storage upper limit ≥ current storage + 100 GB. The storage upper limit
+  cannot exceed the maximum storage supported by the current specifications. Learn more details , refer to
+  [Instance Specifications](https://support.huaweicloud.com/intl/en-us/cassandraug-nosql/nosql_05_0017.html).
+  + For GeminiDB Redis instances, the storage upper limit ≥ Current storage + 1 GB. The storage upper limit cannot
+  exceed the maximum storage supported by the current specifications. Learn more details , refer to
+  [GeminiDB Redis Instance Specifications](https://support.huaweicloud.com/intl/en-us/redisug-nosql/nosql_05_0059.html).
+
+<a name="access_control_struct"></a>
+The `access_control` block supports:
+
+* `enabled` - (Required, String) Specifies whether to enable load balancer IP access control. Value options:
+  + **true**: Enable load balancer IP access control.
+  + **false**: Disable load balancer IP access control.
+
+* `type` - (Required, String) Specifies the type of IP access control. Value options:
+  + **whiteList**: Whitelist, only allow specified IPs or network segments to access.
+  + **blackList**: Blacklist, deny specified IPs or network segments from accessing.
+
+* `ip_groups` - (Optional, List) Specifies the list of IP addresses or network segments.
+  The [ip_groups](#ip_groups_struct) structure is documented below.
+
+<a name="ip_groups_struct"></a>
+The `ip_groups` block supports:
+
+* `ip` - (Required, String) Specifies the IP address or network segment.
+
+* `description` - (Optional, String) Specifies the description of the IP address or network segment.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
@@ -247,9 +392,6 @@ In addition to all arguments above, the following attributes are exported:
 * `time_zone` - Indicates the time zone.
 
 * `actions` - Indicates the operation that is executed on the instance.
-
-* `lb_ip_address` - Indicates the load balancer IP address. This parameter is returned only when a load balancer IP
-  address is assigned.
 
 * `lb_port` - Indicates the load balancer port. This parameter is returned only when a load balancer IP address is assigned.
 
@@ -355,8 +497,9 @@ $ terraform import huaweicloud_geminidb_instance.test <id>
 ```
 
 Note that the imported state may not be identical to your resource definition, due to the attribute missing from the
-API response. The missing attribute is: `password`, `flavor.0.storage`, `ssl_option`, `delete_node_list`, `auto_renew`,
-`period` and `period_unit`. It is generally recommended running `terraform plan` after importing a GeminiDB instance.
+API response. The missing attribute is: `password`, `flavor.0.storage`, `ssl_option`, `bucket_name`,
+`data_export_switch`, `cold_storage_size`, `delete_node_list`, `auto_renew`, `period` and `period_unit`.
+It is generally recommended running `terraform plan` after importing a GeminiDB instance.
 You can then decide if changes should be applied to the GeminiDB instance or the resource definition should be updated
 to align with the GeminiDB instance. Also you can ignore changes as below.
 
@@ -366,7 +509,8 @@ resource "huaweicloud_geminidb_instance" "test" {
 
   lifecycle {
     ignore_changes = [
-      password, flavor.0.storage, ssl_option, delete_node_list, auto_renew, period, period_unit
+      password, flavor.0.storage, ssl_option, bucket_name, data_export_switch, cold_storage_size,
+      delete_node_list, auto_renew, period, period_unit,
     ]
   }
 }

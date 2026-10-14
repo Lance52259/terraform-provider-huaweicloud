@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -546,7 +546,7 @@ func resourcePrivateCARead(_ context.Context, d *schema.ResourceData, meta inter
 			"error retrieving CCM private CA")
 	}
 
-	status := utils.PathSearch("status", getRespBody, nil).(string)
+	status := utils.PathSearch("status", getRespBody, "").(string)
 	if status == "DELETED" {
 		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "error retrieving private CA")
 	}
@@ -632,7 +632,7 @@ func deletePrepaidPrivateCA(ctx context.Context, client *golangsdk.ServiceClient
 			"error unsubscribing CCM private CA")
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

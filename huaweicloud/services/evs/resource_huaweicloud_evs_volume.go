@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -369,7 +370,7 @@ func buildBssParamBodyParams(d *schema.ResourceData) map[string]interface{} {
 			"periodType":   utils.ValueIgnoreEmpty(d.Get("period_unit")),
 			"periodNum":    utils.ValueIgnoreEmpty(d.Get("period")),
 			"isAutoRenew":  utils.ValueIgnoreEmpty(d.Get("auto_renew")),
-			"isAutoPay":    utils.ValueIgnoreEmpty(common.GetAutoPay(d)),
+			"isAutoPay":    utils.ValueIgnoreEmpty(cbc.GetAutoPay(d)),
 		}
 	}
 
@@ -415,7 +416,7 @@ func getJobDetail(client *golangsdk.ServiceClient, jobID string) (interface{}, e
 
 func waitingForVolumeJobSuccess(ctx context.Context, client *golangsdk.ServiceClient, jobID string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -469,7 +470,7 @@ func waitingForEvsVolumeComplete(ctx context.Context, client *golangsdk.ServiceC
 	timeout time.Duration) error {
 	errorStatuses := []string{"error", "error_restoring", "error_extending", "error_deleting", "error_rollbacking"}
 	successStatuses := []string{"available", "in-use"}
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -732,7 +733,7 @@ func buildUpdateVolumeSizeBodyParams(d *schema.ResourceData) map[string]interfac
 
 	if d.Get("charging_mode").(string) == "prePaid" {
 		bodyParams["bssParam"] = map[string]interface{}{
-			"isAutoPay": common.GetAutoPay(d),
+			"isAutoPay": cbc.GetAutoPay(d),
 		}
 	}
 
@@ -804,7 +805,7 @@ func buildUpdateVolumeTypeBodyParams(d *schema.ResourceData) map[string]interfac
 
 	if d.Get("charging_mode").(string) == "prePaid" {
 		bodyParams["bssParam"] = map[string]interface{}{
-			"isAutoPay": common.GetAutoPay(d),
+			"isAutoPay": cbc.GetAutoPay(d),
 		}
 	}
 
@@ -955,7 +956,7 @@ func resourceEvsVolumeUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		if err != nil {
 			return diag.Errorf("error creating BSS V2 client: %s", err)
 		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the volume (%s): %s", d.Id(), err)
 		}
 	}
@@ -981,7 +982,7 @@ func getEcsJobDetail(client *golangsdk.ServiceClient, jobID string) (interface{}
 
 func waitingForEcsJobSuccess(ctx context.Context, client *golangsdk.ServiceClient, jobID string,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {
@@ -1104,7 +1105,7 @@ func deletePostpaidVolume(ctx context.Context, client *golangsdk.ServiceClient, 
 
 func waitingForEvsVolumeDelete(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"PENDING"},
 		Target:  []string{"COMPLETED"},
 		Refresh: func() (interface{}, string, error) {

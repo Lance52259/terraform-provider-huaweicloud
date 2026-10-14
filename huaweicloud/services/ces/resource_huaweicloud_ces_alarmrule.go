@@ -476,10 +476,10 @@ func buildPoliciesOpts(d *schema.ResourceData, globalMetricName string) []map[st
 			"period":              condition["period"],
 			"filter":              condition["filter"],
 			"comparison_operator": condition["comparison_operator"],
-			"value":               utils.ValueIgnoreEmpty(condition["value"]),
+			"value":               condition["value"],
 			"unit":                utils.ValueIgnoreEmpty(condition["unit"]),
 			"count":               condition["count"],
-			"suppress_duration":   utils.ValueIgnoreEmpty(condition["suppress_duration"]),
+			"suppress_duration":   condition["suppress_duration"],
 		}
 
 		if condition["metric_name"].(string) != "" {
@@ -678,7 +678,7 @@ func getAlarmV1(client *golangsdk.ServiceClient, alarmId string) (interface{}, e
 				Method:    "GET",
 				URL:       "/V1.0/{project_id}/alarms/{alarm_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the (v1) alarm rule (%s) does not exist", alarmId)),
+				Body:      fmt.Appendf(nil, "the (v1) alarm rule (%s) does not exist", alarmId),
 			},
 		}
 	}
@@ -714,7 +714,7 @@ func getAlarmV2(client *golangsdk.ServiceClient, alarmId string) (interface{}, e
 				Method:    "GET",
 				URL:       "/v2/{project_id}/alarms",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the (v2) alarm rule (%s) does not exist", alarmId)),
+				Body:      fmt.Appendf(nil, "the (v2) alarm rule (%s) does not exist", alarmId),
 			},
 		}
 	}
@@ -835,10 +835,10 @@ func buildUpdatePoliciesOptsWithAlarmLevel(d *schema.ResourceData, level int, me
 			"period":              condition["period"],
 			"filter":              condition["filter"],
 			"comparison_operator": condition["comparison_operator"],
-			"value":               utils.ValueIgnoreEmpty(condition["value"]),
+			"value":               condition["value"],
 			"unit":                utils.ValueIgnoreEmpty(condition["unit"]),
 			"count":               condition["count"],
-			"suppress_duration":   utils.ValueIgnoreEmpty(condition["suppress_duration"]),
+			"suppress_duration":   condition["suppress_duration"],
 			"level":               level,
 		}
 
@@ -868,10 +868,10 @@ func buildUpdatePoliciesOptsWithMetricName(d *schema.ResourceData, level int, me
 			"period":              condition["period"],
 			"filter":              condition["filter"],
 			"comparison_operator": condition["comparison_operator"],
-			"value":               utils.ValueIgnoreEmpty(condition["value"]),
+			"value":               condition["value"],
 			"unit":                utils.ValueIgnoreEmpty(condition["unit"]),
 			"count":               condition["count"],
-			"suppress_duration":   utils.ValueIgnoreEmpty(condition["suppress_duration"]),
+			"suppress_duration":   condition["suppress_duration"],
 			"metric_name":         metricName,
 		}
 
@@ -885,6 +885,7 @@ func buildUpdatePoliciesOptsWithMetricName(d *schema.ResourceData, level int, me
 	return policyOpts
 }
 
+// nolint:gocyclo
 func resourceAlarmRuleUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)

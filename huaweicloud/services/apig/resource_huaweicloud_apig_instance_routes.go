@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/chnsz/golangsdk"
 	"github.com/chnsz/golangsdk/openstack/apigw/dedicated/v2/instances"
@@ -20,6 +21,10 @@ import (
 
 type featureConfig struct {
 	UserRoutes []interface{} `json:"user_routes"`
+}
+
+var instanceRoutesNonUpdatableParams = []string{
+	"instance_id",
 }
 
 // @API APIG POST /v2/{project_id}/apigw/instances/{instance_id}/features
@@ -35,6 +40,8 @@ func ResourceInstanceRoutes() *schema.Resource {
 			StateContext: resourceInstanceRoutesImportState,
 		},
 
+		CustomizeDiff: config.FlexibleForceNew(instanceRoutesNonUpdatableParams),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:        schema.TypeString,
@@ -46,7 +53,6 @@ func ResourceInstanceRoutes() *schema.Resource {
 			"instance_id": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "The ID of the dedicated instance to which the routes belong.",
 			},
 			"nexthops": {
@@ -54,6 +60,18 @@ func ResourceInstanceRoutes() *schema.Resource {
 				Required:    true,
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: "The configuration of the next hop routes.",
+			},
+
+			// Internal parameters.
+			"enable_force_new": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringInSlice([]string{"true", "false"}, false),
+				Description: utils.SchemaDesc(
+					`Whether to allow parameters that do not support changes to have their change-triggered behavior set to 'ForceNew'.`,
+					utils.SchemaDescInput{Internal: true,
+						Required: true,
+					}),
 			},
 		},
 	}
@@ -99,14 +117,7 @@ func resourceInstanceRoutesCreate(ctx context.Context, d *schema.ResourceData, m
 	return resourceInstanceRoutesRead(ctx, d, meta)
 }
 
-func resourceInstanceRoutesRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cfg := meta.(*config.Config)
-	client, err := cfg.ApigV2Client(cfg.GetRegion(d))
-	if err != nil {
-		return diag.Errorf("error creating APIG V2 client: %s", err)
-	}
-
-	instanceId := d.Get("instance_id").(string)
+func ListInstanceRoutes(client *golangsdk.ServiceClient, instanceId string) ([]interface{}, error) {
 	opts := instances.ListFeaturesOpts{
 		// Default value of parameter 'limit' is 20, parameter 'offset' is an invalid parameter.
 		// If we omit it, we can only obtain 20 features, other features will be lost.
@@ -114,9 +125,8 @@ func resourceInstanceRoutesRead(_ context.Context, d *schema.ResourceData, meta 
 	}
 	resp, err := instances.ListFeatures(client, instanceId, opts)
 	if err != nil {
-		return diag.Errorf("error querying feature list: %s", err)
+		return nil, err
 	}
-	log.Printf("[DEBUG] The feature list is: %v", resp)
 
 	var routeConfig string
 	for _, val := range resp {
@@ -125,16 +135,36 @@ func resourceInstanceRoutesRead(_ context.Context, d *schema.ResourceData, meta 
 			break
 		}
 	}
-	var result featureConfig
-	err = json.Unmarshal([]byte(routeConfig), &result)
-	if err != nil {
-		return diag.Errorf("error analyzing routes configuration: %s", err)
-	}
-	if len(result.UserRoutes) < 1 {
-		return common.CheckDeletedDiag(d, golangsdk.ErrDefault404{}, "Instance routes")
+
+	result := utils.StringToJson(routeConfig)
+	userRoutes := utils.PathSearch("user_routes", result, make([]interface{}, 0)).([]interface{})
+	if len(userRoutes) < 1 {
+		return nil, golangsdk.ErrDefault404{}
 	}
 
-	return diag.FromErr(d.Set("nexthops", result.UserRoutes))
+	// UserRoutes also means nexthops.
+	return userRoutes, nil
+}
+
+func resourceInstanceRoutesRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.ApigV2Client(region)
+	if err != nil {
+		return diag.Errorf("error creating APIG V2 client: %s", err)
+	}
+
+	instanceId := d.Get("instance_id").(string)
+	nexthops, err := ListInstanceRoutes(client, instanceId)
+	if err != nil {
+		return common.CheckDeletedDiag(d, err, "error getting instance routes")
+	}
+
+	mErr := multierror.Append(nil,
+		d.Set("region", region),
+		d.Set("nexthops", nexthops),
+	)
+	return diag.FromErr(mErr.ErrorOrNil())
 }
 
 func resourceInstanceRoutesUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -144,12 +174,14 @@ func resourceInstanceRoutesUpdate(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("error creating APIG V2 client: %s", err)
 	}
 
-	var (
-		instanceId = d.Get("instance_id").(string)
-		routes     = d.Get("nexthops").(*schema.Set)
-	)
-	if err := modifyInstanceRoutes(client, instanceId, routes.List()); err != nil {
-		return diag.Errorf("error updating instance routes: %v", err)
+	if d.HasChange("nexthops") {
+		var (
+			instanceId = d.Get("instance_id").(string)
+			routes     = d.Get("nexthops").(*schema.Set)
+		)
+		if err := modifyInstanceRoutes(client, instanceId, routes.List()); err != nil {
+			return diag.Errorf("error updating instance routes: %v", err)
+		}
 	}
 
 	return resourceInstanceRoutesRead(ctx, d, meta)

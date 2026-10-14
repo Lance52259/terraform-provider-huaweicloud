@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -274,7 +275,10 @@ func resourceAlarmRuleRead(_ context.Context, d *schema.ResourceData, meta inter
 		return common.CheckDeletedDiag(d, err, "error getting the alarm rule")
 	}
 
-	alarmLevel, _ := strconv.Atoi(utils.PathSearch("alarm_level", rule, "0").(string))
+	alarmLevel, err := strconv.Atoi(utils.PathSearch("alarm_level", rule, "0").(string))
+	if err != nil {
+		log.Printf("[WARN] failed to parse alarm level: %s", err)
+	}
 
 	mErr := multierror.Append(nil,
 		d.Set("region", cfg.GetRegion(d)),
@@ -331,7 +335,7 @@ func GetV2AlarmRule(client *golangsdk.ServiceClient, ruleId string) (interface{}
 				Method:    "GET",
 				URL:       "/v2/{project_id}/alarm-rules/{alarm_rule_id}",
 				RequestId: "NONE",
-				Body:      []byte(fmt.Sprintf("the alarm rule (%s) does not exist", ruleId)),
+				Body:      fmt.Appendf(nil, "the alarm rule (%s) does not exist", ruleId),
 			},
 		}
 	}

@@ -3,6 +3,7 @@ package dli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -10,7 +11,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -245,9 +246,9 @@ func ResourceFlinkSqlJob() *schema.Resource {
 }
 
 func resourceFlinkSqlJobCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.DliV1Client(region)
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.DliV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client, err=%s", err)
 	}
@@ -298,8 +299,11 @@ func resourceFlinkSqlJobCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if runtimConfig, ok := d.GetOk("runtime_config"); ok {
-		config := utils.ExpandResourceTags(runtimConfig.(map[string]interface{}))
-		configStr, _ := json.Marshal(config)
+		cfg := utils.ExpandResourceTags(runtimConfig.(map[string]interface{}))
+		configStr, err := json.Marshal(cfg)
+		if err != nil {
+			log.Printf("[ERROR] error marshaling runtime config: %s", err)
+		}
 		opts.RuntimeConfig = string(configStr)
 	}
 
@@ -321,7 +325,7 @@ func resourceFlinkSqlJobCreate(ctx context.Context, d *schema.ResourceData, meta
 	jobId := rst.Job.JobId
 	d.SetId(strconv.Itoa(jobId))
 
-	if err = addTagsToResource(config, region, d); err != nil {
+	if err = addTagsToResource(cfg, region, d); err != nil {
 		return diag.FromErr(err)
 	}
 
@@ -360,7 +364,7 @@ func updateJobConfig(client *golangsdk.ServiceClient, jobId int, operatorConfig,
 	}
 
 	if !resp.IsSuccess {
-		return fmt.Errorf(resp.Message)
+		return errors.New(resp.Message)
 	}
 	return nil
 }
@@ -381,10 +385,10 @@ func addTagsToResource(cfg *config.Config, region string, d *schema.ResourceData
 	return nil
 }
 
-func resourceFlinkSqlJobRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.DliV1Client(region)
+func resourceFlinkSqlJobRead(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.DliV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client, err=%s", err)
 	}
@@ -428,7 +432,7 @@ func resourceFlinkSqlJobRead(ctx context.Context, d *schema.ResourceData, meta i
 		d.Set("tm_slot_num", detail.JobConfig.TmSlotNum),
 		d.Set("resume_checkpoint", detail.JobConfig.ResumeCheckpoint),
 		d.Set("resume_max_num", detail.JobConfig.ResumeMaxNum),
-		setRuntimeConfigToState(d, detail.JobConfig.RuntimeConfig),
+		d.Set("runtime_config", parseFlinkJobRuntimeConfig(detail.JobConfig.RuntimeConfig)),
 		d.Set("operator_config", detail.JobConfig.OperatorConfig),
 		d.Set("static_estimator_config", detail.JobConfig.StaticEstimatorConfig),
 		d.Set("execution_agency_urn", detail.JobConfig.ExecutionAgencyUrn),
@@ -436,13 +440,13 @@ func resourceFlinkSqlJobRead(ctx context.Context, d *schema.ResourceData, meta i
 		d.Set("tags", d.Get("tags")),
 	)
 
-	if err = setTagsToResource(config, region, d); err != nil {
+	if err = setTagsToResource(cfg, region, d); err != nil {
 		return diag.FromErr(err)
 	}
 
 	_, ok := d.GetOk("graph_type")
 	if d.Get("type").(string) == flinkjob.JobTypeFlinkOpenSourceSql && ok {
-		v3Client, err := config.DliV3Client(region)
+		v3Client, err := cfg.DliV3Client(region)
 		if err != nil {
 			return diag.Errorf("error creating DLI v3 client: %s", err)
 		}
@@ -487,16 +491,16 @@ func getSteramGraphById(client *golangsdk.ServiceClient, d *schema.ResourceData,
 		return "", err
 	}
 	if !resp.IsSuccess {
-		return "", fmt.Errorf(resp.Message)
+		return "", errors.New(resp.Message)
 	}
 	return resp.StreamGraph, nil
 }
 
 // This API is used to cancel a submitted job. If execution of a job completes or fails, this job cannot be canceled.
-func resourceFlinkSqlJobDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	client, err := config.DliV1Client(region)
+func resourceFlinkSqlJobDelete(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	client, err := cfg.DliV1Client(region)
 	if err != nil {
 		return diag.Errorf("error creating DLI v1 client, err=%s", err)
 	}
@@ -535,14 +539,14 @@ func updateTagsToResource(cfg *config.Config, region string, d *schema.ResourceD
 }
 
 func resourceFlinkSqlJobUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	config := meta.(*config.Config)
-	region := config.GetRegion(d)
-	if err := updateTagsToResource(config, region, d); err != nil {
+	cfg := meta.(*config.Config)
+	region := cfg.GetRegion(d)
+	if err := updateTagsToResource(cfg, region, d); err != nil {
 		return diag.FromErr(err)
 	}
 
 	if d.HasChangesExcept("tags", "graph_type") {
-		client, err := config.DliV1Client(region)
+		client, err := cfg.DliV1Client(region)
 		if err != nil {
 			return diag.Errorf("error creating DLI v1 client, err=%s", err)
 		}
@@ -604,7 +608,7 @@ func updateFlinkSqlJobInRunning(client *golangsdk.ServiceClient, jobId int, d *s
 
 func checkFlinkJobRunResult(ctx context.Context, client *golangsdk.ServiceClient, id int,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"job_init", "job_submitting"},
 		Target:  []string{"job_running", "job_finish"},
 		Refresh: func() (interface{}, string, error) {
@@ -631,7 +635,7 @@ func checkFlinkJobRunResult(ctx context.Context, client *golangsdk.ServiceClient
 
 func checkFlinkJobStopResult(ctx context.Context, client *golangsdk.ServiceClient, id int,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending: []string{"job_submitting", "job_running", "job_canceling", "job_savepointing",
 			"job_arrearage_recovering"},
 		Target: []string{"job_init", "job_cancel_success"},
@@ -719,8 +723,11 @@ func updateFlinkSqlJobWithStop(ctx context.Context, client *golangsdk.ServiceCli
 		}
 
 		if runtimConfig, ok := d.GetOk("runtime_config"); ok {
-			config := utils.ExpandResourceTags(runtimConfig.(map[string]interface{}))
-			configStr, _ := json.Marshal(config)
+			cfg := utils.ExpandResourceTags(runtimConfig.(map[string]interface{}))
+			configStr, err := json.Marshal(cfg)
+			if err != nil {
+				log.Printf("[ERROR] error marshaling runtime config: %s", err)
+			}
 			opts.RuntimeConfig = string(configStr)
 		}
 
@@ -762,17 +769,21 @@ func updateFlinkSqlJobWithStop(ctx context.Context, client *golangsdk.ServiceCli
 	return nil
 }
 
-func setRuntimeConfigToState(d *schema.ResourceData, configStr string) error {
+func parseFlinkJobRuntimeConfig(configStr string) interface{} {
 	if len(configStr) == 0 {
-		return nil
+		// Returning nil will cause `d.Set` to result in `runtime_config` being null in `tfstate` (equivalent to not
+		// setting the parameter), and will consistently result in a "Known After Apply" error because `runtime_config`
+		// is not being recognized.
+		return make(map[string]interface{})
 	}
+
 	var rst []tags.ResourceTag
 	err := json.Unmarshal([]byte(configStr), &rst)
 	if err != nil {
-		return fmt.Errorf("error parse runtime_config from API response: %s", err)
+		return make(map[string]interface{})
 	}
 
-	return d.Set("runtime_config", utils.TagsToMap(rst))
+	return utils.TagsToMap(rst)
 }
 
 func parseDliFlinkErrToError404(respErr error) error {

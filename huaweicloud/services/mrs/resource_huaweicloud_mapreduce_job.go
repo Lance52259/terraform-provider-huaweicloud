@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -260,7 +260,7 @@ func resourceMRSJobV2Create(ctx context.Context, d *schema.ResourceData, meta in
 	}
 	d.SetId(resp.JobSubmitResult.JobId)
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"NEW", "NEW_SAVING", "ACCEPTED", "SUBMITTED", "RUNNING"},
 		Target:       []string{"FINISHED", "FAILED"},
 		Refresh:      mrsJobStateRefreshFunc(client, clusterId, d.Id()),
@@ -276,7 +276,7 @@ func resourceMRSJobV2Create(ctx context.Context, d *schema.ResourceData, meta in
 	return resourceMRSJobV2Read(ctx, d, meta)
 }
 
-func mrsJobStateRefreshFunc(client *golangsdk.ServiceClient, clusterId, jobId string) resource.StateRefreshFunc {
+func mrsJobStateRefreshFunc(client *golangsdk.ServiceClient, clusterId, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		resp, err := jobs.Get(client, clusterId, jobId).Extract()
 		if err != nil {
@@ -496,7 +496,7 @@ func setMRSJobProperties(d *schema.ResourceData, resp string) error {
 
 func setMRSTimeProperties(d *schema.ResourceData, key string, value int) error {
 	keyTime := time.Unix(int64(value), 0)
-	//lintignore:R001
+	// lintignore:R001
 	return d.Set(key, keyTime.Format(time.RFC3339))
 }
 

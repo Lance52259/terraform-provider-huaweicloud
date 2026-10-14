@@ -2,9 +2,10 @@ package gaussdb
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
@@ -20,6 +21,7 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/cbc"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -31,25 +33,49 @@ const (
 )
 
 var openGaussInstanceNonUpdatableParams = []string{"availability_zone", "vpc_id", "subnet_id", "vpc_id", "ha", "ha.*.mode",
-	"ha.*.replication_mode", "ha.*.consistency", "ha.*.instance_mode", "volume.*.type", "replica_num", "security_group_id",
-	"port", "disk_encryption_id", "enable_force_switch", "enable_single_float_ip", "time_zone", "datastore",
-	"datastore.*.engine", "datastore.*.version", "charging_mode", "period_unit", "period",
+	"ha.*.replication_mode", "ha.*.consistency", "ha.*.instance_mode", "volume.*.type", "replica_num",
+	"disk_encryption_id", "enable_force_switch", "enable_single_float_ip", "time_zone", "datastore",
+	"datastore.*.engine", "datastore.*.version",
 }
 
 // @API GaussDB GET /v3/{project_id}/instances
 // @API GaussDB POST /v3/{project_id}/instances
 // @API GaussDB GET /v3/{project_id}/jobs
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/alias
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/configurations
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/auto-enlarge-policy
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/restart
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/mysql-compatibility
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/advance-features
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/wdr-snapshot/status
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/asp/status
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/error-log/switch/{status}
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/tags
 // @API GaussDB GET /v3.1/{project_id}/instances/{instance_id}/configurations
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/auto-enlarge-policy
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/balance
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/error-log/switch/status
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/advance-features
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/wdr-snapshot/status
+// @API GaussDB GET /v3/{project_id}/instances/{instance_id}/asp/status
 // @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/name
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/password
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/port
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/security-group
 // @API GaussDB POST /v3/{project_id}/instances/{instance_id}/action
-// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/backups/policy
-// @API GaussDB PUT /v3/{project_id}/instance/{instance_id}/flavor
+// @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/sharding
+// @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/coordinators
+// @API GaussDB PUT /v3.1/{project_id}/instances/{instance_id}/backups/policy
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/flavor
 // @API GaussDB PUT /v3/{project_id}/configurations/{config_id}/apply
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/mysql-compatibility
+// @API GaussDB PUT /v3/{project_id}/instances/change-charge-mode
 // @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}/tag
 // @API GaussDB DELETE /v3/{project_id}/instances/{instance_id}
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/kms-tde/switch
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/switch-replica
+// @API GaussDB POST /v3/{project_id}/instances/{instance_id}/switch-logger-replica
+// @API GaussDB PUT /v3/{project_id}/instances/{instance_id}/expansion-parameters
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
 // @API BSS POST /v2/orders/suscriptions/resources/query
 // @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
@@ -162,6 +188,10 @@ func ResourceGaussDbInstance() *schema.Resource {
 					},
 				},
 			},
+			"alias": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"sharding_num": {
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -267,6 +297,49 @@ func ResourceGaussDbInstance() *schema.Resource {
 				Optional: true,
 				Computed: true,
 			},
+			"auto_scaling": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"switch_option": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"limit_volume_size": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"trigger_available_percent": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"step_size": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"step_percent": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"min_volume_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"max_volume_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"percents": {
+							Type:     schema.TypeList,
+							Computed: true,
+							Elem:     &schema.Schema{Type: schema.TypeInt},
+						},
+					},
+				},
+				Optional: true,
+				Computed: true,
+			},
 			"mysql_compatibility_port": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -288,6 +361,65 @@ func ResourceGaussDbInstance() *schema.Resource {
 				},
 				Optional: true,
 				Computed: true,
+			},
+			"kms_tde_switch": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"kms_tde_key_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"kms_project_name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"kms_tde_status": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
+			"wdr_snapshot_status": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"asp_status": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"error_log_switch_status": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"delete_coordinator_node_id_list": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"dn_node_deploy_mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: validation.StringInSlice([]string{
+					"primary_standby", "primary_standby_log",
+				}, false),
+			},
+			"expansion_parameters": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ValidateFunc: validation.StringIsJSON,
+				DiffSuppressFunc: func(_, o, n string, _ *schema.ResourceData) bool {
+					equal, _ := utils.CompareJsonTemplateAreEquivalent(o, n)
+					return equal
+				},
 			},
 			"tags": common.TagsSchema(),
 			"force_import": {
@@ -370,10 +502,6 @@ func ResourceGaussDbInstance() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
-			"error_log_switch_status": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"nodes": {
 				Type:     schema.TypeList,
 				Computed: true,
@@ -384,6 +512,10 @@ func ResourceGaussDbInstance() *schema.Resource {
 							Computed: true,
 						},
 						"name": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"component_names": {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
@@ -403,6 +535,10 @@ func ResourceGaussDbInstance() *schema.Resource {
 							Type:     schema.TypeString,
 							Computed: true,
 						},
+						"data_ip": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 						"public_ip": {
 							Type:     schema.TypeString,
 							Computed: true,
@@ -414,6 +550,7 @@ func ResourceGaussDbInstance() *schema.Resource {
 	}
 }
 
+// nolint:gocyclo
 func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -425,6 +562,10 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating GaussDB client: %s", err)
+	}
+	bssClient, err := cfg.BssV2Client(region)
+	if err != nil {
+		return diag.Errorf("error creating BSS v2 client: %s", err)
 	}
 
 	// If force_import set, try to import it instead of creating
@@ -471,10 +612,6 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		if orderId == nil {
 			return diag.Errorf("error creating GaussDB OpenGauss instance: order_id is not found in API response")
 		}
-		bssClient, err := cfg.BssV2Client(region)
-		if err != nil {
-			return diag.Errorf("error creating BSS v2 client: %s", err)
-		}
 		// wait for order success
 		err = common.WaitOrderComplete(ctx, bssClient, orderId.(string), d.Timeout(schema.TimeoutCreate))
 		if err != nil {
@@ -495,7 +632,7 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"BUILD", "BACKING UP"},
 		Target:       []string{"ACTIVE"},
 		Refresh:      instanceStateRefreshFunc(client, d.Id()),
@@ -506,6 +643,12 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
 		return diag.Errorf("error waiting for instance (%s) to become ready: %s", d.Id(), err)
+	}
+
+	if _, ok := d.GetOk("alias"); ok {
+		if err = updateInstanceAlias(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
 	}
 
 	if parametersRaw := d.Get("parameters").(*schema.Set); parametersRaw.Len() > 0 {
@@ -526,10 +669,47 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
+	if v, ok := d.GetOk("wdr_snapshot_status"); ok && v != "ON" {
+		if err = updateWdrSnapshotStatus(ctx, client, d, schema.TimeoutCreate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if v, ok := d.GetOk("asp_status"); ok && v != "ON" {
+		if err = updateAspStatus(ctx, client, d, schema.TimeoutCreate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if v, ok := d.GetOk("error_log_switch_status"); ok && v == "ON" {
+		if err = updateErrorLogSwitchStatus(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk("auto_scaling"); ok {
+		if err = updateAutoScaling(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if _, ok := d.GetOk("kms_tde_switch"); ok {
+		if err = createEnablingTransparentDataEncryption(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	// modify expansion parameters
+	if _, ok := d.GetOk("expansion_parameters"); ok {
+		if err = updateExpansionParameters(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	// set tags
 	tagRaw := d.Get("tags").(map[string]interface{})
 	if len(tagRaw) > 0 {
-		err = addInstanceTags(d, client, d.Get("tags").(map[string]interface{}))
+		err = addInstanceTags(ctx, d, client, d.Get("tags").(map[string]interface{}))
 		if err != nil {
 			return diag.Errorf("error setting tags for GaussDB OpenGauss instance %s: %s", d.Id(), err)
 		}
@@ -537,6 +717,19 @@ func resourceOpenGaussInstanceCreate(ctx context.Context, d *schema.ResourceData
 
 	// This is a workaround to avoid db connection issue
 	time.Sleep(360 * time.Second) // lintignore:R018
+
+	if v, ok := d.GetOk("dn_node_deploy_mode"); ok {
+		instance, err := getGaussDBOpenGaussInstancesById(client, d.Id())
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		secondaryNode := utils.PathSearch("instances[0].nodes[?role=='secondary']|[0]", instance, nil)
+		if (secondaryNode == nil && v == "primary_standby_log") || (secondaryNode != nil && v == "primary_standby") {
+			if err = updateDnNodeDeployMode(ctx, client, bssClient, d, schema.TimeoutCreate); err != nil {
+				return diag.FromErr(err)
+			}
+		}
+	}
 
 	return resourceOpenGaussInstanceRead(ctx, d, meta)
 }
@@ -655,7 +848,12 @@ func buildCreateGaussDBOpenGaussVolumeBodyParams(d *schema.ResourceData) map[str
 		dnNum = d.Get("sharding_num").(int)
 	}
 	if mode == haModeCentralized {
-		dnNum = d.Get("replica_num").(int) + 1
+		if v, ok := d.GetOk("replica_num"); ok {
+			dnNum = v.(int) + 1
+		} else {
+			// replica_num default value is 3
+			dnNum = 3 + 1
+		}
 	}
 	raw := rawParams[0].(map[string]interface{})
 	dnSize := raw["size"].(int)
@@ -707,89 +905,38 @@ func initializeParameters(ctx context.Context, d *schema.ResourceData, client *g
 }
 
 func openMysqlCompatibilityPort(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/mysql-compatibility"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = buildUpdateMysqlCompatibilityPortBodyParams(d)
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("POST", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(timeout),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/mysql-compatibility",
+		httpMethod:         "POST",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   buildUpdateMysqlCompatibilityPortBodyParams(d),
+		isRetry:            true,
+		timeout:            timeout,
+		delay:              10,
+		checkJobExpression: "job_id",
 	})
 	if err != nil {
-		return fmt.Errorf("error opening GaussDB OpenGauss instance (%s) MySQL compatibility port: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance MySQL compatibility port: %s", err)
 	}
 
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return fmt.Errorf("error opening GaussDB OpenGauss instance MySQL compatibility port: job_id is not " +
-			"found in API response")
-	}
-	return checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 10, d.Timeout(timeout))
+	return nil
 }
 
 func restartGaussDBOpenGaussInstance(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/restart"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("POST", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(schema.TimeoutCreate),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/restart",
+		httpMethod:         "POST",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		isRetry:            true,
+		timeout:            schema.TimeoutCreate,
+		delay:              10,
+		checkJobExpression: "job_id",
 	})
 	if err != nil {
-		return fmt.Errorf("error restarting GaussDB OpenGauss instance (%s): %s", d.Id(), err)
+		return fmt.Errorf("error restarting GaussDB instance: %s", err)
 	}
 
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return fmt.Errorf("error restarting GaussDB OpenGauss instance name: job_id is not found in API response")
-	}
-
-	return checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 30, d.Timeout(schema.TimeoutUpdate))
+	return nil
 }
 
 func resourceOpenGaussInstanceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -838,12 +985,16 @@ func resourceOpenGaussInstanceRead(ctx context.Context, d *schema.ResourceData, 
 		d.Set("volume", flattenGaussDBOpenGaussResponseBodyVolume(instance, dnNum)),
 		d.Set("mysql_compatibility_port", utils.PathSearch("mysql_compatibility.port", instance, nil)),
 		setOpenGaussPrivateIpsAndEndpoints(d, instance),
+		setDnNodeDeployMode(d, instance),
 		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("tags", instance, make([]interface{}, 0)))),
 	)
 
 	mErr = multierror.Append(mErr, setBalanceStatus(d, client))
 	mErr = multierror.Append(mErr, setErrorLogSwitchStatus(d, client))
 	mErr = multierror.Append(mErr, setAdvanceFeatures(d, client))
+	mErr = multierror.Append(mErr, setWdrSnapshotStatus(d, client))
+	mErr = multierror.Append(mErr, setAspStatus(d, client))
+	mErr = multierror.Append(mErr, setAutoScaling(d, client))
 
 	diagErr := setGaussDBMySQLParameters(ctx, d, client)
 	resErr := append(diag.FromErr(mErr.ErrorOrNil()), diagErr...)
@@ -904,10 +1055,12 @@ func setOpenGaussNodesAndRelatedNumbers(d *schema.ResourceData, instance interfa
 		node := map[string]interface{}{
 			"id":                utils.PathSearch("id", v, nil),
 			"name":              name,
+			"component_names":   utils.PathSearch("component_names", v, nil),
 			"status":            utils.PathSearch("status", v, nil),
 			"role":              utils.PathSearch("role", v, nil),
 			"availability_zone": utils.PathSearch("availability_zone", v, nil),
 			"private_ip":        utils.PathSearch("private_ip", v, nil),
+			"data_ip":           utils.PathSearch("data_ip", v, nil),
 			"public_ip":         utils.PathSearch("public_ip", v, nil),
 		}
 		nodesList = append(nodesList, node)
@@ -965,25 +1118,14 @@ func setOpenGaussPrivateIpsAndEndpoints(d *schema.ResourceData, instance interfa
 }
 
 func setGaussDBMySQLParameters(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) diag.Diagnostics {
-	var (
-		httpUrl = "v3.1/{project_id}/instances/{instance_id}/configurations"
-	)
-
-	getPath := client.Endpoint + httpUrl
-	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-	getPath = strings.ReplaceAll(getPath, "{instance_id}", d.Id())
-
-	getOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	getResp, err := client.Request("GET", getPath, &getOpt)
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3.1/{project_id}/instances/{instance_id}/configurations",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
 	if err != nil {
-		log.Printf("[WARN] error retrieving GaussDB OpenGauss(%s) parameters: %s", d.Id(), err)
+		log.Printf("[WARN] error retrieving GaussDB(%s) parameters: %s", d.Id(), err)
 		return nil
-	}
-	getRespBody, err := utils.FlattenResponse(getResp)
-	if err != nil {
-		return diag.FromErr(err)
 	}
 
 	rawParameters := d.Get("parameters").(*schema.Set)
@@ -1037,49 +1179,27 @@ func setGaussDBMySQLParameters(ctx context.Context, d *schema.ResourceData, clie
 }
 
 func setBalanceStatus(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/balance"
-	)
-
-	getPath := client.Endpoint + httpUrl
-	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-	getPath = strings.ReplaceAll(getPath, "{instance_id}", d.Id())
-
-	getOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	getResp, err := client.Request("GET", getPath, &getOpt)
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/balance",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
 	if err != nil {
-		log.Printf("[WARN] error retrieving GaussDB OpenGauss(%s) balance status: %s", d.Id(), err)
+		log.Printf("[WARN] error retrieving GaussDB (%s) balance status: %s", d.Id(), err)
 		return nil
-	}
-	getRespBody, err := utils.FlattenResponse(getResp)
-	if err != nil {
-		return err
 	}
 	return d.Set("balance_status", utils.PathSearch("balanced", getRespBody, nil))
 }
 
 func setErrorLogSwitchStatus(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/error-log/switch/status"
-	)
-
-	getPath := client.Endpoint + httpUrl
-	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-	getPath = strings.ReplaceAll(getPath, "{instance_id}", d.Id())
-
-	getOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	getResp, err := client.Request("GET", getPath, &getOpt)
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/error-log/switch/status",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
 	if err != nil {
-		log.Printf("[WARN] error retrieving GaussDB OpenGauss(%s) error log switch status: %s", d.Id(), err)
+		log.Printf("[WARN] error retrieving GaussDB(%s) error log switch status: %s", d.Id(), err)
 		return nil
-	}
-	getRespBody, err := utils.FlattenResponse(getResp)
-	if err != nil {
-		return err
 	}
 	return d.Set("error_log_switch_status", utils.PathSearch("status", getRespBody, nil))
 }
@@ -1087,7 +1207,7 @@ func setErrorLogSwitchStatus(d *schema.ResourceData, client *golangsdk.ServiceCl
 func setAdvanceFeatures(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	features, err := getAdvanceFeatures(client, d.Id())
 	if err != nil {
-		log.Printf("[WARN] error retrieving GaussDB OpenGauss(%s) error log switch status: %s", d.Id(), err)
+		log.Printf("[WARN] error retrieving GaussDB(%s) advance features: %s", d.Id(), err)
 		return nil
 	}
 
@@ -1110,31 +1230,116 @@ func setAdvanceFeatures(d *schema.ResourceData, client *golangsdk.ServiceClient)
 }
 
 func getAdvanceFeatures(client *golangsdk.ServiceClient, instanceId string) ([]interface{}, error) {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/advance-features"
-	)
-
-	getPath := client.Endpoint + httpUrl
-	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-	getPath = strings.ReplaceAll(getPath, "{instance_id}", instanceId)
-
-	getOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		MoreHeaders:      map[string]string{"Content-Type": "application/json"},
-	}
-	getResp, err := client.Request("GET", getPath, &getOpt)
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/advance-features",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": instanceId},
+	})
 	if err != nil {
 		return nil, err
 	}
-	getRespBody, err := utils.FlattenResponse(getResp)
-	if err != nil {
-		return nil, err
-	}
+
 	features := utils.PathSearch("features", getRespBody, make([]interface{}, 0)).([]interface{})
-
 	return features, nil
 }
 
+func setWdrSnapshotStatus(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	status, err := getWdrSnapshotStatus(client, d.Id())
+	if err != nil {
+		log.Printf("[WARN] error retrieving GaussDB(%s) wdr snapshot status: %s", d.Id(), err)
+		return nil
+	}
+
+	return d.Set("wdr_snapshot_status", status)
+}
+
+func getWdrSnapshotStatus(client *golangsdk.ServiceClient, instanceId string) (string, error) {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/wdr-snapshot/status",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": instanceId},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	status := utils.PathSearch("status", getRespBody, "").(string)
+	return status, nil
+}
+
+func setAspStatus(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	status, err := getAspStatus(client, d.Id())
+	if err != nil {
+		log.Printf("[WARN] error retrieving GaussDB(%s) asp status: %s", d.Id(), err)
+		return nil
+	}
+
+	return d.Set("asp_status", status)
+}
+
+func getAspStatus(client *golangsdk.ServiceClient, instanceId string) (string, error) {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/asp/status",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": instanceId},
+	})
+	if err != nil {
+		return "", err
+	}
+
+	status := utils.PathSearch("status", getRespBody, "").(string)
+	return status, nil
+}
+
+func setAutoScaling(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	getRespBody, err := getInstanceField(client, getInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/auto-enlarge-policy",
+		httpMethod: "GET",
+		pathParams: map[string]string{"instance_id": d.Id()},
+	})
+	if err != nil {
+		log.Printf("[WARN] error fetching GaussDB instance(%s) auto scaling: %s", d.Id(), err)
+		return nil
+	}
+	if len(getRespBody.(map[string]interface{})) == 0 {
+		return d.Set("auto_scaling", nil)
+	}
+
+	autoScaling := []interface{}{
+		map[string]interface{}{
+			"switch_option":             utils.PathSearch("switch_option", getRespBody, nil),
+			"limit_volume_size":         utils.PathSearch("limit_volume_size", getRespBody, nil),
+			"trigger_available_percent": utils.PathSearch("trigger_available_percent", getRespBody, nil),
+			"step_size":                 utils.PathSearch("step_size", getRespBody, nil),
+			"step_percent":              utils.PathSearch("step_percent", getRespBody, nil),
+			"min_volume_size":           utils.PathSearch("min_volume_size", getRespBody, nil),
+			"max_volume_size":           utils.PathSearch("max_volume_size", getRespBody, nil),
+			"percents":                  utils.PathSearch("percents", getRespBody, nil),
+		},
+	}
+
+	return d.Set("auto_scaling", autoScaling)
+}
+
+func setDnNodeDeployMode(d *schema.ResourceData, instance interface{}) *multierror.Error {
+	instanceType := utils.PathSearch("type", instance, "").(string)
+	if instanceType != "Enterprise" {
+		return nil
+	}
+
+	secondaryNode := utils.PathSearch("nodes[?role=='secondary']|[0]", instance, nil)
+	if secondaryNode != nil {
+		return multierror.Append(
+			d.Set("dn_node_deploy_mode", "primary_standby_log"),
+		)
+	}
+
+	return multierror.Append(
+		d.Set("dn_node_deploy_mode", "primary_standby"),
+	)
+}
+
+// nolint:gocyclo
 func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1157,22 +1362,42 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
+	if d.HasChange("alias") {
+		if err = updateInstanceAlias(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("password") {
-		if err = updateInstancePassword(d, client); err != nil {
+		if err = updateInstancePassword(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("port") {
+		if err = updateInstancePort(ctx, d, client); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("security_group_id") {
+		if err = updateInstanceSecurityGroupId(ctx, d, client); err != nil {
 			return diag.FromErr(err)
 		}
 	}
 
 	if d.HasChange("sharding_num") {
-		if err = expandInstanceShardingNumber(ctx, d, client, bssClient); err != nil {
+		if err = updateInstanceShardingNumber(ctx, d, client, bssClient); err != nil {
 			return diag.FromErr(err)
 		}
 	}
-	if d.HasChange("coordinator_num") {
-		if err = expandInstanceCoordinatorNumber(ctx, d, client, bssClient); err != nil {
+
+	if d.HasChanges("coordinator_num", "delete_coordinator_node_id_list") {
+		if err = updateInstanceCoordinatorNumber(ctx, d, client, bssClient); err != nil {
 			return diag.FromErr(err)
 		}
 	}
+
 	if d.HasChange("volume") {
 		if err = updateInstanceVolumeSize(ctx, d, client, bssClient); err != nil {
 			return diag.FromErr(err)
@@ -1180,7 +1405,7 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 	}
 
 	if d.HasChange("backup_strategy") {
-		if err = updateInstanceBackupStrategy(d, client); err != nil {
+		if err = updateInstanceBackupStrategy(ctx, d, client); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -1239,9 +1464,55 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
-	if d.HasChange("auto_renew") {
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
+	if d.HasChange("charging_mode") {
+		if d.Get("charging_mode").(string) == "postPaid" {
+			return diag.Errorf("error updating the charging mode of the GaussDB instance (%s): %s", d.Id(),
+				"only support changing post-paid instance to pre-paid")
+		}
+		if err = updateBillingModeToPeriod(ctx, d, client, bssClient); err != nil {
+			return diag.FromErr(err)
+		}
+	} else if d.HasChange("auto_renew") {
+		if err = cbc.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), d.Id()); err != nil {
 			return diag.Errorf("error updating the auto-renew of the instance (%s): %s", d.Id(), err)
+		}
+	}
+
+	if d.HasChange("wdr_snapshot_status") {
+		if err = updateWdrSnapshotStatus(ctx, client, d, schema.TimeoutUpdate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("asp_status") {
+		if err = updateAspStatus(ctx, client, d, schema.TimeoutUpdate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("error_log_switch_status") {
+		if err = updateErrorLogSwitchStatus(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("auto_scaling") {
+		err = updateAutoScaling(ctx, client, d)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("dn_node_deploy_mode") {
+		if err = updateDnNodeDeployMode(ctx, client, bssClient, d, schema.TimeoutUpdate); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("kms_tde_switch") {
+		err = updateEnablingTransparentDataEncryption(ctx, client, d)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -1257,8 +1528,14 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 		}
 	}
 
+	if d.HasChange("expansion_parameters") {
+		if err = updateExpansionParameters(ctx, client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
 	if d.HasChange("tags") {
-		err = updateInstanceTags(d, client)
+		err = updateInstanceTags(ctx, d, client)
 		if err != nil {
 			return diag.Errorf("error updating tags of GaussDB OpenGauss instance %q: %s", d.Id(), err)
 		}
@@ -1268,36 +1545,17 @@ func resourceOpenGaussInstanceUpdate(ctx context.Context, d *schema.ResourceData
 }
 
 func updateInstanceName(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/name"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstanceNameBodyParams(d))
-
-	updateResp, err := client.Request("PUT", updatePath, &updateOpt)
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/name",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(buildUpdateInstanceNameBodyParams(d)),
+		timeout:            schema.TimeoutUpdate,
+		delay:              2,
+		checkJobExpression: "job_id",
+	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) name: %s", d.Id(), err)
-	}
-
-	updateRespBody, err := utils.FlattenResponse(updateResp)
-	if err != nil {
-		return err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance name: job_id is not found in API response")
-	}
-
-	err = checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 2, d.Timeout(schema.TimeoutUpdate))
-	if err != nil {
-		return err
+		return fmt.Errorf("error updating GaussDB instance name: %s", err)
 	}
 
 	return nil
@@ -1310,23 +1568,36 @@ func buildUpdateInstanceNameBodyParams(d *schema.ResourceData) map[string]interf
 	return bodyParams
 }
 
-func updateInstancePassword(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/password"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstancePasswordBodyParams(d))
-
-	_, err := client.Request("POST", updatePath, &updateOpt)
+func updateInstanceAlias(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/alias",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateInstanceAliasBodyParams(d)),
+	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) password: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance alias: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateInstanceAliasBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"alias": d.Get("alias"),
+	}
+	return bodyParams
+}
+
+func updateInstancePassword(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/password",
+		httpMethod:       "POST",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateInstancePasswordBodyParams(d)),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance password: %s", err)
 	}
 
 	return nil
@@ -1339,17 +1610,99 @@ func buildUpdateInstancePasswordBodyParams(d *schema.ResourceData) map[string]in
 	return bodyParams
 }
 
-func expandInstanceShardingNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+func updateInstancePort(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	portRaw := d.Get("port")
+	port, err := strconv.Atoi(portRaw.(string))
+	if err != nil {
+		return fmt.Errorf("error converting port to number: %s", err)
+	}
+	_, err = updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/port",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(buildUpdateInstancePortBodyParams(port)),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "job_id",
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance port: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateInstancePortBodyParams(port int) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"port": port,
+	}
+	return bodyParams
+}
+
+func updateInstanceSecurityGroupId(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/security-group",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(buildUpdateInstanceSecurityGroupIdBodyParams(d)),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "job_id",
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance name: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateInstanceSecurityGroupIdBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"security_group_id": d.Get("security_group_id"),
+	}
+	return bodyParams
+}
+
+func updateInstanceShardingNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
 	oRaw, nRaw := d.GetChange("sharding_num")
 	if nRaw.(int) < oRaw.(int) {
-		return fmt.Errorf("error expanding shard for instance: new num must be larger than the old one")
+		shrinkSize := oRaw.(int) - nRaw.(int)
+		return shrinkInstanceShardingNumber(ctx, d, client, bssClient, shrinkSize)
 	}
 	expandSize := nRaw.(int) - oRaw.(int)
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
+
+	expandInstanceShardingNumberBodyParams := utils.RemoveNil(buildExpandInstanceShardingNumberBodyParams(expandSize))
+	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, expandInstanceShardingNumberBodyParams)
+}
+
+func shrinkInstanceShardingNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient, shrinkSize int) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/sharding",
+		httpMethod:           "DELETE",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildShrinkInstanceShardBodyParams(shrinkSize),
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting GaussDB instance shard nodes: %s", err)
 	}
-	updateOpt.JSONBody = utils.RemoveNil(buildExpandInstanceShardingNumberBodyParams(expandSize))
-	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, updateOpt)
+
+	return nil
+}
+
+func buildShrinkInstanceShardBodyParams(shrinkSize int) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"contraction_num": shrinkSize,
+	}
+	return bodyParams
 }
 
 func buildExpandInstanceShardingNumberBodyParams(expandSize int) map[string]interface{} {
@@ -1364,18 +1717,33 @@ func buildExpandInstanceShardingNumberBodyParams(expandSize int) map[string]inte
 	return bodyParams
 }
 
-func expandInstanceCoordinatorNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+func updateInstanceCoordinatorNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+	if d.HasChange("delete_coordinator_node_id_list") && !d.HasChange("coordinator_num") {
+		return errors.New("coordinator_num should be modified simultaneously when delete coordinator nodes")
+	}
+
 	oRaw, nRaw := d.GetChange("coordinator_num")
 	if nRaw.(int) < oRaw.(int) {
-		return fmt.Errorf("error expanding coordinator for instance: new number must be larger than the old one")
+		v, ok := d.GetOk("delete_coordinator_node_id_list")
+		if !ok {
+			return errors.New("the nodes to be deleted should be specified using delete_coordinator_node_id_list" +
+				" when delete coordinator node")
+		}
+		deleteCoordinatorNodeIdList := v.(*schema.Set)
+		if deleteCoordinatorNodeIdList.Len() != oRaw.(int)-nRaw.(int) {
+			return errors.New("the number of the nodes to be deleted specified by delete_coordinator_node_id_list" +
+				" is differs from the reduction amount in coordinator_num")
+		}
+		return deleteInstanceCoordinatorNode(ctx, d, client, bssClient, deleteCoordinatorNodeIdList.List())
 	}
-	expandSize := nRaw.(int) - oRaw.(int)
 
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildExpandInstanceCoordinatorNumberBodyParams(d, expandSize))
-	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, updateOpt)
+	expandSize := nRaw.(int) - oRaw.(int)
+	return expandInstanceCoordinatorNumber(ctx, d, client, bssClient, expandSize)
+}
+
+func expandInstanceCoordinatorNumber(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient, expandSize int) error {
+	updateBodyParams := utils.RemoveNil(buildExpandInstanceCoordinatorNumberBodyParams(d, expandSize))
+	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, updateBodyParams)
 }
 
 func buildExpandInstanceCoordinatorNumberBodyParams(d *schema.ResourceData, expandSize int) map[string]interface{} {
@@ -1395,6 +1763,35 @@ func buildExpandInstanceCoordinatorNumberBodyParams(d *schema.ResourceData, expa
 	return bodyParams
 }
 
+func deleteInstanceCoordinatorNode(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient,
+	deleteCoordinatorNodeIdList []interface{}) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/coordinators",
+		httpMethod:           "DELETE",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildDeleteInstanceCoordinatorNodeBodyParams(deleteCoordinatorNodeIdList),
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		delay:                60,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting GaussDB instance coordinator nodes: %s", err)
+	}
+
+	return nil
+}
+
+func buildDeleteInstanceCoordinatorNodeBodyParams(deleteCoordinatorNodeIdList []interface{}) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"node_id_list": deleteCoordinatorNodeIdList,
+	}
+	return bodyParams
+}
+
 func updateInstanceVolumeSize(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
 	volumeRaw := d.Get("volume").([]interface{})
 	dnSize := volumeRaw[0].(map[string]interface{})["size"].(int)
@@ -1403,14 +1800,16 @@ func updateInstanceVolumeSize(ctx context.Context, d *schema.ResourceData, clien
 		dnNum = d.Get("sharding_num").(int)
 	}
 	if d.Get("ha.0.mode").(string) == haModeCentralized {
-		dnNum = d.Get("replica_num").(int) + 1
+		if v, ok := d.GetOk("replica_num"); ok {
+			dnNum = v.(int) + 1
+		} else {
+			// replica_num default value is 3
+			dnNum = 3 + 1
+		}
 	}
 
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstanceVolumeSizeBodyParams(dnSize, dnNum))
-	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, updateOpt)
+	updateBodyParams := utils.RemoveNil(buildUpdateInstanceVolumeSizeBodyParams(dnSize, dnNum))
+	return updateInstanceVolumeAndRelatedHaNumbers(ctx, client, bssClient, d, updateBodyParams)
 }
 
 func buildUpdateInstanceVolumeSizeBodyParams(dnSize, dnNum int) map[string]interface{} {
@@ -1424,92 +1823,36 @@ func buildUpdateInstanceVolumeSizeBodyParams(dnSize, dnNum int) map[string]inter
 }
 
 func updateInstanceVolumeAndRelatedHaNumbers(ctx context.Context, client, bssClient *golangsdk.ServiceClient,
-	d *schema.ResourceData, opts golangsdk.RequestOpts) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/action"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("POST", updatePath, &opts)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	d *schema.ResourceData, updateBodyParams interface{}) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/action",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     updateBodyParams,
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
 	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s): %s", d.Id(), err)
-	}
-
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return err
-	}
-
-	if v, ok := d.GetOk("charging_mode"); ok && v.(string) == "prePaid" {
-		orderId := utils.PathSearch("orderId", updateRespBody, nil)
-		if orderId == nil {
-			return fmt.Errorf("error updating GaussDB OpenGauss instance: order_id is not found in API response")
-		}
-		// wait for order success
-		err = common.WaitOrderComplete(ctx, bssClient, orderId.(string), d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return err
-		}
-	} else {
-		jobId := utils.PathSearch("job_id", updateRespBody, nil)
-		if jobId == nil {
-			return fmt.Errorf("error updating GaussDB OpenGauss instance: job_id is not found in API response")
-		}
-		err = checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 180, d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return err
-		}
-	}
-
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"MODIFYING", "BACKING UP"},
-		Target:       []string{"ACTIVE"},
-		Refresh:      instanceStateRefreshFunc(client, d.Id()),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		PollInterval: 10 * time.Second,
-	}
-
-	_, err = stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return fmt.Errorf("error waiting for instance (%s) to become ready: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance: %s", err)
 	}
 
 	return nil
 }
 
-func updateInstanceBackupStrategy(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/backups/policy"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstanceBackupStrategyBodyParams(d))
-
-	_, err := client.Request("PUT", updatePath, &updateOpt)
+func updateInstanceBackupStrategy(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3.1/{project_id}/instances/{instance_id}/backups/policy",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateInstanceBackupStrategyBodyParams(d)),
+	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) backup strategy: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance backup strategy: %s", err)
 	}
 
 	return nil
@@ -1531,73 +1874,21 @@ func buildUpdateInstanceBackupStrategyBodyParams(d *schema.ResourceData) map[str
 }
 
 func updateInstanceFlavor(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
-	var (
-		httpUrl = "v3/{project_id}/instance/{instance_id}/flavor"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstanceFlavorBodyParams(d))
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/flavor",
+		httpMethod:           "PUT",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     utils.RemoveNil(buildUpdateInstanceFlavorBodyParams(d)),
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
 	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) flavor: %s", d.Id(), err)
-	}
-
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return err
-	}
-
-	if v, ok := d.GetOk("charging_mode"); ok && v.(string) == "prePaid" {
-		orderId := utils.PathSearch("order_id", updateRespBody, nil)
-		if orderId == nil {
-			return fmt.Errorf("error updating GaussDB OpenGauss instance flavor: order_id is not found in API response")
-		}
-		// wait for order success
-		err = common.WaitOrderComplete(ctx, bssClient, orderId.(string), d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return err
-		}
-	} else {
-		jobId := utils.PathSearch("job_id", updateRespBody, nil)
-		if jobId == nil {
-			return fmt.Errorf("error updating GaussDB OpenGauss instance flavor: job_id is not found in API response")
-		}
-		err = checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 180, d.Timeout(schema.TimeoutUpdate))
-		if err != nil {
-			return err
-		}
-	}
-
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"MODIFYING", "BACKING UP"},
-		Target:       []string{"ACTIVE"},
-		Refresh:      instanceStateRefreshFunc(client, d.Id()),
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		PollInterval: 10 * time.Second,
-	}
-
-	_, err = stateConf.WaitForStateContext(ctx)
-	if err != nil {
-		return fmt.Errorf("error waiting for instance (%s) to become ready: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance flavor: %s", err)
 	}
 
 	return nil
@@ -1614,47 +1905,18 @@ func buildUpdateInstanceFlavorBodyParams(d *schema.ResourceData) map[string]inte
 }
 
 func updateConfiguration(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) (context.Context, error) {
-	var (
-		httpUrl = "v3/{project_id}/configurations/{config_id}/apply"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{config_id}", d.Get("configuration_id").(string))
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = utils.RemoveNil(buildUpdateInstanceConfigurationBodyParams(d))
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(schema.TimeoutUpdate),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/configurations/{config_id}/apply",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"config_id": d.Get("configuration_id").(string)},
+		updateBodyParams:   utils.RemoveNil(buildUpdateInstanceConfigurationBodyParams(d)),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              2,
+		checkJobExpression: "job_id",
 	})
 	if err != nil {
 		return ctx, fmt.Errorf("error updating GaussDB OpenGauss instance (%s) configuration: %s", d.Id(), err)
-	}
-
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return ctx, err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return ctx, fmt.Errorf("error updating GaussDB OpenGauss instance configuration: job_id is not found in API response")
-	}
-	err = checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 2, d.Timeout(schema.TimeoutUpdate))
-	if err != nil {
-		return ctx, err
 	}
 
 	// Sending configurationChanged to Read to warn users the instance needs a reboot.
@@ -1691,93 +1953,40 @@ func updateParameters(ctx context.Context, d *schema.ResourceData, client *golan
 
 func modifyParameters(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string,
 	parameterOpts *map[string]interface{}) (bool, error) {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/configurations"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		JSONBody:         parameterOpts,
-	}
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(timeout),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	updateRespBody, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/configurations",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   parameterOpts,
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              2,
+		checkJobExpression: "job_id",
 	})
 	if err != nil {
-		return false, fmt.Errorf("error updating GaussDB OpenGauss instance (%s) parameters: %s", d.Id(), err)
+		return false, fmt.Errorf("error updating GaussDB instance parameters: %s", err)
 	}
 
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return false, err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return false, fmt.Errorf("error updating GaussDB OpenGauss instance parameters: job_id is not found in API response")
-	}
-	err = checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 2, d.Timeout(timeout))
-	if err != nil {
-		return false, err
-	}
 	restartRequired := utils.PathSearch("restart_required", updateRespBody, false).(bool)
 	return restartRequired, nil
 }
 
 func updateMysqlCompatibilityPort(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/mysql-compatibility"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = buildUpdateMysqlCompatibilityPortBodyParams(d)
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("PUT", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	r, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(timeout),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/mysql-compatibility",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   buildUpdateMysqlCompatibilityPortBodyParams(d),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "job_id",
 	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) MySQL compatibility port: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance MySQL compatibility port: %s", err)
 	}
 
-	updateRespBody, err := utils.FlattenResponse(r.(*http.Response))
-	if err != nil {
-		return err
-	}
-	jobId := utils.PathSearch("job_id", updateRespBody, nil)
-	if jobId == nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance MySQL compatibility port: job_id is not " +
-			"found in API response")
-	}
-	return checkGaussDBOpenGaussJobFinish(ctx, client, jobId.(string), 10, d.Timeout(timeout))
+	return nil
 }
 
 func buildUpdateMysqlCompatibilityPortBodyParams(d *schema.ResourceData) map[string]interface{} {
@@ -1788,34 +1997,16 @@ func buildUpdateMysqlCompatibilityPortBodyParams(d *schema.ResourceData) map[str
 }
 
 func updateAdvanceFeatures(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/advance-features"
-	)
-
-	updatePath := client.Endpoint + httpUrl
-	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
-	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", d.Id())
-
-	updateOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	updateOpt.JSONBody = buildUpdateAdvanceFeaturesBodyParams(d)
-	retryFunc := func() (interface{}, bool, error) {
-		res, err := client.Request("POST", updatePath, &updateOpt)
-		retry, err := handleMultiOperationsError(err)
-		return res, retry, err
-	}
-	_, err := common.RetryContextWithWaitForState(&common.RetryContextWithWaitForStateParam{
-		Ctx:          ctx,
-		RetryFunc:    retryFunc,
-		WaitFunc:     instanceStateRefreshFunc(client, d.Id()),
-		WaitTarget:   []string{"ACTIVE"},
-		Timeout:      d.Timeout(timeout),
-		DelayTimeout: 10 * time.Second,
-		PollInterval: 10 * time.Second,
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/advance-features",
+		httpMethod:       "POST",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildUpdateAdvanceFeaturesBodyParams(d),
+		isRetry:          true,
+		timeout:          timeout,
 	})
 	if err != nil {
-		return fmt.Errorf("error updating GaussDB OpenGauss instance (%s) advance features: %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance advance features: %s", err)
 	}
 
 	return checkAdvanceFeaturesJobFinish(ctx, d, client, timeout)
@@ -1838,7 +2029,7 @@ func buildUpdateAdvanceFeaturesBodyParams(d *schema.ResourceData) map[string]int
 func checkAdvanceFeaturesJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
 	timeout string) error {
 	rawAdvanceFeatures := d.Get("advance_features").(*schema.Set).List()
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Pending"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDBOpenGaussAdvanceFeaturesRefreshFunc(client, d.Id(), rawAdvanceFeatures),
@@ -1853,7 +2044,7 @@ func checkAdvanceFeaturesJobFinish(ctx context.Context, d *schema.ResourceData, 
 }
 
 func gaussDBOpenGaussAdvanceFeaturesRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
-	rawAdvanceFeatures []interface{}) resource.StateRefreshFunc {
+	rawAdvanceFeatures []interface{}) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		features, err := getAdvanceFeatures(client, instanceId)
 		if err != nil {
@@ -1879,23 +2070,386 @@ func gaussDBOpenGaussAdvanceFeaturesRefreshFunc(client *golangsdk.ServiceClient,
 	}
 }
 
-func addInstanceTags(d *schema.ResourceData, client *golangsdk.ServiceClient, addTags map[string]interface{}) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/tags"
-	)
-
-	addPath := client.Endpoint + httpUrl
-	addPath = strings.ReplaceAll(addPath, "{project_id}", client.ProjectID)
-	addPath = strings.ReplaceAll(addPath, "{instance_id}", d.Id())
-
-	addOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	addOpt.JSONBody = utils.RemoveNil(buildAddInstanceTagsBodyParams(addTags))
-
-	_, err := client.Request("POST", addPath, &addOpt)
+func updateWdrSnapshotStatus(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/wdr-snapshot/status",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildUpdateWdrSnapshotStatusBodyParams(d),
+		isRetry:          true,
+		timeout:          timeout,
+	})
 	if err != nil {
-		return fmt.Errorf("error adding tags to GaussDB OpenGauss instance (%s): %s", d.Id(), err)
+		return fmt.Errorf("error updating GaussDB instance wdr snapshot status: %s", err)
+	}
+
+	return checkWdrSnapshotStatusJobFinish(ctx, d, client, timeout)
+}
+
+func buildUpdateWdrSnapshotStatusBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"status": d.Get("wdr_snapshot_status"),
+	}
+	return bodyParams
+}
+
+func checkWdrSnapshotStatusJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
+	timeout string) error {
+	wdrSnapshotStatus := d.Get("wdr_snapshot_status").(string)
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"Pending"},
+		Target:       []string{"Completed"},
+		Refresh:      gaussDbWdrSnapshotStatusRefreshFunc(client, d.Id(), wdrSnapshotStatus),
+		Timeout:      d.Timeout(timeout),
+		Delay:        5,
+		PollInterval: 5 * time.Second,
+	}
+	if _, err := stateConf.WaitForStateContext(ctx); err != nil {
+		return fmt.Errorf("error waiting for GaussDB wdr snapshot status job (%s) to be completed", err)
+	}
+	return nil
+}
+
+func gaussDbWdrSnapshotStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
+	wdrSnapshotStatus string) retry.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		rawStatus, err := getWdrSnapshotStatus(client, instanceId)
+		if err != nil {
+			return nil, "Error", err
+		}
+
+		if wdrSnapshotStatus != rawStatus {
+			return rawStatus, "Pending", nil
+		}
+
+		return rawStatus, "Completed", nil
+	}
+}
+
+func updateAspStatus(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/asp/status",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: buildUpdateAspStatusBodyParams(d),
+		isRetry:          true,
+		timeout:          timeout,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance advance features: %s", err)
+	}
+
+	return checkAspStatusJobFinish(ctx, d, client, timeout)
+}
+
+func buildUpdateAspStatusBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"status": d.Get("asp_status"),
+	}
+	return bodyParams
+}
+
+func updateErrorLogSwitchStatus(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:    "v3/{project_id}/instances/{instance_id}/error-log/switch/{status}",
+		httpMethod: "POST",
+		pathParams: map[string]string{
+			"instance_id": d.Id(),
+			"status":      d.Get("error_log_switch_status").(string),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB error log switch status: %s", err)
+	}
+
+	return nil
+}
+
+func updateAutoScaling(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/auto-enlarge-policy",
+		httpMethod:       "PUT",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildUpdateAutoScalingBodyParams(d)),
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance auto scaling: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateAutoScalingBodyParams(d *schema.ResourceData) map[string]interface{} {
+	rawParams := d.Get("auto_scaling").([]interface{})
+	if len(rawParams) == 0 {
+		return nil
+	}
+	if autoScaling, ok := rawParams[0].(map[string]interface{}); ok {
+		bodyParams := map[string]interface{}{
+			"switch_option":             autoScaling["switch_option"],
+			"limit_volume_size":         utils.ValueIgnoreEmpty(autoScaling["limit_volume_size"]),
+			"trigger_available_percent": utils.ValueIgnoreEmpty(autoScaling["trigger_available_percent"]),
+			"step_size":                 utils.ValueIgnoreEmpty(autoScaling["step_size"]),
+			"step_percent":              utils.ValueIgnoreEmpty(autoScaling["step_percent"]),
+		}
+		return bodyParams
+	}
+	return nil
+}
+
+func updateDnNodeDeployMode(ctx context.Context, client, bssClient *golangsdk.ServiceClient, d *schema.ResourceData,
+	timeout string) error {
+	if d.Get("dn_node_deploy_mode") == "primary_standby" {
+		return updateInstanceToPrimaryStandby(ctx, client, bssClient, d, timeout)
+	}
+
+	instance, err := getGaussDBOpenGaussInstancesById(client, d.Id())
+	if err != nil {
+		return err
+	}
+	slaveNodeAz := utils.PathSearch("instances[0].nodes[?role=='slave']|[0].availability_zone", instance, "").(string)
+
+	return updateInstanceToPrimaryStandbyLog(ctx, client, bssClient, d, slaveNodeAz, timeout)
+}
+
+func updateInstanceToPrimaryStandby(ctx context.Context, client, bssClient *golangsdk.ServiceClient,
+	d *schema.ResourceData, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/switch-replica",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildUpdateInstanceToPrimaryStandbyBodyParams(),
+		isRetry:              true,
+		timeout:              timeout,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance to 1 primary and 2 standby: %s", err)
+	}
+
+	return err
+}
+
+func buildUpdateInstanceToPrimaryStandbyBodyParams() map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"is_auto_pay": true,
+	}
+	return bodyParams
+}
+
+func updateInstanceToPrimaryStandbyLog(ctx context.Context, client, bssClient *golangsdk.ServiceClient,
+	d *schema.ResourceData, az, timeout string) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/{instance_id}/switch-logger-replica",
+		httpMethod:           "POST",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     buildUpdateInstanceToPrimaryStandbyLogBodyParams(az),
+		isRetry:              true,
+		timeout:              timeout,
+		delay:                180,
+		checkJobExpression:   "job_id",
+		checkOrderExpression: "order_id",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance to 1 primary, 1 standby and 1 log instance: %s", err)
+	}
+
+	return err
+}
+
+func buildUpdateInstanceToPrimaryStandbyLogBodyParams(availabilityZone string) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"availability_zone": availabilityZone,
+	}
+	return bodyParams
+}
+
+func checkAspStatusJobFinish(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient,
+	timeout string) error {
+	aspStatus := d.Get("asp_status").(string)
+	stateConf := &retry.StateChangeConf{
+		Pending:      []string{"Pending"},
+		Target:       []string{"Completed"},
+		Refresh:      gaussDbAspStatusRefreshFunc(client, d.Id(), aspStatus),
+		Timeout:      d.Timeout(timeout),
+		Delay:        5,
+		PollInterval: 5 * time.Second,
+	}
+	if _, err := stateConf.WaitForStateContext(ctx); err != nil {
+		return fmt.Errorf("error waiting for GaussDB asp status job (%s) to be completed", err)
+	}
+	return nil
+}
+
+func gaussDbAspStatusRefreshFunc(client *golangsdk.ServiceClient, instanceId string,
+	aspStatus string) retry.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		rawStatus, err := getAspStatus(client, instanceId)
+		if err != nil {
+			return nil, "Error", err
+		}
+
+		if aspStatus != rawStatus {
+			return rawStatus, "Pending", nil
+		}
+
+		return rawStatus, "Completed", nil
+	}
+}
+
+func updateBillingModeToPeriod(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:              "v3/{project_id}/instances/change-charge-mode",
+		httpMethod:           "PUT",
+		pathParams:           map[string]string{"instance_id": d.Id()},
+		updateBodyParams:     utils.RemoveNil(buildUpdateBillingModeToPeriodBodyParams(d)),
+		isRetry:              true,
+		timeout:              schema.TimeoutUpdate,
+		checkOrderExpression: "order_ids[0]",
+		bssClient:            bssClient,
+		isWaitInstanceReady:  true,
+	})
+	if err != nil {
+		return fmt.Errorf("error updating instance(%s) billing mode from post-paid to pre-paid: %s", d.Id(), err)
+	}
+	return nil
+}
+
+func buildUpdateBillingModeToPeriodBodyParams(d *schema.ResourceData) map[string]interface{} {
+	bodyParams := map[string]interface{}{
+		"entity_ids": []string{d.Id()},
+		"charge_info": map[string]interface{}{
+			"period_type": utils.ValueIgnoreEmpty(d.Get("period_unit")),
+			"period_num":  utils.ValueIgnoreEmpty(d.Get("period")),
+			"is_auto_pay": true,
+		},
+	}
+	if d.Get("auto_renew").(string) == "true" {
+		bodyParams["is_auto_renew"] = true
+	}
+	return bodyParams
+}
+
+func createEnablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	err := enablingTransparentDataEncryption(ctx, client, d)
+	if err != nil {
+		return fmt.Errorf("error enabling GaussDB instance transparent data encryption: %s", err)
+	}
+
+	err = restartGaussDBOpenGaussInstance(ctx, client, d)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func enablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/kms-tde/switch",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(buildTransparentDataEncryptionBodyParams(d)),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "job_id",
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateExpansionParameters(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	bodyParams, err := buildUpdateExpansionParametersBodyParams(d)
+	if err != nil {
+		return err
+	}
+
+	_, err = updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:            "v3/{project_id}/instances/{instance_id}/expansion-parameters",
+		httpMethod:         "PUT",
+		pathParams:         map[string]string{"instance_id": d.Id()},
+		updateBodyParams:   utils.RemoveNil(bodyParams),
+		isRetry:            true,
+		timeout:            schema.TimeoutUpdate,
+		delay:              10,
+		checkJobExpression: "result",
+	})
+
+	if err != nil {
+		return fmt.Errorf("error updating GaussDB instance expansion parameters: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateExpansionParametersBodyParams(d *schema.ResourceData) (map[string]interface{}, error) {
+	if d.Get("expansion_parameters").(string) == "" {
+		return nil, nil
+	}
+
+	var expansionParameters map[string]interface{}
+	err := json.Unmarshal([]byte(d.Get("expansion_parameters").(string)), &expansionParameters)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing expansion parameters, please check the format of the `expansion_parameters`: %s", err)
+	}
+
+	bodyParams := map[string]interface{}{
+		"params": expansionParameters,
+	}
+
+	return bodyParams, nil
+}
+
+func buildTransparentDataEncryptionBodyParams(d *schema.ResourceData) map[string]interface{} {
+	kmsTdeSwitchRaw := d.Get("kms_tde_switch").([]interface{})
+	if len(kmsTdeSwitchRaw) == 0 {
+		return nil
+	}
+	kmsTdeSwitch, ok := kmsTdeSwitchRaw[0].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	bodyParams := map[string]interface{}{
+		"kms_tde_key_id":   kmsTdeSwitch["kms_tde_key_id"],
+		"kms_project_name": kmsTdeSwitch["kms_project_name"],
+		"kms_tde_status":   kmsTdeSwitch["kms_tde_status"],
+	}
+
+	return bodyParams
+}
+
+func updateEnablingTransparentDataEncryption(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	if !d.HasChange("kms_tde_switch") {
+		return nil
+	}
+	err := enablingTransparentDataEncryption(ctx, client, d)
+	if err != nil {
+		return fmt.Errorf("error enabling GaussDB instance transparent data encryption: %s", err)
+	}
+
+	return nil
+}
+
+func addInstanceTags(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, addTags map[string]interface{}) error {
+	_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+		httpUrl:          "v3/{project_id}/instances/{instance_id}/tags",
+		httpMethod:       "POST",
+		pathParams:       map[string]string{"instance_id": d.Id()},
+		updateBodyParams: utils.RemoveNil(buildAddInstanceTagsBodyParams(addTags)),
+	})
+	if err != nil {
+		return fmt.Errorf("error adding tags to GaussDB instance: %s", err)
 	}
 
 	return nil
@@ -1915,22 +2469,14 @@ func buildAddInstanceTagsBodyParams(addTags map[string]interface{}) map[string]i
 	return bodyParams
 }
 
-func deleteInstanceTags(d *schema.ResourceData, client *golangsdk.ServiceClient, deleteTagKeys []string) error {
-	var (
-		httpUrl = "v3/{project_id}/instances/{instance_id}/tag"
-	)
-
-	deleteBasePath := client.Endpoint + httpUrl
-	deleteBasePath = strings.ReplaceAll(deleteBasePath, "{project_id}", client.ProjectID)
-	deleteBasePath = strings.ReplaceAll(deleteBasePath, "{instance_id}", d.Id())
-
-	deleteOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-
+func deleteInstanceTags(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, deleteTagKeys []string) error {
 	for _, deleteTagKey := range deleteTagKeys {
-		deletePath := deleteBasePath + buildDeleteInstanceTagParamBodyParams(deleteTagKey)
-		_, err := client.Request("DELETE", deletePath, &deleteOpt)
+		deletePath := "v3/{project_id}/instances/{instance_id}/tag" + buildDeleteInstanceTagParamBodyParams(deleteTagKey)
+		_, err := updateGaussDbInstanceField(ctx, d, client, updateInstanceFieldParams{
+			httpUrl:    deletePath,
+			httpMethod: "DELETE",
+			pathParams: map[string]string{"instance_id": d.Id()},
+		})
 		if err != nil {
 			return fmt.Errorf("error deleting tag(%s) from GaussDB OpenGauss instance (%s): %s", d.Id(), deleteTagKey, err)
 		}
@@ -1943,7 +2489,7 @@ func buildDeleteInstanceTagParamBodyParams(key string) string {
 	return fmt.Sprintf("?key=%s", key)
 }
 
-func updateInstanceTags(d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+func updateInstanceTags(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
 	oRaw, nRaw := d.GetChange("tags")
 	oMap := oRaw.(map[string]interface{})
 	nMap := nRaw.(map[string]interface{})
@@ -1953,14 +2499,14 @@ func updateInstanceTags(d *schema.ResourceData, client *golangsdk.ServiceClient)
 		for key := range oMap {
 			keys = append(keys, key)
 		}
-		err := deleteInstanceTags(d, client, keys)
+		err := deleteInstanceTags(ctx, d, client, keys)
 		if err != nil {
 			return err
 		}
 	}
 
 	if len(nMap) > 0 {
-		err := addInstanceTags(d, client, nMap)
+		err := addInstanceTags(ctx, d, client, nMap)
 		if err != nil {
 			return err
 		}
@@ -2020,7 +2566,7 @@ func resourceOpenGaussInstanceDelete(ctx context.Context, d *schema.ResourceData
 
 func checkGaussDBOpenGaussJobFinish(ctx context.Context, client *golangsdk.ServiceClient, jobID string, delay int,
 	timeout time.Duration) error {
-	stateConf := &resource.StateChangeConf{
+	stateConf := &retry.StateChangeConf{
 		Pending:      []string{"Running"},
 		Target:       []string{"Completed"},
 		Refresh:      gaussDBOpenGaussStatusRefreshFunc(client, jobID),
@@ -2034,7 +2580,7 @@ func checkGaussDBOpenGaussJobFinish(ctx context.Context, client *golangsdk.Servi
 	return nil
 }
 
-func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) resource.StateRefreshFunc {
+func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		res, err := getGaussDBOpenGaussInstancesById(client, instanceID)
 		if err != nil {
@@ -2049,7 +2595,7 @@ func instanceStateRefreshFunc(client *golangsdk.ServiceClient, instanceID string
 	}
 }
 
-func gaussDBOpenGaussStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) resource.StateRefreshFunc {
+func gaussDBOpenGaussStatusRefreshFunc(client *golangsdk.ServiceClient, jobId string) retry.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		var (
 			getJobStatusHttpUrl = "v3/{project_id}/jobs?id={job_id}"

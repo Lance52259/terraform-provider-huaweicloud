@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"testing"
@@ -68,8 +69,14 @@ func filterUserClientQuota(parts []string, resp interface{}) interface{} {
 		return nil
 	}
 
-	rawUserDefault, _ := strconv.ParseBool(parts[2])
-	rawClientDefault, _ := strconv.ParseBool(parts[4])
+	rawUserDefault, err := strconv.ParseBool(parts[2])
+	if err != nil {
+		log.Printf("[WARN] error parsing 'user_default' field to Boolean: %s", err)
+	}
+	rawClientDefault, err := strconv.ParseBool(parts[4])
+	if err != nil {
+		log.Printf("[WARN] error parsing 'client_default' field to Boolean: %s", err)
+	}
 
 	for _, quota := range quotaArray {
 		user := utils.PathSearch("user", quota, nil)
@@ -106,7 +113,10 @@ func TestAccDmsKafkaUserClientQuota_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDMSKafkaInstanceID(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -141,28 +151,24 @@ func TestAccDmsKafkaUserClientQuota_basic(t *testing.T) {
 
 func testDmsKafkaUserClientQuota_basic(rName string) string {
 	return fmt.Sprintf(`
-%[1]s
-
 resource "huaweicloud_dms_kafka_user_client_quota" "test" {
-  instance_id        = huaweicloud_dms_kafka_instance.test.id
+  instance_id        = "%[1]s"
   user               = "%[2]s"
   client             = "%[2]s"
   producer_byte_rate = 1024
   consumer_byte_rate = 0
 }
-`, testAccKafkaInstance_newFormat(rName), rName)
+`, acceptance.HW_DMS_KAFKA_INSTANCE_ID, rName)
 }
 
 func testDmsKafkaUserClientQuota_update(rName string) string {
 	return fmt.Sprintf(`
-%[1]s
-
 resource "huaweicloud_dms_kafka_user_client_quota" "test" {
-  instance_id        = huaweicloud_dms_kafka_instance.test.id
+  instance_id        = "%[1]s"
   user               = "%[2]s"
   client             = "%[2]s"
   producer_byte_rate = 0
   consumer_byte_rate = 2048
 }
-`, testAccKafkaInstance_newFormat(rName), rName)
+`, acceptance.HW_DMS_KAFKA_INSTANCE_ID, rName)
 }

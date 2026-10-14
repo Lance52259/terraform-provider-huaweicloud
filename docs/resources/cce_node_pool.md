@@ -26,7 +26,7 @@ resource "huaweicloud_cce_node_pool" "node_pool" {
   flavor_id                = "s3.large.4"
   availability_zone        = var.availability_zone
   key_pair                 = var.keypair
-  scall_enable             = true
+  scale_enable             = true
   min_node_count           = 1
   max_node_count           = 10
   scale_down_cooldown_time = 100
@@ -60,7 +60,7 @@ resource "huaweicloud_cce_node_pool" "test" {
   initial_node_count       = 1
   availability_zone        = var.availability_zone
   key_pair                 = var.key_pair
-  scall_enable             = false
+  scale_enable             = false
   min_node_count           = 0
   max_node_count           = 0
   scale_down_cooldown_time = 0
@@ -148,7 +148,7 @@ resource "huaweicloud_cce_node_pool" "node_pool" {
   flavor_id                = "s3.large.4"
   availability_zone        = var.availability_zone
   key_pair                 = var.keypair
-  scall_enable             = true
+  scale_enable             = true
   min_node_count           = 1
   max_node_count           = 10
   scale_down_cooldown_time = 100
@@ -187,7 +187,7 @@ resource "huaweicloud_cce_node_pool" "node_pool" {
   flavor_id                = "s3.large.4"
   availability_zone        = var.availability_zone_1
   key_pair                 = var.keypair
-  scall_enable             = true
+  scale_enable             = true
   min_node_count           = 1
   max_node_count           = 10
   scale_down_cooldown_time = 100
@@ -268,7 +268,7 @@ resource "huaweicloud_cce_node_pool" "node_pool" {
   flavor_id                = "s3.large.4"
   availability_zone        = var.availability_zone
   key_pair                 = var.keypair
-  scall_enable             = true
+  scale_enable             = true
   min_node_count           = 1
   max_node_count           = 10
   scale_down_cooldown_time = 100
@@ -341,7 +341,7 @@ The following arguments are supported:
 * `extend_params` - (Optional, List) Specifies the extended parameters.
   The [extend_params](#extend_params_struct) structure is documented below.
 
-* `scall_enable` - (Optional, Bool) Specifies whether to enable auto-scaling.
+* `scale_enable` - (Optional, Bool) Specifies whether to enable auto-scaling.
   If Autoscaler is enabled, install the autoscaler add-on to use the auto-scaling feature.
 
 * `min_node_count` - (Optional, Int) Specifies the minimum number of nodes allowed if auto-scaling is enabled.
@@ -700,7 +700,7 @@ $ terraform import huaweicloud_cce_node_pool.my_node_pool <cluster_id>/<id>
 
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include:
-`password`, `extend_params`, `taints`, `ignore_initial_node_count` and `pod_security_groups`.
+`password`, `extend_params`, `taints`, `ignore_initial_node_count`, `pod_security_groups` and `partition`.
 It is generally recommended running `terraform plan` after importing a node pool.
 You can then decide if changes should be applied to the node pool, or the resource
 definition should be updated to align with the node pool. Also you can ignore changes as below.

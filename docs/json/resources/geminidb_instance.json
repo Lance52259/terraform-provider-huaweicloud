@@ -20,18 +20,43 @@
                 "type": "string",
                 "required": true
               },
+              "bucket_name": {
+                "type": "string",
+                "optional": true
+              },
               "charging_mode": {
                 "type": "string",
                 "optional": true
+              },
+              "cold_storage_size": {
+                "type": "number",
+                "optional": true
+              },
+              "config_ips": {
+                "type": [
+                  "set",
+                  "string"
+                ],
+                "optional": true,
+                "computed": true
               },
               "configuration_id": {
                 "type": "string",
                 "optional": true,
                 "computed": true
               },
+              "cpu_threshold": {
+                "type": "number",
+                "optional": true,
+                "computed": true
+              },
               "created": {
                 "type": "string",
                 "computed": true
+              },
+              "data_export_switch": {
+                "type": "string",
+                "optional": true
               },
               "db_user_name": {
                 "type": "string",
@@ -116,10 +141,26 @@
               },
               "lb_ip_address": {
                 "type": "string",
+                "optional": true,
                 "computed": true
               },
               "lb_port": {
                 "type": "string",
+                "computed": true
+              },
+              "maintenance_end_time": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "maintenance_start_time": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
+              "mem_threshold": {
+                "type": "number",
+                "optional": true,
                 "computed": true
               },
               "mode": {
@@ -129,6 +170,21 @@
               "name": {
                 "type": "string",
                 "required": true
+              },
+              "node_limit": {
+                "type": "number",
+                "optional": true,
+                "computed": true
+              },
+              "node_switch_option": {
+                "type": "bool",
+                "optional": true,
+                "computed": true
+              },
+              "overload_node_threshold": {
+                "type": "number",
+                "optional": true,
+                "computed": true
               },
               "password": {
                 "type": "string",
@@ -157,6 +213,11 @@
                 "type": "string",
                 "computed": true
               },
+              "second_level_monitoring_enabled": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "security_group_id": {
                 "type": "string",
                 "required": true
@@ -169,9 +230,19 @@
                 "type": "string",
                 "computed": true
               },
+              "step": {
+                "type": "number",
+                "optional": true,
+                "computed": true
+              },
               "subnet_id": {
                 "type": "string",
                 "required": true
+              },
+              "switch_option": {
+                "type": "string",
+                "optional": true,
+                "computed": true
               },
               "tags": {
                 "type": [
@@ -195,6 +266,39 @@
               }
             },
             "block_types": {
+              "access_control": {
+                "block": {
+                  "attributes": {
+                    "enabled": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "type": {
+                      "type": "string",
+                      "required": true
+                    }
+                  },
+                  "block_types": {
+                    "ip_groups": {
+                      "block": {
+                        "attributes": {
+                          "description": {
+                            "type": "string",
+                            "optional": true
+                          },
+                          "ip": {
+                            "type": "string",
+                            "required": true
+                          }
+                        }
+                      },
+                      "nesting_mode": "set"
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
+              },
               "availability_zone_detail": {
                 "block": {
                   "attributes": {
@@ -280,6 +384,44 @@
                 },
                 "nesting_mode": "list",
                 "min_items": 1,
+                "max_items": 1
+              },
+              "parameters": {
+                "block": {
+                  "attributes": {
+                    "name": {
+                      "type": "string",
+                      "required": true
+                    },
+                    "value": {
+                      "type": "string",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "set"
+              },
+              "policy": {
+                "block": {
+                  "attributes": {
+                    "size": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "step": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "threshold": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
                 "max_items": 1
               }
             }
